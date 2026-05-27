@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { setActiveTab } from '../redux/slices/uiSlice';
 import { logout } from '../redux/slices/authSlice';
 import { setTheme } from '../redux/slices/themeSlice';
@@ -79,6 +80,7 @@ const MainLayout = ({ children }) => {
 
   const handleLogout = () => {
     dispatch(logout());
+    toast.success("Logged out successfully!");
     navigate('/auth');
   };
 

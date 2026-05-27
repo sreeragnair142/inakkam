@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import toast from 'react-hot-toast';
 import { useDispatch, useSelector } from "react-redux";
 import { login, logout } from "../redux/slices/authSlice";
 import { setTheme } from "../redux/slices/themeSlice";
@@ -406,6 +407,8 @@ const Landing = () => {
                             onClick={() => {
                               dispatch(logout());
                               setShowProfileMenu(false);
+                              toast.success("Logged out successfully!");
+                              navigate("/auth");
                             }}
                             className="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold rounded-xl text-bumble-red hover:bg-rose-50 transition-colors cursor-pointer mt-1 border-t border-slate-100 pt-3"
                           >
