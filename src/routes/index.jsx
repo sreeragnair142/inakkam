@@ -1,0 +1,84 @@
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import Landing from '../pages/Landing';
+import Auth from '../pages/Auth';
+import Home from '../pages/Home';
+import Discover from '../pages/Discover';
+import Chat from '../pages/Chat';
+import Membership from '../pages/Membership';
+import Profile from '../pages/Profile';
+import MainLayout from '../layouts/MainLayout';
+
+// Wrapper to protect routes based on Redux auth status
+const ProtectedRoute = ({ children }) => {
+  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  return isAuthenticated ? children : <Navigate to="/auth" replace />;
+};
+
+const AppRoutes = () => {
+  return (
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/" element={<Landing />} />
+      <Route path="/auth" element={<Auth />} />
+
+      {/* Protected Main Workspace Routes */}
+      <Route
+        path="/home"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Home />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/swipe"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Discover />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/chat"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Chat />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/membership"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Membership />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Profile />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Redirects */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+};
+
+export default AppRoutes;
