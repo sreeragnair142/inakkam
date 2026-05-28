@@ -156,3 +156,14 @@ html, body, #root {
 .swipe-card-container {
   perspective: 1000px;
 }
+
+/* Mobile bottom nav: show on mobile, hide on desktop (lg: 1024px+) */
+.mobile-bottom-nav {
+  display: block !important;
+}
+
+@media (min-width: 1024px) {
+  .mobile-bottom-nav {
+    display: none !important;
+  }
+}

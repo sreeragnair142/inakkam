@@ -44,7 +44,7 @@ const Profile = () => {
     <div className="w-full min-h-screen bg-[#f5f5f3] text-left pb-24 font-sans">
       
       {/* 1) FULL WIDTH EDGE-TO-EDGE BANNER */}
-      <div className="relative w-full h-[45vh] min-h-[350px] bg-slate-900 overflow-hidden">
+      <div className="relative w-full h-[30vh] sm:h-[40vh] lg:h-[45vh] min-h-[220px] sm:min-h-[280px] lg:min-h-[350px] bg-slate-900 overflow-hidden">
         {/* Background Image Blurred */}
         <div 
           className="absolute inset-0 bg-cover bg-center" 
@@ -79,7 +79,7 @@ const Profile = () => {
       </div>
 
       {/* 2) MAIN WIDE CONTENT CONTAINER (Overlapping the banner) */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 relative -mt-32 z-10 grid lg:grid-cols-12 gap-8 lg:gap-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 relative -mt-16 sm:-mt-24 lg:-mt-32 z-10 grid lg:grid-cols-12 gap-8 lg:gap-12">
         
         {/* LEFT COLUMN: Profile Identity Card & Stats (Spans 4 columns) */}
         <div className="lg:col-span-4 space-y-6">
@@ -87,7 +87,7 @@ const Profile = () => {
           <div className="bg-white rounded-[2rem] p-6 shadow-2xl border border-slate-100 relative">
             
             {/* Avatar Image */}
-            <div className="relative w-full aspect-[4/5] rounded-[1.5rem] overflow-hidden shadow-xl mb-6 bg-slate-200">
+            <div className="relative w-32 h-32 md:w-full md:h-auto md:aspect-[4/5] rounded-full md:rounded-[1.5rem] overflow-hidden shadow-xl mb-6 mx-auto md:mx-0 bg-slate-200 shrink-0">
               <img
                 src={profileUser.images[0]}
                 alt={profileUser.name}
@@ -95,41 +95,41 @@ const Profile = () => {
               />
               {/* Verified Badge Absolute */}
               {profileUser.verified && (
-                <div className="absolute top-4 left-4 flex items-center gap-1.5 text-[10px] font-black bg-white/90 backdrop-blur-md text-bumble-charcoal px-3 py-1.5 rounded-full shadow-lg border border-black/5 uppercase tracking-wider">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-blue-500 fill-current" />
+                <div className="absolute top-2 left-2 md:top-4 md:left-4 flex items-center gap-1 text-[8px] md:text-[10px] font-black bg-white/90 backdrop-blur-md text-bumble-charcoal px-2 py-1 md:px-3 md:py-1.5 rounded-full shadow-lg border border-black/5 uppercase tracking-wider">
+                  <CheckCircle2 className="w-2.5 h-2.5 md:w-3.5 md:h-3.5 text-blue-500 fill-current" />
                   Verified
                 </div>
               )}
               {/* Edit button if self */}
               {viewSelf && (
-                <button className="absolute bottom-4 right-4 w-10 h-10 bg-bumble-yellow rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform cursor-pointer">
-                  <Camera className="w-5 h-5 text-bumble-charcoal" />
+                <button className="absolute bottom-1 right-1 md:bottom-4 md:right-4 w-8 h-8 md:w-10 md:h-10 bg-bumble-yellow rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform cursor-pointer border-none">
+                  <Camera className="w-4 h-4 md:w-5 md:h-5 text-bumble-charcoal" />
                 </button>
               )}
             </div>
 
             {/* Name & Basic Info */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-black tracking-tight text-bumble-charcoal">
+            <div className="space-y-1 text-center md:text-left">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-1.5">
+                <h1 className="text-2xl md:text-3xl font-black tracking-tight text-bumble-charcoal">
                   {profileUser.name}, {profileUser.age}
                 </h1>
-                <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-sm shadow-green-500/50" />
+                <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-sm shadow-green-500/50 mx-auto md:mx-0" />
               </div>
-              <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-500">
+              <div className="flex items-center justify-center md:justify-start gap-1.5 text-sm font-semibold text-slate-500">
                 <MapPin className="w-4 h-4" />
                 <span>{profileUser.location || 'San Francisco, CA'}</span>
               </div>
             </div>
 
             {/* Primary Action Button */}
-            <div className="mt-8">
+            <div className="mt-6 md:mt-8">
               {viewSelf ? (
-                <button className="w-full py-4 rounded-2xl text-xs font-black uppercase tracking-widest bg-slate-100 hover:bg-slate-200 text-bumble-charcoal transition-colors cursor-pointer border border-slate-200 shadow-sm">
+                <button className="w-full py-3.5 md:py-4 rounded-2xl text-xs font-black uppercase tracking-widest bg-slate-100 hover:bg-slate-200 text-bumble-charcoal transition-colors cursor-pointer border border-slate-200 shadow-sm">
                   Edit Profile Info
                 </button>
               ) : (
-                <button className="w-full py-4 rounded-2xl text-xs font-black uppercase tracking-widest bg-bumble-yellow text-bumble-charcoal hover:bg-black hover:text-white transition-all cursor-pointer shadow-lg shadow-bumble-yellow/20 flex items-center justify-center gap-2">
+                <button className="w-full py-3.5 md:py-4 rounded-2xl text-xs font-black uppercase tracking-widest bg-bumble-yellow text-bumble-charcoal hover:bg-black hover:text-white transition-all cursor-pointer shadow-lg shadow-bumble-yellow/20 flex items-center justify-center gap-2">
                   <Sparkles className="w-4 h-4 fill-current" />
                   Send Spark
                 </button>
@@ -159,7 +159,7 @@ const Profile = () => {
         <div className="lg:col-span-8 space-y-8 mt-16 lg:mt-0 pt-4">
           
           {/* Custom Tabs */}
-          <div className="flex gap-2 p-1.5 rounded-full bg-white shadow-md border border-slate-100 w-fit overflow-x-auto">
+          <div className="flex gap-2 p-1.5 rounded-full bg-white shadow-md border border-slate-100 w-fit max-w-full overflow-x-auto no-scrollbar">
             {[
               { id: 'about', label: 'About Me', icon: User },
               { id: 'media', label: 'Photo Gallery', icon: ImageIcon },

@@ -90,7 +90,7 @@ const Chat = () => {
   };
 
   return (
-    <div className={`flex-1 flex rounded-3xl overflow-hidden border h-[calc(100vh-140px)]
+    <div className={`flex-1 flex rounded-3xl overflow-hidden border h-[calc(100vh-220px)] lg:h-[calc(100vh-140px)]
       ${themeMode === 'light' 
         ? 'bg-white border-slate-200 shadow-md' 
         : 'bg-white border-slate-200 shadow-md'

@@ -122,7 +122,7 @@ const Discover = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center relative min-h-[85vh] py-8 overflow-hidden">
+    <div className="flex-1 flex flex-col items-center justify-center relative min-h-[70vh] lg:min-h-[85vh] py-6 lg:py-8 pb-4">
       
       {/* FULL WIDTH DYNAMIC BACKGROUND IMAGE */}
       {activeProfile && (

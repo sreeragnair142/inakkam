@@ -43,6 +43,14 @@ const Landing = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [testIndex, setTestIndex] = useState(0);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1200);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Settings local state
   const themeMode = useSelector((state) => state.theme.mode);
@@ -115,11 +123,12 @@ const Landing = () => {
   ];
 
   useEffect(() => {
+    if (isHovered) return;
     const timer = setInterval(() => {
       setCurrentIndex((prevIndex) => (prevIndex + 1) % profiles.length);
-    }, 3000);
+    }, 3200); // 3.2s auto-slide duration
     return () => clearInterval(timer);
-  }, [profiles.length]);
+  }, [profiles.length, isHovered]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -129,15 +138,16 @@ const Landing = () => {
   }, [testimonials.length]);
 
   const navItems = [
-    { id: "swipe", label: "Discover", path: "/swipe" },
-    { id: "chat", label: "Conversations", path: "/chat" },
+    { id: "swipe", label: "Discover", icon: Heart, path: "/swipe" },
+    { id: "chat", label: "Conversations", icon: MessageCircle, path: "/chat" },
     {
       id: "membership",
       label: "Go Premium",
+      icon: Sparkles,
       path: "/membership",
       premium: true,
     },
-    { id: "profile", label: "My Profile", path: "/profile" },
+    { id: "profile", label: "My Profile", icon: User, path: "/profile" },
   ];
 
   const handleNavClick = (path) => {
@@ -153,46 +163,172 @@ const Landing = () => {
   };
 
   const getCardStyle = (offset) => {
-    if (offset === -1) {
-      return {
-        x: -170,
-        y: -10,
-        rotate: -6,
-        scale: 0.92,
-        zIndex: 10,
-        opacity: 1
-      };
-    }
+    const isMobile = windowWidth < 640;
+    const isTablet = windowWidth >= 640 && windowWidth < 1024;
 
-    if (offset === 0) {
-      return {
-        x: 0,
-        y: 0,
-        rotate: 0,
-        scale: 1,
-        zIndex: 30,
-        opacity: 1
-      };
-    }
-
-    if (offset === 1) {
-      return {
-        x: 170,
-        y: -10,
-        rotate: 6,
-        scale: 0.92,
-        zIndex: 10,
-        opacity: 1
-      };
+    if (isMobile) {
+      if (offset === -2) {
+        return {
+          x: -75,
+          y: 8,
+          rotate: -8,
+          scale: 0.76,
+          zIndex: 5,
+          opacity: 0.35,
+        };
+      }
+      if (offset === -1) {
+        return {
+          x: -42,
+          y: 4,
+          rotate: -4,
+          scale: 0.88,
+          zIndex: 15,
+          opacity: 0.7,
+        };
+      }
+      if (offset === 0) {
+        return {
+          x: 0,
+          y: 0,
+          rotate: 0,
+          scale: 1.02,
+          zIndex: 30,
+          opacity: 1,
+        };
+      }
+      if (offset === 1) {
+        return {
+          x: 42,
+          y: 4,
+          rotate: 4,
+          scale: 0.88,
+          zIndex: 15,
+          opacity: 0.7,
+        };
+      }
+      if (offset === 2) {
+        return {
+          x: 75,
+          y: 8,
+          rotate: 8,
+          scale: 0.76,
+          zIndex: 5,
+          opacity: 0.35,
+        };
+      }
+    } else if (isTablet) {
+      if (offset === -2) {
+        return {
+          x: -160,
+          y: 15,
+          rotate: -10,
+          scale: 0.8,
+          zIndex: 5,
+          opacity: 0.35,
+        };
+      }
+      if (offset === -1) {
+        return {
+          x: -85,
+          y: 5,
+          rotate: -5,
+          scale: 0.9,
+          zIndex: 15,
+          opacity: 0.75,
+        };
+      }
+      if (offset === 0) {
+        return {
+          x: 0,
+          y: 0,
+          rotate: 0,
+          scale: 1.05,
+          zIndex: 30,
+          opacity: 1,
+        };
+      }
+      if (offset === 1) {
+        return {
+          x: 85,
+          y: 5,
+          rotate: 5,
+          scale: 0.9,
+          zIndex: 15,
+          opacity: 0.75,
+        };
+      }
+      if (offset === 2) {
+        return {
+          x: 160,
+          y: 15,
+          rotate: 10,
+          scale: 0.8,
+          zIndex: 5,
+          opacity: 0.35,
+        };
+      }
+    } else {
+      // Desktop
+      if (offset === -2) {
+        return {
+          x: -280,
+          y: 20,
+          rotate: -12,
+          scale: 0.82,
+          zIndex: 5,
+          opacity: 0.4,
+        };
+      }
+      if (offset === -1) {
+        return {
+          x: -150,
+          y: 5,
+          rotate: -6,
+          scale: 0.93,
+          zIndex: 15,
+          opacity: 0.8,
+        };
+      }
+      if (offset === 0) {
+        return {
+          x: 0,
+          y: 0,
+          rotate: 0,
+          scale: 1.08,
+          zIndex: 30,
+          opacity: 1,
+        };
+      }
+      if (offset === 1) {
+        return {
+          x: 150,
+          y: 5,
+          rotate: 6,
+          scale: 0.93,
+          zIndex: 15,
+          opacity: 0.8,
+        };
+      }
+      if (offset === 2) {
+        return {
+          x: 280,
+          y: 20,
+          rotate: 12,
+          scale: 0.82,
+          zIndex: 5,
+          opacity: 0.4,
+        };
+      }
     }
 
     return {
-      x: offset < 0 ? -350 : 350,
+      x: offset < 0 ? -400 : 400,
       y: 0,
-      rotate: offset < 0 ? -10 : 10,
-      scale: 0.8,
+      rotate: offset < 0 ? -15 : 15,
+      scale: 0.7,
       zIndex: 1,
-      opacity: 0
+      opacity: 0,
     };
   };
   return (
@@ -451,8 +587,11 @@ const Landing = () => {
           </div>
 
           {/* 3D Floating Tilted Profile Cards (Matching Screenshot 2 from Bumble.com with Y-rotation) */}
-          <div className="relative w-full max-w-7xl h-[620px] flex justify-center items-center z-10 select-none [perspective:2200px] overflow-visible scale-[0.82] sm:scale-100">
-            {" "}
+          <div 
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            className="relative w-full max-w-7xl h-[620px] flex justify-center items-center z-10 select-none [perspective:2200px] overflow-visible scale-[0.82] sm:scale-100"
+          >
             {profiles.map((profile, idx) => {
               let offset = idx - currentIndex;
               // Wrap around for circular list
@@ -469,36 +608,45 @@ const Landing = () => {
                 <motion.div
                   key={profile.name}
                   animate={style}
-                  transition={{ duration: 0.75, ease: [0.25, 1, 0.5, 1] }}
-                  className="absolute rounded-[2.5rem] shadow-[0_25px_60px_rgba(0,0,0,0.28)] w-[260px] h-[470px] shrink-0 overflow-hidden cursor-pointer"
+                  transition={{ duration: 1.5, ease: [0.25, 0.1, 0.25, 1] }}
+                  className="absolute rounded-[2.5rem] shadow-[0_30px_70px_rgba(0,0,0,0.3)] w-[260px] h-[470px] shrink-0 overflow-hidden cursor-pointer border border-white/10 backdrop-blur-[1px]"
                   style={{
                     transformStyle: "preserve-3d",
                     backfaceVisibility: "hidden",
+                    willChange: "transform, opacity",
                   }}
                   onClick={() => {
-                    if (offset === -1) {
+                    if (offset === 0) {
                       navigate(isAuthenticated ? "/swipe" : "/auth");
                     } else {
-                      setCurrentIndex((idx + 1) % profiles.length);
+                      setCurrentIndex(idx);
                     }
                   }}
                 >
-                  <div className="relative w-full h-full">
+                  <motion.div 
+                    animate={{ y: [0, -12, 0] }}
+                    transition={{ 
+                      repeat: Infinity, 
+                      duration: 3.5 + idx * 0.4, 
+                      ease: "easeInOut" 
+                    }}
+                    className="relative w-full h-full"
+                  >
                     <img
                       src={profile.image}
                       alt={profile.name}
                       className="w-full h-full object-cover object-center rounded-[2.5rem] pointer-events-none scale-[1.02]"
                     />
                     {/* Shadow overlay at bottom for text readability */}
-                    <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none rounded-b-[2rem]" />
+                    <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none rounded-b-[2.5rem]" />
 
                     {/* Text overlay directly on the image bottom */}
                     <div className="absolute bottom-6 left-6 text-white text-left z-10 pointer-events-none">
-                      <span className="font-black text-xl tracking-tight block">
+                      <span className="font-black text-xl tracking-tight block drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]">
                         {profile.name}, {profile.age}
                       </span>
                     </div>
-                  </div>
+                  </motion.div>
                 </motion.div>
               );
             })}
@@ -959,8 +1107,7 @@ const Landing = () => {
             <span className="hover:text-slate-800 cursor-pointer">Careers</span>
           </div>
           <div className="text-slate-400 text-xs font-medium">
-            &copy; {new Date().getFullYear()} Bumble Inc. All rights reserved.
-            Antigravity UI.
+            &copy; {new Date().getFullYear()} Inakkam Inc. All rights reserved.
           </div>
         </div>
       </footer>
@@ -1137,6 +1284,69 @@ const Landing = () => {
           </>
         )}
       </AnimatePresence>
+
+      {/* Fixed Bottom Nav Bar on Mobile (App Style) for authenticated users */}
+      {isAuthenticated && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 99999,
+            backgroundColor: '#ffffff',
+            borderTop: '1px solid #f1f5f9',
+            boxShadow: '0 -4px 20px -10px rgba(0,0,0,0.08)',
+            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          }}
+          className="mobile-bottom-nav"
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', height: '64px', padding: '0 8px' }}>
+            {navItems.map((item) => {
+              const isActive = false;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavClick(item.path)}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flex: 1,
+                    height: '100%',
+                    gap: '4px',
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    color: isActive ? '#1E1E1E' : '#94a3b8',
+                    transition: 'all 0.2s',
+                    position: 'relative',
+                    padding: 0,
+                  }}
+                >
+                  <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <item.icon style={{ width: '22px', height: '22px', strokeWidth: isActive ? 2.5 : 2 }} />
+                    {item.premium && (
+                      <div style={{
+                        position: 'absolute', top: '-4px', right: '-6px',
+                        width: '8px', height: '8px', backgroundColor: '#FFCB37',
+                        borderRadius: '50%', border: '1.5px solid white',
+                      }} />
+                    )}
+                  </div>
+                  <span style={{
+                    fontSize: '10px', fontWeight: 700, letterSpacing: '0.025em',
+                    opacity: isActive ? 1 : 0.7, transition: 'all 0.2s',
+                  }}>
+                    {item.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
     </div>
   );

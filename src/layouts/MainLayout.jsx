@@ -40,7 +40,6 @@ const MainLayout = ({ children }) => {
   
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   // Settings local state
@@ -75,7 +74,6 @@ const MainLayout = ({ children }) => {
 
   const handleNavClick = (path) => {
     navigate(path);
-    setMobileMenuOpen(false);
   };
 
   const handleLogout = () => {
@@ -85,11 +83,12 @@ const MainLayout = ({ children }) => {
   };
 
   return (
+    <>
     <div className="min-h-screen flex flex-col bg-white text-bumble-charcoal font-sans relative overflow-x-hidden">
 
 
       {/* HORIZONTAL NAVBAR (Ultra Clean Website Navbar Style) */}
-      <header className="sticky top-0 z-50 bg-white border-b border-slate-100 px-8 py-4.5 flex items-center justify-between shadow-sm">
+      <header className="sticky top-0 z-50 bg-white border-b border-slate-100 px-4 md:px-8 py-3 md:py-4.5 flex items-center justify-between shadow-sm">
         
         {/* Brand Logo */}
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => handleNavClick('/')}>
@@ -283,51 +282,11 @@ const MainLayout = ({ children }) => {
             </div>
           )}
 
-          {/* Hamburger Menu button for mobile screens */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden p-2 rounded-full border border-slate-200 bg-white text-slate-500 hover:text-bumble-charcoal shadow-sm cursor-pointer"
-          >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-
         </div>
       </header>
 
-      {/* Mobile navigation Drawer */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="lg:hidden bg-white border-b border-slate-200 overflow-hidden relative z-40"
-          >
-            <div className="p-4 space-y-1.5 text-left">
-              {navItems.map((item) => {
-                const isActive = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleNavClick(item.path)}
-                    className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-widest cursor-pointer transition-all
-                      ${isActive 
-                        ? 'bg-bumble-yellow/20 text-bumble-charcoal border-l-4 border-bumble-yellow' 
-                        : 'text-slate-500 hover:bg-slate-50'
-                      }`}
-                  >
-                    <item.icon className="w-4.5 h-4.5 text-slate-400" />
-                    <span>{item.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* MAIN CONTENT PORTAL (100% FULL-WIDTH CAPABLE VIEWPORT) */}
-      <main className="flex-grow w-full flex flex-col z-10 relative">
+      <main className="flex-grow w-full flex flex-col z-10 relative pb-20 lg:pb-0">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -342,31 +301,6 @@ const MainLayout = ({ children }) => {
         </AnimatePresence>
       </main>
 
-      {/* Floating Bottom Nav Indicator on Mobile */}
-      <div className="lg:hidden fixed bottom-4 inset-x-0 z-40 flex justify-center pointer-events-none px-6">
-        <div className="bg-white/95 backdrop-blur-md shadow-2xl border border-slate-200/85 rounded-full px-5 py-2 flex items-center gap-6 pointer-events-auto">
-          {[
-            { id: 'swipe', icon: Heart, path: '/swipe' },
-            { id: 'chat', icon: MessageSquare, path: '/chat' },
-            { id: 'profile', icon: User, path: '/profile' },
-          ].map((item) => {
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleNavClick(item.path)}
-                className={`p-2.5 rounded-full transition-transform cursor-pointer
-                  ${isActive 
-                    ? 'bg-bumble-yellow text-bumble-charcoal scale-110 shadow' 
-                    : 'text-slate-400 hover:text-slate-600'
-                  }`}
-              >
-                <item.icon className="w-5 h-5" />
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
       {/* Settings Modal Popup */}
       <AnimatePresence>
@@ -553,6 +487,76 @@ const MainLayout = ({ children }) => {
       </AnimatePresence>
 
     </div>
+
+    {/* Fixed Bottom Nav Bar on Mobile (App Style) — rendered OUTSIDE overflow-hidden root */}
+    <div
+      style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 99999,
+        backgroundColor: '#ffffff',
+        borderTop: '1px solid #f1f5f9',
+        boxShadow: '0 -4px 20px -10px rgba(0,0,0,0.08)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}
+      className="mobile-bottom-nav"
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', height: '64px', padding: '0 8px' }}>
+        {navItems.map((item) => {
+          const isActive = activeTab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => handleNavClick(item.path)}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flex: 1,
+                height: '100%',
+                gap: '4px',
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                color: isActive ? '#1E1E1E' : '#94a3b8',
+                transition: 'all 0.2s',
+                position: 'relative',
+                padding: 0,
+              }}
+            >
+              <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <item.icon style={{ width: '22px', height: '22px', strokeWidth: isActive ? 2.5 : 2 }} />
+                {item.premium && (
+                  <div style={{
+                    position: 'absolute', top: '-4px', right: '-6px',
+                    width: '8px', height: '8px', backgroundColor: '#FFCB37',
+                    borderRadius: '50%', border: '1.5px solid white',
+                  }} />
+                )}
+              </div>
+              <span style={{
+                fontSize: '10px', fontWeight: 700, letterSpacing: '0.025em',
+                opacity: isActive ? 1 : 0.7, transition: 'all 0.2s',
+              }}>
+                {item.label}
+              </span>
+              {isActive && (
+                <div style={{
+                  position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+                  width: '32px', height: '3px', backgroundColor: '#FFCB37',
+                  borderRadius: '0 0 4px 4px',
+                }} />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+
+    </>
   );
 };
 
