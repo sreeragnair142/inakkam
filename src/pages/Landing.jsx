@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import toast from 'react-hot-toast';
+import toast from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
 import { login, logout } from "../redux/slices/authSlice";
 import { setTheme } from "../redux/slices/themeSlice";
@@ -44,7 +44,9 @@ const Landing = () => {
   const [testIndex, setTestIndex] = useState(0);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1200);
+  const [windowWidth, setWindowWidth] = useState(
+    typeof window !== "undefined" ? window.innerWidth : 1200,
+  );
 
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
@@ -68,25 +70,63 @@ const Landing = () => {
   });
   const [distanceValue, setDistanceValue] = useState(25);
 
+  const floatingCards = [
+    {
+      name: "Jenny Lopez",
+      age: 24,
+      distance: "15 km away",
+      hobby1: "Yoga 🧘",
+      hobby2: "Music",
+      rotate: "-12deg",
+      image:
+        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=800",
+    },
+    {
+      name: "Lissa Moni",
+      age: 22,
+      distance: "10 km away",
+      hobby1: "Travel ✈️",
+      hobby2: "Coffee ☕",
+      rotate: "8deg",
+      image:
+        "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=800",
+    },
+    {
+      name: "Moriya Hos",
+      age: 24,
+      distance: "10 km away",
+      hobby1: "Sports 🏀",
+      hobby2: "Dancing 💃",
+      rotate: "-10deg",
+      image:
+        "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=800",
+    },
+  ];
   const testimonials = [
     {
-      quote: "We are both naturally positive, happy-go-getters, but when you put us together, it feels like there is nothing we can't accomplish.",
+      quote:
+        "We are both naturally positive, happy-go-getters, but when you put us together, it feels like there is nothing we can't accomplish.",
       name: "Leslie & Thomas",
       meta: "Married in 2025",
-      image: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=600"
+      image:
+        "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=600",
     },
     {
-      quote: "I never thought I'd find someone who matches my energy perfectly. Inakkam made it effortless and fun.",
+      quote:
+        "I never thought I'd find someone who matches my energy perfectly. Inakkam made it effortless and fun.",
       name: "Sarah & David",
       meta: "Engaged in 2024",
-      image: "https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&q=80&w=600"
+      image:
+        "https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&q=80&w=600",
     },
     {
-      quote: "From our first date at the coffee shop to moving in together, every step felt right.",
+      quote:
+        "From our first date at the coffee shop to moving in together, every step felt right.",
       name: "Michael & James",
       meta: "Met in 2023",
-      image: "https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?auto=format&fit=crop&q=80&w=600"
-    }
+      image:
+        "https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?auto=format&fit=crop&q=80&w=600",
+    },
   ];
 
   const profiles = [
@@ -375,10 +415,11 @@ const Landing = () => {
                     key={idx}
                     onClick={() => navigate("/auth")}
                     className={`px-6 py-2 rounded-full text-xs font-bold transition-colors cursor-pointer
-                    ${idx === 0
+                    ${
+                      idx === 0
                         ? "bg-bumble-yellow/10 text-bumble-charcoal"
                         : "text-bumble-charcoal hover:bg-slate-100"
-                      }`}
+                    }`}
                   >
                     {pill}
                   </button>
@@ -447,9 +488,10 @@ const Landing = () => {
                                     dispatch(markAsRead(notif.id));
                                   }}
                                   className={`p-3.5 transition-colors cursor-pointer flex gap-3 text-xs
-                                    ${!notif.read
-                                      ? "bg-bumble-yellow/5 hover:bg-bumble-yellow/10"
-                                      : "hover:bg-slate-50"
+                                    ${
+                                      !notif.read
+                                        ? "bg-bumble-yellow/5 hover:bg-bumble-yellow/10"
+                                        : "hover:bg-slate-50"
                                     }`}
                                 >
                                   <div className="flex-1 text-left">
@@ -587,66 +629,107 @@ const Landing = () => {
           </div>
 
           {/* 3D Floating Tilted Profile Cards (Matching Screenshot 2 from Bumble.com with Y-rotation) */}
-          <div 
+          <div
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            className="relative w-full max-w-7xl h-[620px] flex justify-center items-center z-10 select-none [perspective:2200px] overflow-visible scale-[0.82] sm:scale-100"
+            className="relative w-full max-w-7xl h-[620px] flex justify-center items-center z-10 overflow-hidden perspective-[2000px]"
           >
             {profiles.map((profile, idx) => {
               let offset = idx - currentIndex;
-              // Wrap around for circular list
-              const half = profiles.length / 2;
-              if (offset < -half) {
-                offset += profiles.length;
-              } else if (offset > half) {
-                offset -= profiles.length;
-              }
 
-              const style = getCardStyle(offset);
+              const half = profiles.length / 2;
+
+              if (offset < -half) offset += profiles.length;
+              if (offset > half) offset -= profiles.length;
+
+              const positions = {
+                "-2": {
+                  x: -260,
+                  rotate: -10,
+                  scale: 0.82,
+                  opacity: 0.35,
+                  zIndex: 1,
+                },
+                "-1": {
+                  x: -140,
+                  rotate: -5,
+                  scale: 0.92,
+                  opacity: 0.7,
+                  zIndex: 10,
+                },
+                0: {
+                  x: 0,
+                  rotate: 0,
+                  scale: 1,
+                  opacity: 1,
+                  zIndex: 30,
+                },
+                1: {
+                  x: 140,
+                  rotate: 5,
+                  scale: 0.92,
+                  opacity: 0.7,
+                  zIndex: 10,
+                },
+                2: {
+                  x: 260,
+                  rotate: 10,
+                  scale: 0.82,
+                  opacity: 0.35,
+                  zIndex: 1,
+                },
+              };
+
+              const style = positions[offset] || {
+                x: offset < 0 ? -400 : 400,
+                rotate: offset < 0 ? -15 : 15,
+                scale: 0.7,
+                opacity: 0,
+                zIndex: 0,
+              };
 
               return (
                 <motion.div
                   key={profile.name}
-                  animate={style}
-                  transition={{ duration: 1.5, ease: [0.25, 0.1, 0.25, 1] }}
-                  className="absolute rounded-[2.5rem] shadow-[0_30px_70px_rgba(0,0,0,0.3)] w-[260px] h-[470px] shrink-0 overflow-hidden cursor-pointer border border-white/10 backdrop-blur-[1px]"
-                  style={{
-                    transformStyle: "preserve-3d",
-                    backfaceVisibility: "hidden",
-                    willChange: "transform, opacity",
+                  animate={{
+                    x: style.x,
+                    y: 0,
+                    rotate: style.rotate,
+                    scale: style.scale,
+                    opacity: style.opacity,
                   }}
-                  onClick={() => {
-                    if (offset === 0) {
-                      navigate(isAuthenticated ? "/swipe" : "/auth");
-                    } else {
-                      setCurrentIndex(idx);
-                    }
+                  transition={{
+                    type: "spring",
+                    stiffness: 70,
+                    damping: 18,
+                    mass: 0.8,
+                  }}
+                  className="absolute w-[260px] h-[470px] rounded-[38px] overflow-hidden transform-gpu will-change-transform"
+                  style={{
+                    zIndex: style.zIndex,
                   }}
                 >
-                  <motion.div 
-                    animate={{ y: [0, -12, 0] }}
-                    transition={{ 
-                      repeat: Infinity, 
-                      duration: 3.5 + idx * 0.4, 
-                      ease: "easeInOut" 
-                    }}
-                    className="relative w-full h-full"
-                  >
+                  <div className="relative w-full h-full">
                     <img
                       src={profile.image}
                       alt={profile.name}
-                      className="w-full h-full object-cover object-center rounded-[2.5rem] pointer-events-none scale-[1.02]"
+                      loading="eager"
+                      className="w-full h-full object-cover rounded-[38px] pointer-events-none select-none"
+                      draggable={false}
                     />
-                    {/* Shadow overlay at bottom for text readability */}
-                    <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none rounded-b-[2.5rem]" />
 
-                    {/* Text overlay directly on the image bottom */}
-                    <div className="absolute bottom-6 left-6 text-white text-left z-10 pointer-events-none">
-                      <span className="font-black text-xl tracking-tight block drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]">
+                    {/* lighter overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+
+                    {/* optimized shadow */}
+                    <div className="absolute inset-0 shadow-[0_10px_40px_rgba(0,0,0,0.18)] rounded-[38px]" />
+
+                    <div className="absolute bottom-6 left-6 text-white z-10">
+                      <h3 className="font-black text-2xl">
                         {profile.name}, {profile.age}
-                      </span>
+                      </h3>
                     </div>
-                  </motion.div>
+                  </div>
                 </motion.div>
               );
             })}
@@ -656,8 +739,6 @@ const Landing = () => {
         {/* Down arrow link indicator */}
         <div className="flex justify-center z-10 w-full">
           <motion.div
-            animate={{ y: [0, 8, 0] }}
-            transition={{ repeat: Infinity, duration: 1.8 }}
             className="w-8 h-8 rounded-full border border-black/10 flex items-center justify-center text-bumble-charcoal cursor-pointer hover:bg-white/10"
             onClick={() => {
               document
@@ -669,6 +750,9 @@ const Landing = () => {
           </motion.div>
         </div>
       </section>
+    
+
+
 
       {/* SECTION 2 — PREMIUM LOVE EXPERIENCE */}
       <section
@@ -680,10 +764,8 @@ const Landing = () => {
         <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-orange-200/30 blur-[120px] rounded-full" />
 
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center relative z-10">
-
           {/* LEFT CONTENT */}
           <div className="space-y-8">
-
             {/* Small badge */}
             <div className="inline-flex items-center gap-2 bg-white shadow-md border border-black/5 px-5 py-2 rounded-full">
               <div className="w-2 h-2 rounded-full bg-bumble-yellow animate-pulse" />
@@ -698,36 +780,40 @@ const Landing = () => {
                 Dating that
                 <br />
                 feels more
-                <span className="ml-4">
-                  human.
-                </span>
+                <span className="ml-4">human.</span>
               </h2>
 
               <p className="text-lg leading-relaxed text-slate-500 max-w-xl font-medium">
-                Meet people who match your energy, lifestyle, and vibe.
-                Inakkam helps meaningful conversations happen naturally —
-                without the awkwardness.
+                Meet people who match your energy, lifestyle, and vibe. Inakkam
+                helps meaningful conversations happen naturally — without the
+                awkwardness.
               </p>
             </div>
 
             {/* Stats */}
             <div className="flex flex-wrap gap-4">
               <div className="bg-white px-6 py-4 rounded-3xl shadow-lg border border-black/5">
-                <h4 className="text-3xl font-black text-bumble-charcoal">50M+</h4>
+                <h4 className="text-3xl font-black text-bumble-charcoal">
+                  50M+
+                </h4>
                 <p className="text-xs text-slate-500 font-semibold mt-1">
                   Active Matches
                 </p>
               </div>
 
               <div className="bg-white px-6 py-4 rounded-3xl shadow-lg border border-black/5">
-                <h4 className="text-3xl font-black text-bumble-charcoal">190+</h4>
+                <h4 className="text-3xl font-black text-bumble-charcoal">
+                  190+
+                </h4>
                 <p className="text-xs text-slate-500 font-semibold mt-1">
                   Countries
                 </p>
               </div>
 
               <div className="bg-white px-6 py-4 rounded-3xl shadow-lg border border-black/5">
-                <h4 className="text-3xl font-black text-bumble-charcoal">24/7</h4>
+                <h4 className="text-3xl font-black text-bumble-charcoal">
+                  24/7
+                </h4>
                 <p className="text-xs text-slate-500 font-semibold mt-1">
                   Real Conversations
                 </p>
@@ -743,9 +829,7 @@ const Landing = () => {
                 Start Matching
               </button>
 
-              <button
-                className="px-9 py-4 rounded-full bg-white text-bumble-charcoal font-bold text-sm border border-black/10 hover:bg-black hover:text-white transition-all"
-              >
+              <button className="px-9 py-4 rounded-full bg-white text-bumble-charcoal font-bold text-sm border border-black/10 hover:bg-black hover:text-white transition-all">
                 Explore Features
               </button>
             </div>
@@ -753,7 +837,6 @@ const Landing = () => {
 
           {/* RIGHT PREMIUM CARD STACK */}
           <div className="relative flex justify-center items-center min-h-[720px]">
-
             {/* BACK CARD */}
             <div className="absolute right-12 top-16 rotate-[10deg] w-[250px] h-[520px] rounded-[3rem] overflow-hidden shadow-[0_40px_80px_rgba(0,0,0,0.2)]">
               <img
@@ -772,9 +855,7 @@ const Landing = () => {
 
             {/* MAIN CARD */}
             <div className="relative z-20 w-[320px] h-[620px] rounded-[3.5rem] bg-white p-3 shadow-[0_50px_120px_rgba(0,0,0,0.25)] border border-black/5">
-
               <div className="relative w-full h-full rounded-[3rem] overflow-hidden">
-
                 <img
                   src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=900"
                   alt=""
@@ -797,11 +878,8 @@ const Landing = () => {
 
                 {/* bottom content */}
                 <div className="absolute bottom-7 left-7 right-7 text-white">
-
                   <div className="flex items-center gap-2">
-                    <h3 className="text-4xl font-black">
-                      Maya, 25
-                    </h3>
+                    <h3 className="text-4xl font-black">Maya, 25</h3>
 
                     <div className="w-4 h-4 rounded-full bg-green-400 border-2 border-white" />
                   </div>
@@ -844,24 +922,28 @@ const Landing = () => {
                 className="w-full aspect-[4/5] object-cover hover:scale-105 transition-transform duration-700"
               />
             </div>
-            
+
             {/* Floating element 1: Stats */}
-            <motion.div 
-              animate={{ y: [-5, 5, -5] }}
-              transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+            <motion.div
+              animate={{ y: 0 }}
+              transition={{ duration: 0 }}
               className="absolute -right-4 md:-right-12 top-16 bg-white p-4 rounded-3xl shadow-xl border border-slate-100 z-20 hidden sm:flex items-center gap-4"
             >
               <div className="w-12 h-12 bg-bumble-yellow rounded-full flex items-center justify-center">
                 <Star className="w-6 h-6 text-bumble-charcoal fill-current" />
               </div>
               <div>
-                <span className="block font-black text-xl text-bumble-charcoal">1M+</span>
-                <span className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">Active Members</span>
+                <span className="block font-black text-xl text-bumble-charcoal">
+                  1M+
+                </span>
+                <span className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                  Active Members
+                </span>
               </div>
             </motion.div>
 
             {/* Floating element 2: Member Seal */}
-            <motion.div 
+            <motion.div
               animate={{ rotate: 360 }}
               transition={{ repeat: Infinity, duration: 25, ease: "linear" }}
               className="absolute -left-6 -bottom-8 w-32 h-32 rounded-full bg-bumble-charcoal text-white shadow-2xl flex items-center justify-center z-20 border-4 border-white"
@@ -869,7 +951,9 @@ const Landing = () => {
               <div className="w-[85%] h-[85%] border border-dashed border-white/40 rounded-full flex flex-col items-center justify-center">
                 <Flame className="w-6 h-6 text-bumble-yellow mb-1" />
                 <span className="text-[8px] font-black uppercase tracking-widest text-center leading-tight">
-                  Inakkam<br/>Circle
+                  Inakkam
+                  <br />
+                  Circle
                 </span>
               </div>
             </motion.div>
@@ -889,13 +973,13 @@ const Landing = () => {
 
             <h2 className="text-4xl sm:text-6xl font-serif italic font-normal text-bumble-charcoal tracking-tight leading-[1.1]">
               Help shape the <br />
-              <span className="mt-2 block">
-                future of dating
-              </span>
+              <span className="mt-2 block">future of dating</span>
             </h2>
 
             <p className="text-slate-500 text-lg leading-relaxed max-w-lg font-medium">
-              Join the elite Inakkam Member Circle. Share ideas directly with our product team through exclusive chats, discussions, and beta tests to create a space you truly love.
+              Join the elite Inakkam Member Circle. Share ideas directly with
+              our product team through exclusive chats, discussions, and beta
+              tests to create a space you truly love.
             </p>
 
             <div className="flex flex-wrap items-center gap-4 pt-4">
@@ -906,9 +990,7 @@ const Landing = () => {
                 <span>Join the Circle</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
-              <button
-                className="px-8 py-4 bg-white text-bumble-charcoal border border-slate-200 hover:bg-slate-50 rounded-full font-bold text-xs uppercase tracking-widest cursor-pointer transition-colors"
-              >
+              <button className="px-8 py-4 bg-white text-bumble-charcoal border border-slate-200 hover:bg-slate-50 rounded-full font-bold text-xs uppercase tracking-widest cursor-pointer transition-colors">
                 Learn More
               </button>
             </div>
@@ -916,15 +998,311 @@ const Landing = () => {
         </div>
       </section>
 
+      <section className="relative overflow-hidden py-24 md:py-36 bg-[#f5c842]">
+
+  {/* soft background glow */}
+  <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-white/10 blur-[120px] rounded-full" />
+
+  <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-orange-200/20 blur-[120px] rounded-full" />
+
+  {/* giant background text */}
+  <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+    <h1
+      className="
+        text-[24vw]
+        md:text-[18vw]
+        font-black
+        tracking-[-0.08em]
+        text-black/[0.08]
+      "
+    >
+      Inakkam
+    </h1>
+  </div>
+
+  <div className="relative max-w-7xl mx-auto h-[950px] md:h-[900px]">
+
+    {/* LEFT CARD */}
+    <div
+      className="
+        absolute
+        left-[10px]
+        top-[120px]
+
+        md:left-[80px]
+        md:top-[140px]
+
+        rotate-[-13deg]
+        z-10
+      "
+    >
+      <div className="relative">
+
+        {/* emoji */}
+        <div className="absolute -top-6 -left-6 text-5xl z-30">
+          💜
+        </div>
+
+        {/* tags */}
+        <div className="absolute -right-10 top-24 flex flex-col gap-3 z-30">
+          <span
+            className="
+              backdrop-blur-xl
+              bg-[#2a004f]/90
+              text-white
+              px-5 py-2
+              rounded-full
+              text-xs
+              font-bold
+              shadow-2xl
+            "
+          >
+            Dancing 💃
+          </span>
+
+          <span
+            className="
+              backdrop-blur-xl
+              bg-[#2a004f]/90
+              text-white
+              px-5 py-2
+              rounded-full
+              text-xs
+              font-bold
+              shadow-2xl
+            "
+          >
+            Sports 🏀
+          </span>
+        </div>
+
+        {/* image card */}
+        <div
+          className="
+            relative
+            overflow-hidden
+            rounded-[2.8rem]
+            shadow-[0_40px_120px_rgba(0,0,0,0.18)]
+          "
+        >
+          <img
+            src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=1200"
+            alt=""
+            className="
+              w-[240px]
+              h-[360px]
+
+              md:w-[300px]
+              md:h-[470px]
+
+              object-cover
+            "
+          />
+
+          {/* overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+
+          {/* text */}
+          <div className="absolute bottom-6 left-6 text-white z-20">
+            <h3 className="font-black text-2xl md:text-3xl">
+              Moriya Hos, 24
+            </h3>
+
+            <p className="text-sm text-white/80 mt-2">
+              📍 10 km away
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* CENTER CARD */}
+    <div
+      className="
+        absolute
+        left-1/2
+        top-[390px]
+
+        md:top-1/2
+
+        -translate-x-1/2
+        md:-translate-y-1/2
+
+        rotate-[7deg]
+        z-30
+      "
+    >
+      <div className="relative">
+
+        {/* emoji */}
+        <div className="absolute -top-8 right-0 text-6xl z-30">
+          😍
+        </div>
+
+        {/* tags */}
+        <div className="absolute -left-10 top-24 flex flex-col gap-3 z-30">
+          <span
+            className="
+              backdrop-blur-xl
+              bg-[#2a004f]/90
+              text-white
+              px-5 py-2
+              rounded-full
+              text-xs
+              font-bold
+              shadow-2xl
+            "
+          >
+            Travel ✈️
+          </span>
+
+          <span
+            className="
+              backdrop-blur-xl
+              bg-[#2a004f]/90
+              text-white
+              px-5 py-2
+              rounded-full
+              text-xs
+              font-bold
+              shadow-2xl
+            "
+          >
+            Coffee ☕
+          </span>
+        </div>
+
+        {/* image */}
+        <div
+          className="
+            relative
+            overflow-hidden
+            rounded-[3rem]
+            shadow-[0_50px_140px_rgba(0,0,0,0.22)]
+          "
+        >
+          <img
+            src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=1200"
+            alt=""
+            className="
+              w-[260px]
+              h-[380px]
+
+              md:w-[380px]
+              md:h-[580px]
+
+              object-cover
+            "
+          />
+
+          {/* overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+
+          {/* text */}
+          <div className="absolute bottom-7 left-7 text-white z-20">
+            <h3 className="font-black text-3xl md:text-5xl leading-none">
+              Lissa Moni, 22
+            </h3>
+
+            <p className="text-sm md:text-base text-white/80 mt-3">
+              📍 10 km away
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* RIGHT CARD */}
+    <div
+      className="
+        absolute
+
+        right-[0px]
+        top-[620px]
+
+        md:right-[90px]
+        md:top-[260px]
+
+        rotate-[12deg]
+        z-20
+      "
+    >
+      <div className="relative">
+
+        {/* emoji */}
+        <div className="absolute -top-6 left-0 text-5xl z-30">
+          ✨
+        </div>
+
+        {/* tag */}
+        <div className="absolute -left-8 top-20 z-30">
+          <span
+            className="
+              backdrop-blur-xl
+              bg-[#2a004f]/90
+              text-white
+              px-5 py-2
+              rounded-full
+              text-xs
+              font-bold
+              shadow-2xl
+            "
+          >
+            Yoga 🧘
+          </span>
+        </div>
+
+        {/* image */}
+        <div
+          className="
+            relative
+            overflow-hidden
+            rounded-[2.8rem]
+            shadow-[0_40px_120px_rgba(0,0,0,0.18)]
+          "
+        >
+          <img
+            src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=1200"
+            alt=""
+            className="
+              w-[220px]
+              h-[320px]
+
+              md:w-[300px]
+              md:h-[460px]
+
+              object-cover
+            "
+          />
+
+          {/* overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+
+          {/* text */}
+          <div className="absolute bottom-6 left-6 text-white z-20">
+            <h3 className="font-black text-2xl md:text-3xl">
+              Ashife, 23
+            </h3>
+
+            <p className="text-sm text-white/80 mt-2">
+              📍 3 km away
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
       {/* SECTION 4: Dual Modes Redesign */}
       <section className="py-24 px-6 max-w-7xl mx-auto">
         <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
-          
           {/* Card 1: Inakkam Date (Dark Theme) */}
           <div className="group relative bg-bumble-yellow text-bumble-charcoal rounded-[3rem] p-12 flex flex-col justify-between overflow-hidden h-[600px] border border-black/5 shadow-2xl transition-all duration-500 hover:-translate-y-2">
             {/* Background glowing orb */}
             <div className="absolute top-[-20%] left-[-20%] w-[300px] h-[300px] bg-white/40 blur-[80px] rounded-full group-hover:bg-white/60 transition-colors duration-500" />
-            
+
             {/* Graphic Layer */}
             <div className="relative z-10 w-full max-w-[240px] mx-auto mt-4 transition-transform duration-500 group-hover:scale-105 group-hover:-translate-y-4">
               <div className="bg-white/40 backdrop-blur-md rounded-3xl p-3 shadow-2xl border border-white/50">
@@ -973,7 +1351,7 @@ const Landing = () => {
           <div className="group relative bg-[#FFEBA2] text-bumble-charcoal rounded-[3rem] p-12 flex flex-col justify-between overflow-hidden h-[600px] border border-black/5 shadow-2xl transition-all duration-500 hover:-translate-y-2">
             {/* Background glowing orb */}
             <div className="absolute bottom-[-20%] right-[-20%] w-[300px] h-[300px] bg-white/60 blur-[80px] rounded-full group-hover:scale-150 transition-transform duration-700" />
-            
+
             {/* Graphic Layer */}
             <div className="relative z-10 w-full max-w-[240px] mx-auto mt-4 transition-transform duration-500 group-hover:scale-105 group-hover:-translate-y-4">
               <div className="bg-white rounded-3xl p-3 shadow-2xl border border-black/5">
@@ -986,8 +1364,8 @@ const Landing = () => {
                     alt="BFF Preview"
                     className="w-full h-full object-cover scale-110 group-hover:scale-100 transition-transform duration-700 ease-out"
                   />
-                   {/* Glass overlay text */}
-                   <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pt-12">
+                  {/* Glass overlay text */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pt-12">
                     <span className="font-extrabold text-white text-lg block">
                       Book club
                     </span>
@@ -1018,9 +1396,10 @@ const Landing = () => {
               </button>
             </div>
           </div>
-
         </div>
       </section>
+
+
 
       {/* SECTION 5: Testimonials Slider */}
       <section className="py-20 px-10 bg-bumble-light-gray max-w-6xl mx-auto rounded-[2.5rem] mb-24 relative overflow-hidden border border-black/5">
@@ -1067,7 +1446,7 @@ const Landing = () => {
             </div>
           </motion.div>
         </AnimatePresence>
-        
+
         {/* Navigation Dots */}
         <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-3 z-20">
           {testimonials.map((_, idx) => (
@@ -1075,15 +1454,15 @@ const Landing = () => {
               key={idx}
               onClick={() => setTestIndex(idx)}
               className={`w-2.5 h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
-                testIndex === idx ? "bg-bumble-yellow w-8" : "bg-slate-300 hover:bg-slate-400"
+                testIndex === idx
+                  ? "bg-bumble-yellow w-8"
+                  : "bg-slate-300 hover:bg-slate-400"
               }`}
               aria-label={`Go to slide ${idx + 1}`}
             />
           ))}
         </div>
       </section>
-
-
 
       {/* Footer */}
       <footer className="border-t border-slate-100 bg-bumble-light-gray py-16">
@@ -1127,7 +1506,7 @@ const Landing = () => {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
               className="fixed inset-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 z-[101] bg-white rounded-[2rem] shadow-2xl border border-slate-100 w-full sm:w-[640px] max-h-[85vh] overflow-hidden flex flex-col"
             >
               {/* Header */}
@@ -1137,8 +1516,12 @@ const Landing = () => {
                     <Settings className="w-5 h-5 text-bumble-charcoal" />
                   </div>
                   <div>
-                    <h2 className="font-black text-lg text-bumble-charcoal">Account Settings</h2>
-                    <p className="text-xs text-slate-400 font-medium">Manage your preferences</p>
+                    <h2 className="font-black text-lg text-bumble-charcoal">
+                      Account Settings
+                    </h2>
+                    <p className="text-xs text-slate-400 font-medium">
+                      Manage your preferences
+                    </p>
                   </div>
                 </div>
                 <button
@@ -1151,27 +1534,29 @@ const Landing = () => {
 
               {/* Scrollable Body */}
               <div className="overflow-y-auto flex-1 px-8 py-6 space-y-8">
-
                 {/* Theme */}
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <Palette className="w-5 h-5 text-bumble-yellow" />
-                    <h3 className="font-extrabold text-sm uppercase tracking-wider text-bumble-charcoal">Aesthetic Theme</h3>
+                    <h3 className="font-extrabold text-sm uppercase tracking-wider text-bumble-charcoal">
+                      Aesthetic Theme
+                    </h3>
                   </div>
                   <div className="grid grid-cols-3 gap-3">
-                    {['light', 'dark', 'gradient-blend'].map((mode) => {
+                    {["light", "dark", "gradient-blend"].map((mode) => {
                       const isSelected = themeMode === mode;
                       return (
                         <button
                           key={mode}
                           onClick={() => dispatch(setTheme(mode))}
                           className={`py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-widest border transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer
-                            ${isSelected
-                              ? 'bg-bumble-charcoal text-white border-transparent shadow-md'
-                              : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
+                            ${
+                              isSelected
+                                ? "bg-bumble-charcoal text-white border-transparent shadow-md"
+                                : "bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700"
                             }`}
                         >
-                          <span>{mode.replace('-', ' ')}</span>
+                          <span>{mode.replace("-", " ")}</span>
                           {isSelected && <Check className="w-4 h-4 shrink-0" />}
                         </button>
                       );
@@ -1183,38 +1568,79 @@ const Landing = () => {
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <Eye className="w-5 h-5 text-bumble-charcoal" />
-                    <h3 className="font-extrabold text-sm uppercase tracking-wider text-bumble-charcoal">Discovery & Privacy</h3>
+                    <h3 className="font-extrabold text-sm uppercase tracking-wider text-bumble-charcoal">
+                      Discovery & Privacy
+                    </h3>
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs font-bold">
-                      <span className="text-slate-500">Maximum Match Distance</span>
-                      <span className="text-bumble-yellow font-extrabold">{distanceValue} miles</span>
+                      <span className="text-slate-500">
+                        Maximum Match Distance
+                      </span>
+                      <span className="text-bumble-yellow font-extrabold">
+                        {distanceValue} miles
+                      </span>
                     </div>
                     <input
-                      type="range" min="5" max="100" value={distanceValue}
-                      onChange={(e) => setDistanceValue(parseInt(e.target.value))}
+                      type="range"
+                      min="5"
+                      max="100"
+                      value={distanceValue}
+                      onChange={(e) =>
+                        setDistanceValue(parseInt(e.target.value))
+                      }
                       className="w-full accent-bumble-yellow cursor-pointer h-1.5 bg-slate-200 rounded-full"
                     />
                   </div>
                   <div className="space-y-3 pt-3 border-t border-slate-100">
                     {[
-                      { key: 'incognito', label: 'Incognito Mode', desc: 'Only show your profile to connections you swiped right on first.' },
-                      { key: 'hideAge', label: 'Hide My Age', desc: 'Remove your age badge from discover cards.' },
-                      { key: 'hideLocation', label: 'Hide Location', desc: 'Hide distance proximity indicators from matches.' },
-                      { key: 'showOnlineStatus', label: 'Active Status Ring', desc: 'Display a green dot when you are currently online.' },
+                      {
+                        key: "incognito",
+                        label: "Incognito Mode",
+                        desc: "Only show your profile to connections you swiped right on first.",
+                      },
+                      {
+                        key: "hideAge",
+                        label: "Hide My Age",
+                        desc: "Remove your age badge from discover cards.",
+                      },
+                      {
+                        key: "hideLocation",
+                        label: "Hide Location",
+                        desc: "Hide distance proximity indicators from matches.",
+                      },
+                      {
+                        key: "showOnlineStatus",
+                        label: "Active Status Ring",
+                        desc: "Display a green dot when you are currently online.",
+                      },
                     ].map((toggle) => (
-                      <div key={toggle.key} className="flex justify-between items-center gap-4">
+                      <div
+                        key={toggle.key}
+                        className="flex justify-between items-center gap-4"
+                      >
                         <div className="text-left max-w-md">
-                          <span className="text-sm font-bold block text-bumble-charcoal">{toggle.label}</span>
-                          <span className="text-xs text-slate-500 block mt-0.5">{toggle.desc}</span>
+                          <span className="text-sm font-bold block text-bumble-charcoal">
+                            {toggle.label}
+                          </span>
+                          <span className="text-xs text-slate-500 block mt-0.5">
+                            {toggle.desc}
+                          </span>
                         </div>
                         <button
-                          onClick={() => setPrivacyToggles(prev => ({ ...prev, [toggle.key]: !prev[toggle.key] }))}
+                          onClick={() =>
+                            setPrivacyToggles((prev) => ({
+                              ...prev,
+                              [toggle.key]: !prev[toggle.key],
+                            }))
+                          }
                           className={`w-11 h-6 rounded-full p-0.5 transition-all duration-300 relative shrink-0 cursor-pointer
-                            ${privacyToggles[toggle.key] ? 'bg-bumble-yellow' : 'bg-slate-300'}`}
+                            ${privacyToggles[toggle.key] ? "bg-bumble-yellow" : "bg-slate-300"}`}
                         >
-                          <div className={`w-5 h-5 rounded-full bg-white shadow-md transition-all duration-300 transform
-                            ${privacyToggles[toggle.key] ? 'translate-x-5' : 'translate-x-0'}`} />
+                          <div
+                            className={`w-5 h-5 rounded-full bg-white shadow-md transition-all duration-300 transform
+                            ${privacyToggles[toggle.key] ? "translate-x-5" : "translate-x-0"}`}
+                          />
                         </button>
                       </div>
                     ))}
@@ -1225,27 +1651,59 @@ const Landing = () => {
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <Bell className="w-5 h-5 text-bumble-red" />
-                    <h3 className="font-extrabold text-sm uppercase tracking-wider text-bumble-charcoal">Communication Alerts</h3>
+                    <h3 className="font-extrabold text-sm uppercase tracking-wider text-bumble-charcoal">
+                      Communication Alerts
+                    </h3>
                   </div>
                   <div className="space-y-3">
                     {[
-                      { key: 'matches', label: 'New Spark Match Alert', desc: 'Receive real-time push alerts when you get a new match.' },
-                      { key: 'messages', label: 'Inbound Chat Messages', desc: 'Get notified when a connection sends you a message.' },
-                      { key: 'likes', label: 'Likes Dashboard Count', desc: 'Notify me when someone likes my profile.' },
-                      { key: 'spotlight', label: 'Spotlight Trends', desc: 'Get updates when your profile is trending locally.' },
+                      {
+                        key: "matches",
+                        label: "New Spark Match Alert",
+                        desc: "Receive real-time push alerts when you get a new match.",
+                      },
+                      {
+                        key: "messages",
+                        label: "Inbound Chat Messages",
+                        desc: "Get notified when a connection sends you a message.",
+                      },
+                      {
+                        key: "likes",
+                        label: "Likes Dashboard Count",
+                        desc: "Notify me when someone likes my profile.",
+                      },
+                      {
+                        key: "spotlight",
+                        label: "Spotlight Trends",
+                        desc: "Get updates when your profile is trending locally.",
+                      },
                     ].map((toggle) => (
-                      <div key={toggle.key} className="flex justify-between items-center gap-4">
+                      <div
+                        key={toggle.key}
+                        className="flex justify-between items-center gap-4"
+                      >
                         <div className="text-left max-w-md">
-                          <span className="text-sm font-bold block text-bumble-charcoal">{toggle.label}</span>
-                          <span className="text-xs text-slate-500 block mt-0.5">{toggle.desc}</span>
+                          <span className="text-sm font-bold block text-bumble-charcoal">
+                            {toggle.label}
+                          </span>
+                          <span className="text-xs text-slate-500 block mt-0.5">
+                            {toggle.desc}
+                          </span>
                         </div>
                         <button
-                          onClick={() => setNotificationToggles(prev => ({ ...prev, [toggle.key]: !prev[toggle.key] }))}
+                          onClick={() =>
+                            setNotificationToggles((prev) => ({
+                              ...prev,
+                              [toggle.key]: !prev[toggle.key],
+                            }))
+                          }
                           className={`w-11 h-6 rounded-full p-0.5 transition-all duration-300 relative shrink-0 cursor-pointer
-                            ${notificationToggles[toggle.key] ? 'bg-bumble-yellow' : 'bg-slate-300'}`}
+                            ${notificationToggles[toggle.key] ? "bg-bumble-yellow" : "bg-slate-300"}`}
                         >
-                          <div className={`w-5 h-5 rounded-full bg-white shadow-md transition-all duration-300 transform
-                            ${notificationToggles[toggle.key] ? 'translate-x-5' : 'translate-x-0'}`} />
+                          <div
+                            className={`w-5 h-5 rounded-full bg-white shadow-md transition-all duration-300 transform
+                            ${notificationToggles[toggle.key] ? "translate-x-5" : "translate-x-0"}`}
+                          />
                         </button>
                       </div>
                     ))}
@@ -1256,12 +1714,18 @@ const Landing = () => {
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <Shield className="w-5 h-5 text-rose-600" />
-                    <h3 className="font-extrabold text-sm uppercase tracking-wider text-rose-500">Security & Account</h3>
+                    <h3 className="font-extrabold text-sm uppercase tracking-wider text-rose-500">
+                      Security & Account
+                    </h3>
                   </div>
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border border-rose-200 p-4 rounded-2xl bg-rose-50/50">
                     <div className="text-left">
-                      <span className="text-sm font-bold block text-bumble-charcoal">Temporarily Deactivate</span>
-                      <span className="text-xs text-slate-500 block mt-0.5">Pause your profile from discover feeds.</span>
+                      <span className="text-sm font-bold block text-bumble-charcoal">
+                        Temporarily Deactivate
+                      </span>
+                      <span className="text-xs text-slate-500 block mt-0.5">
+                        Pause your profile from discover feeds.
+                      </span>
                     </div>
                     <button className="px-4 py-2 rounded-xl text-xs font-bold border border-rose-300 text-rose-500 hover:bg-rose-50/80 transition-colors shrink-0 cursor-pointer">
                       Pause Swipes
@@ -1269,8 +1733,12 @@ const Landing = () => {
                   </div>
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border border-rose-300 p-4 rounded-2xl bg-rose-50">
                     <div className="text-left">
-                      <span className="text-sm font-bold block text-rose-600">Delete Inakkam Account</span>
-                      <span className="text-xs text-slate-500 block mt-0.5">Permanently remove all data, matches, and history.</span>
+                      <span className="text-sm font-bold block text-rose-600">
+                        Delete Inakkam Account
+                      </span>
+                      <span className="text-xs text-slate-500 block mt-0.5">
+                        Permanently remove all data, matches, and history.
+                      </span>
                     </div>
                     <button className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer shadow-sm">
                       <Trash2 className="w-4 h-4" />
@@ -1278,7 +1746,6 @@ const Landing = () => {
                     </button>
                   </div>
                 </div>
-
               </div>
             </motion.div>
           </>
@@ -1289,19 +1756,27 @@ const Landing = () => {
       {isAuthenticated && (
         <div
           style={{
-            position: 'fixed',
+            position: "fixed",
             bottom: 0,
             left: 0,
             right: 0,
             zIndex: 99999,
-            backgroundColor: '#ffffff',
-            borderTop: '1px solid #f1f5f9',
-            boxShadow: '0 -4px 20px -10px rgba(0,0,0,0.08)',
-            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+            backgroundColor: "#ffffff",
+            borderTop: "1px solid #f1f5f9",
+            boxShadow: "0 -4px 20px -10px rgba(0,0,0,0.08)",
+            paddingBottom: "env(safe-area-inset-bottom, 0px)",
           }}
           className="mobile-bottom-nav"
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', height: '64px', padding: '0 8px' }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-around",
+              height: "64px",
+              padding: "0 8px",
+            }}
+          >
             {navItems.map((item) => {
               const isActive = false;
               return (
@@ -1309,36 +1784,61 @@ const Landing = () => {
                   key={item.id}
                   onClick={() => handleNavClick(item.path)}
                   style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
                     flex: 1,
-                    height: '100%',
-                    gap: '4px',
-                    border: 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                    color: isActive ? '#1E1E1E' : '#94a3b8',
-                    transition: 'all 0.2s',
-                    position: 'relative',
+                    height: "100%",
+                    gap: "4px",
+                    border: "none",
+                    background: "none",
+                    cursor: "pointer",
+                    color: isActive ? "#1E1E1E" : "#94a3b8",
+                    transition: "all 0.2s",
+                    position: "relative",
                     padding: 0,
                   }}
                 >
-                  <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <item.icon style={{ width: '22px', height: '22px', strokeWidth: isActive ? 2.5 : 2 }} />
+                  <div
+                    style={{
+                      position: "relative",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                    }}
+                  >
+                    <item.icon
+                      style={{
+                        width: "22px",
+                        height: "22px",
+                        strokeWidth: isActive ? 2.5 : 2,
+                      }}
+                    />
                     {item.premium && (
-                      <div style={{
-                        position: 'absolute', top: '-4px', right: '-6px',
-                        width: '8px', height: '8px', backgroundColor: '#FFCB37',
-                        borderRadius: '50%', border: '1.5px solid white',
-                      }} />
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "-4px",
+                          right: "-6px",
+                          width: "8px",
+                          height: "8px",
+                          backgroundColor: "#FFCB37",
+                          borderRadius: "50%",
+                          border: "1.5px solid white",
+                        }}
+                      />
                     )}
                   </div>
-                  <span style={{
-                    fontSize: '10px', fontWeight: 700, letterSpacing: '0.025em',
-                    opacity: isActive ? 1 : 0.7, transition: 'all 0.2s',
-                  }}>
+                  <span
+                    style={{
+                      fontSize: "10px",
+                      fontWeight: 700,
+                      letterSpacing: "0.025em",
+                      opacity: isActive ? 1 : 0.7,
+                      transition: "all 0.2s",
+                    }}
+                  >
                     {item.label}
                   </span>
                 </button>
@@ -1347,7 +1847,6 @@ const Landing = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };
