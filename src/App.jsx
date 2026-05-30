@@ -124,29 +124,10 @@ function SplashScreen({ onComplete }) {
 
 /* Inner app component that has access to router context */
 function AppContent() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [isLoading, setIsLoading] = useState(true);
-  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
-
-  const handleSplashComplete = () => {
-    setIsLoading(false);
-  };
-
   return (
     <>
-      <AnimatePresence mode="wait">
-        {isLoading && (
-          <SplashScreen key="splash" onComplete={handleSplashComplete} />
-        )}
-      </AnimatePresence>
-
-      {!isLoading && (
-        <>
-          <AppRoutes />
-          <Toaster position="top-center" />
-        </>
-      )}
+      <AppRoutes />
+      <Toaster position="top-center" />
     </>
   );
 }
