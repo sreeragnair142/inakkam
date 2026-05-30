@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { login } from "../redux/slices/authSlice";
+import { login, guestLogin } from "../redux/slices/authSlice";
 import { Flame } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -149,12 +149,24 @@ const Auth = () => {
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="relative z-10 bg-white w-full max-w-[420px] rounded-[2.5rem] p-8 sm:p-10 shadow-2xl border border-white/40"
+            className="relative z-10 bg-white w-full max-w-sm sm:max-w-[420px] rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 shadow-2xl border border-white/40"
           >
             <div className="text-center mb-8">
               <div className="w-16 h-16 rounded-2xl bg-bumble-yellow/20 flex items-center justify-center mx-auto mb-5 border-2 border-bumble-yellow/30">
                 <Flame className="w-8 h-8 text-bumble-yellow" />
               </div>
+              
+              {/* Skip Button */}
+              <button 
+                onClick={() => {
+                  dispatch(guestLogin());
+                  navigate("/swipe");
+                }}
+                className="absolute top-6 right-6 text-[10px] font-black uppercase tracking-wider text-slate-400 hover:text-bumble-charcoal transition-colors px-3 py-1.5 bg-slate-50 hover:bg-slate-100 rounded-full cursor-pointer"
+              >
+                Skip
+              </button>
+
               <h3 className="text-3xl font-black text-bumble-charcoal tracking-tight">
                 {isSignUp ? "Create Account" : "Welcome Back"}
               </h3>

@@ -64,6 +64,7 @@ const Discover = () => {
     }
     motionX.set(0);
     motionY.set(0);
+    controls.set({ x: 0, opacity: 1, rotate: 0 });
   };
 
   const handleSwipeLeft = () => { dispatch(swipeLeft()); };
@@ -134,14 +135,11 @@ const Discover = () => {
                 </div>
               )}
 
-              {/* Active draggable card */}
+              {/* Active non-draggable card */}
               <motion.div
-                drag
-                dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-                onDragEnd={handleDragEnd}
                 style={{ x: motionX, y: motionY, rotate, scale, touchAction: 'none' }}
                 animate={controls}
-                className="absolute inset-0 rounded-[2rem] overflow-hidden shadow-2xl cursor-grab active:cursor-grabbing select-none z-20 bg-white border border-white/20"
+                className="absolute inset-0 rounded-[2rem] overflow-hidden shadow-2xl select-none z-20 bg-white border border-white/20"
               >
                 <div className="relative w-full h-full overflow-hidden flex flex-col justify-between p-5">
                   <img 
@@ -383,7 +381,7 @@ const Discover = () => {
                   <MessageSquare className="w-4 h-4 shrink-0" /> <span>Send Message</span>
                 </button>
                 <button onClick={() => dispatch(setMatchedModal({ isOpen: false }))} className="w-full py-4 rounded-2xl text-xs uppercase tracking-widest font-bold bg-slate-50 text-bumble-charcoal border border-slate-200 hover:bg-slate-100 active:scale-[0.98] transition-all cursor-pointer">
-                  Keep Swiping
+                  Continue Exploring
                 </button>
               </div>
             </motion.div>

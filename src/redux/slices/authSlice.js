@@ -2,7 +2,8 @@ import { createSlice } from '@reduxjs/toolkit';
 import { mockCurrentUser } from '../../data/mockData';
 
 const initialState = {
-  isAuthenticated: false, // starts false — user must sign in
+  isAuthenticated: false,
+  isGuest: false,
   user: null,
   loading: false,
   error: null,
@@ -14,13 +15,23 @@ const authSlice = createSlice({
   reducers: {
     login: (state, action) => {
       state.isAuthenticated = true;
+      state.isGuest = false;
       state.user = {
         ...mockCurrentUser,
         name: action.payload.username || mockCurrentUser.name,
       };
     },
+    guestLogin: (state) => {
+      state.isAuthenticated = true;
+      state.isGuest = true;
+      state.user = {
+        ...mockCurrentUser,
+        name: "Guest User",
+      };
+    },
     logout: (state) => {
       state.isAuthenticated = false;
+      state.isGuest = false;
       state.user = null;
     },
     updateProfile: (state, action) => {
@@ -31,5 +42,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { login, logout, updateProfile } = authSlice.actions;
+export const { login, guestLogin, logout, updateProfile } = authSlice.actions;
 export default authSlice.reducer;

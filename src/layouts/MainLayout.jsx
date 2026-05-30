@@ -35,9 +35,11 @@ const MainLayout = ({ children }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+  const isDarkBg = location.pathname === '/swipe' || location.pathname === '/profile';
 
   const activeTab = useSelector((state) => state.ui.activeTab);
   const user = useSelector((state) => state.auth.user);
+  const isGuest = useSelector((state) => state.auth.isGuest);
   const notifications = useSelector((state) => state.notification.items);
   const unreadNotifCount = useSelector((state) => state.notification.unreadCount);
   
@@ -125,28 +127,31 @@ const MainLayout = ({ children }) => {
         );
       })()}
 
-      <header className="fixed top-6 left-0 right-0 z-40 flex items-center justify-center pointer-events-none hidden lg:flex">
-        {/* Floating White Pill */}
-        <nav className="bg-white px-3 py-2 rounded-full shadow-lg border border-black/5 flex items-center gap-2 pointer-events-auto">
-          {navItems.map((item) => {
-            const isActive = activeTab === item.id || (item.id === 'home' && activeTab === 'home');
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleNavClick(item.path)}
-                className={`px-5 py-2.5 rounded-full text-xs font-black capitalize transition-all cursor-pointer flex items-center gap-1.5
-                  ${isActive
-                    ? 'text-black bg-slate-100'
-                    : 'text-black hover:bg-slate-50'
-                  }`}
-              >
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-          
-        </nav>
-      </header>
+      {(() => {
+        const isDarkBg = location.pathname === '/swipe' || location.pathname === '/profile';
+        return (
+          <header className="fixed top-6 left-0 right-0 z-40 flex items-center justify-center pointer-events-none hidden lg:flex">
+            <nav className={`${isDarkBg ? 'bg-black/20 backdrop-blur-md border-white/10' : 'bg-white border-black/5'} px-3 py-2 rounded-full shadow-lg border flex items-center gap-2 pointer-events-auto transition-colors`}>
+              {navItems.map((item) => {
+                const isActive = activeTab === item.id || (item.id === 'home' && activeTab === 'home');
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleNavClick(item.path)}
+                    className={`px-5 py-2.5 rounded-full text-xs font-black capitalize transition-all cursor-pointer flex items-center gap-1.5
+                      ${isActive
+                        ? (isDarkBg ? 'text-white bg-white/20' : 'text-black bg-slate-100')
+                        : (isDarkBg ? 'text-white/70 hover:bg-white/10 hover:text-white' : 'text-black hover:bg-slate-50')
+                      }`}
+                  >
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </header>
+        );
+      })()}
 
       {/* MOBILE HAMBURGER REMOVED AS REQUESTED */}
 
@@ -217,7 +222,17 @@ const MainLayout = ({ children }) => {
       </AnimatePresence>
 
       {/* MAIN CONTENT PORTAL (100% FULL-WIDTH CAPABLE VIEWPORT) */}
-      <main className="flex-grow w-full flex flex-col z-10 relative pb-20 lg:pb-0 bg-[#f8f9fa]">
+      <main 
+        className="flex-grow w-full flex flex-col z-10 relative pb-20 lg:pb-0 bg-[#f8f9fa]"
+        onClickCapture={(e) => {
+          if (isGuest) {
+            e.stopPropagation();
+            e.preventDefault();
+            toast("Sign up to unlock all features! ✨", { icon: "🔒" });
+            navigate('/auth');
+          }
+        }}
+      >
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -349,9 +364,11 @@ const MainLayout = ({ children }) => {
         left: 0,
         right: 0,
         zIndex: 40,
-        backgroundColor: '#ffffff',
-        borderTop: '1px solid #f1f5f9',
-        boxShadow: '0 -4px 20px -10px rgba(0,0,0,0.08)',
+        backgroundColor: isDarkBg ? 'rgba(0,0,0,0.5)' : '#ffffff',
+        backdropFilter: isDarkBg ? 'blur(16px)' : 'none',
+        WebkitBackdropFilter: isDarkBg ? 'blur(16px)' : 'none',
+        borderTop: isDarkBg ? '1px solid rgba(255,255,255,0.1)' : '1px solid #f1f5f9',
+        boxShadow: isDarkBg ? 'none' : '0 -4px 20px -10px rgba(0,0,0,0.08)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
       className="mobile-bottom-nav lg:hidden"
@@ -368,11 +385,11 @@ const MainLayout = ({ children }) => {
                 className="flex flex-col items-center justify-center flex-1 h-full relative cursor-pointer border-none bg-transparent"
               >
                 <div className={`w-[42px] h-[42px] rounded-full flex items-center justify-center transition-all shadow-md mt-[-10px]
-                  ${isActive ? 'bg-purple-600 shadow-purple-600/30 border-2 border-white scale-110' : 'bg-white border-2 border-slate-200'}`}
+                  ${isActive ? 'bg-purple-600 shadow-purple-600/30 border-2 border-white scale-110' : (isDarkBg ? 'bg-white/10 border-2 border-white/20' : 'bg-white border-2 border-slate-200')}`}
                 >
-                  <item.icon className={`w-[22px] h-[22px] ${isActive ? 'text-white fill-white' : 'text-slate-400'}`} strokeWidth={isActive ? 0 : 2} />
+                  <item.icon className={`w-[22px] h-[22px] ${isActive ? 'text-white fill-white' : (isDarkBg ? 'text-white/70' : 'text-slate-400')}`} strokeWidth={isActive ? 0 : 2} />
                 </div>
-                <span className={`text-[9px] font-bold mt-1 ${isActive ? 'text-purple-600' : 'text-slate-400'}`}>
+                <span className={`text-[9px] font-bold mt-1 ${isActive ? 'text-purple-600' : (isDarkBg ? 'text-white/70' : 'text-slate-400')}`}>
                   {item.label}
                 </span>
               </button>
@@ -394,7 +411,7 @@ const MainLayout = ({ children }) => {
                 border: 'none',
                 background: 'none',
                 cursor: 'pointer',
-                color: isActive ? '#9333ea' : '#94a3b8',
+                color: isActive ? '#9333ea' : (isDarkBg ? 'rgba(255,255,255,0.5)' : '#94a3b8'),
                 transition: 'all 0.2s',
                 padding: 0,
               }}
