@@ -15,15 +15,17 @@ import MainLayout from "../layouts/MainLayout";
 // Wrapper to protect routes based on Redux auth status
 const ProtectedRoute = ({ children }) => {
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
-  return isAuthenticated ? children : <Navigate to="/auth" replace />;
+  return isAuthenticated ? children : <Navigate to="/" replace />;
 };
 
 const AppRoutes = () => {
+  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+
   return (
     <Routes>
       {/* Public Routes */}
-      <Route path="/" element={<Landing />} />
-      <Route path="/auth" element={<Auth />} />
+      <Route path="/" element={isAuthenticated ? <Navigate to="/swipe" replace /> : <Landing />} />
+      <Route path="/auth" element={isAuthenticated ? <Navigate to="/swipe" replace /> : <Auth />} />
 
       {/* Onboarding (after login, before main app) */}
       <Route
