@@ -1,71 +1,161 @@
-import React, { useState, useEffect } from 'react';
-import { Flame } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Provider } from 'react-redux';
-import { BrowserRouter } from 'react-router-dom';
-import { store } from './redux/store';
-import AppRoutes from './routes';
+import React, { useState, useEffect } from "react";
+import { Flame } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Provider, useSelector } from "react-redux";
+import { BrowserRouter, useNavigate, useLocation } from "react-router-dom";
+import { store } from "./redux/store";
+import AppRoutes from "./routes";
 
-import { Toaster } from 'react-hot-toast';
+import { Toaster } from "react-hot-toast";
 
-function SplashScreen() {
+function SplashScreen({ onComplete }) {
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          return 100;
+        }
+        const step = prev < 70 ? 3 : prev < 90 ? 1.5 : 4;
+        return Math.min(prev + step, 100);
+      });
+    }, 50);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (progress >= 100) {
+      const timeout = setTimeout(() => {
+        onComplete();
+      }, 400);
+      return () => clearTimeout(timeout);
+    }
+  }, [progress, onComplete]);
+
   return (
     <motion.div
       initial={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.5, ease: "easeInOut" }}
-      className="fixed inset-0 z-[9999] bg-bumble-yellow flex flex-col items-center justify-center overflow-hidden"
+      exit={{ opacity: 0, scale: 1.05 }}
+      transition={{ duration: 0.6, ease: "easeInOut" }}
+      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden"
+      style={{ backgroundColor: "#F5C842" }}
     >
+      {/* Subtle radial glow behind logo */}
+      <div
+        className="absolute w-[600px] h-[600px] rounded-full pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(circle, rgba(255,255,255,0.25) 0%, rgba(245,200,66,0) 70%)",
+        }}
+      />
+
+      {/* Logo icon with scale animation */}
       <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
+        initial={{ scale: 0.6, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.8, type: "spring", bounce: 0.5 }}
-        className="flex flex-col items-center"
+        className="relative"
       >
-        <div className="w-24 h-24 bg-bumble-charcoal rounded-[2rem] flex items-center justify-center mb-6 shadow-2xl shadow-black/20 relative">
+        <div className="w-28 h-28 bg-[#1E1E1E] rounded-[2.2rem] flex items-center justify-center shadow-2xl shadow-black/25 relative">
+          {/* Pulsing glow ring */}
           <motion.div
-            animate={{ scale: [1, 1.2, 1] }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute inset-0 bg-bumble-charcoal rounded-[2rem] opacity-50 blur-xl"
+            animate={{ scale: [1, 1.3, 1], opacity: [0.4, 0, 0.4] }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+            className="absolute inset-0 bg-[#1E1E1E] rounded-[2.2rem] blur-xl"
           />
-          <Flame className="w-12 h-12 text-bumble-yellow relative z-10" />
+          <motion.div
+            animate={{ scale: [1, 1.15, 1] }}
+            transition={{
+              duration: 1.5,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          >
+            <Flame className="w-14 h-14 text-[#F5C842] relative z-10" />
+          </motion.div>
         </div>
-        <motion.h1
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2, duration: 0.5 }}
-          className="text-4xl font-black text-bumble-charcoal tracking-tight"
-        >
-          Inakkam
-        </motion.h1>
+      </motion.div>
+
+      {/* App name with fade-in */}
+      <motion.h1
+        initial={{ y: 25, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.3, duration: 0.6, ease: "easeOut" }}
+        className="text-5xl font-black text-[#1E1E1E] tracking-tight mt-6"
+      >
+        Inakkam
+      </motion.h1>
+
+      {/* Tagline */}
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.7, duration: 0.5 }}
+        className="text-sm font-semibold text-[#1E1E1E]/60 mt-2 tracking-wide"
+      >
+        Infinite Match
+      </motion.p>
+
+      {/* Progress bar */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.9, duration: 0.4 }}
+        className="mt-10 w-48 h-1.5 bg-[#1E1E1E]/10 rounded-full overflow-hidden"
+      >
+        <motion.div
+          className="h-full rounded-full"
+          style={{
+            width: `${progress}%`,
+            background: "linear-gradient(90deg, #1E1E1E 0%, #1E1E1E 100%)",
+          }}
+          transition={{ duration: 0.1 }}
+        />
       </motion.div>
     </motion.div>
   );
 }
 
-function App() {
+/* Inner app component that has access to router context */
+function AppContent() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isLoading, setIsLoading] = useState(true);
+  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
 
-  useEffect(() => {
-    // Simulate initial loading sequence
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, []);
+  const handleSplashComplete = () => {
+    setIsLoading(false);
+  };
+
+  return (
+    <>
+      <AnimatePresence mode="wait">
+        {isLoading && (
+          <SplashScreen key="splash" onComplete={handleSplashComplete} />
+        )}
+      </AnimatePresence>
+
+      {!isLoading && (
+        <>
+          <AppRoutes />
+          <Toaster position="top-center" />
+        </>
+      )}
+    </>
+  );
+}
+
+function App() {
   return (
     <Provider store={store}>
       <BrowserRouter>
-        <AnimatePresence mode="wait">
-          {isLoading && <SplashScreen key="splash" />}
-        </AnimatePresence>
-
-        {!isLoading && (
-          <>
-            <AppRoutes />
-            <Toaster position="top-center" />
-          </>
-        )}
+        <AppContent />
       </BrowserRouter>
     </Provider>
   );

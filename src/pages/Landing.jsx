@@ -178,16 +178,11 @@ const Landing = () => {
   }, [testimonials.length]);
 
   const navItems = [
-    { id: "swipe", label: "Discover", icon: Heart, path: "/swipe" },
-    { id: "chat", label: "Conversations", icon: MessageCircle, path: "/chat" },
-    {
-      id: "membership",
-      label: "Go Premium",
-      icon: Sparkles,
-      path: "/membership",
-      premium: true,
-    },
-    { id: "profile", label: "My Profile", icon: User, path: "/profile" },
+    { id: "home", label: "Home", icon: Heart, path: "/" },
+    { id: "discover", label: "Discover", icon: Heart, path: "/swipe" },
+    { id: "explore", label: "Explore", icon: Heart, path: "/explore" },
+    { id: "chat", label: "Chat", icon: MessageCircle, path: "/chat" },
+    { id: "profile", label: "Profile", icon: User, path: "/profile" },
   ];
 
   const handleNavClick = (path) => {
@@ -609,7 +604,7 @@ const Landing = () => {
                   <span>EN</span>
                 </button>
                 <button
-                  onClick={() => dispatch(login({ username: "sree" }))}
+                  onClick={() => navigate("/auth")}
                   className="text-xs sm:text-sm font-bold bg-bumble-charcoal text-white hover:bg-black px-6 py-2.5 rounded-full hover:scale-105 active:scale-95 transition-all duration-300 shadow-md shadow-black/15 cursor-pointer"
                 >
                   Sign In
@@ -718,17 +713,8 @@ const Landing = () => {
                       draggable={false}
                     />
 
-                    {/* lighter overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-
                     {/* optimized shadow */}
-                    <div className="absolute inset-0 shadow-[0_10px_40px_rgba(0,0,0,0.18)] rounded-[38px]" />
-
-                    <div className="absolute bottom-6 left-6 text-white z-10">
-                      <h3 className="font-black text-2xl">
-                        {profile.name}, {profile.age}
-                      </h3>
-                    </div>
+                    <div className="absolute inset-0 shadow-[0_10px_40px_rgba(0,0,0,0.18)] rounded-[38px] pointer-events-none" />
                   </div>
                 </motion.div>
               );
@@ -754,19 +740,18 @@ const Landing = () => {
 
 
 
-      {/* SECTION 2 — PREMIUM LOVE EXPERIENCE */}
-      <section
-        id="closer-to-love"
-        className="relative py-32 px-6 overflow-hidden bg-[#f5f5f3]"
-      >
-        {/* Background Glow */}
-        <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-bumble-yellow/30 blur-[120px] rounded-full" />
+      {false && (
+        <>
+          {/* SECTION 2 — PREMIUM LOVE EXPERIENCE */}
+          <section
+            id="closer-to-love"
+            className="relative py-32 px-6 overflow-hidden bg-[#f5f5f3]"
+          >
+            <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-bumble-yellow/30 blur-[120px] rounded-full" />
         <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-orange-200/30 blur-[120px] rounded-full" />
 
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center relative z-10">
-          {/* LEFT CONTENT */}
           <div className="space-y-8">
-            {/* Small badge */}
             <div className="inline-flex items-center gap-2 bg-white shadow-md border border-black/5 px-5 py-2 rounded-full">
               <div className="w-2 h-2 rounded-full bg-bumble-yellow animate-pulse" />
               <span className="text-xs font-black uppercase tracking-[0.2em] text-bumble-charcoal">
@@ -774,7 +759,6 @@ const Landing = () => {
               </span>
             </div>
 
-            {/* Heading */}
             <div className="space-y-5">
               <h2 className="text-5xl sm:text-7xl leading-[0.95] tracking-tight font-serif italic font-normal text-bumble-charcoal">
                 Dating that
@@ -790,7 +774,6 @@ const Landing = () => {
               </p>
             </div>
 
-            {/* Stats */}
             <div className="flex flex-wrap gap-4">
               <div className="bg-white px-6 py-4 rounded-3xl shadow-lg border border-black/5">
                 <h4 className="text-3xl font-black text-bumble-charcoal">
@@ -820,7 +803,6 @@ const Landing = () => {
               </div>
             </div>
 
-            {/* CTA Buttons */}
             <div className="flex flex-wrap gap-4 pt-4">
               <button
                 onClick={() => handleActionClick("/swipe")}
@@ -835,7 +817,6 @@ const Landing = () => {
             </div>
           </div>
 
-          {/* RIGHT PREMIUM CARD STACK */}
           <div className="relative flex justify-center items-center min-h-[720px]">
             {/* BACK CARD */}
             <div className="absolute right-12 top-16 rotate-[10deg] w-[250px] h-[520px] rounded-[3rem] overflow-hidden shadow-[0_40px_80px_rgba(0,0,0,0.2)]">
@@ -845,7 +826,6 @@ const Landing = () => {
               />
             </div>
 
-            {/* MIDDLE CARD */}
             <div className="absolute left-10 top-10 -rotate-[8deg] w-[260px] h-[540px] rounded-[3rem] overflow-hidden shadow-[0_40px_80px_rgba(0,0,0,0.22)]">
               <img
                 src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=800"
@@ -853,7 +833,6 @@ const Landing = () => {
               />
             </div>
 
-            {/* MAIN CARD */}
             <div className="relative z-20 w-[320px] h-[620px] rounded-[3.5rem] bg-white p-3 shadow-[0_50px_120px_rgba(0,0,0,0.25)] border border-black/5">
               <div className="relative w-full h-full rounded-[3rem] overflow-hidden">
                 <img
@@ -862,10 +841,8 @@ const Landing = () => {
                   className="w-full h-full object-cover"
                 />
 
-                {/* overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
 
-                {/* floating badges */}
                 <div className="absolute top-6 left-6 flex flex-col gap-3">
                   <span className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-full text-xs font-black text-bumble-charcoal shadow">
                     ✨ Verified Profile
@@ -876,7 +853,6 @@ const Landing = () => {
                   </span>
                 </div>
 
-                {/* bottom content */}
                 <div className="absolute bottom-7 left-7 right-7 text-white">
                   <div className="flex items-center gap-2">
                     <h3 className="text-4xl font-black">Maya, 25</h3>
@@ -888,7 +864,6 @@ const Landing = () => {
                     Designer • Traveler • Coffee lover ☕
                   </p>
 
-                  {/* interests */}
                   <div className="flex flex-wrap gap-2 mt-5">
                     {["Outdoors", "Running", "Dog Mom"].map((tag) => (
                       <span
@@ -905,6 +880,9 @@ const Landing = () => {
           </div>
         </div>
       </section>
+
+
+      
       {/* SECTION 3: Member Circle Redesign */}
       <section className="py-32 bg-white relative overflow-hidden">
         {/* Decorative background shapes */}
@@ -997,8 +975,10 @@ const Landing = () => {
           </div>
         </div>
       </section>
+      </>
+      )}
 
-      <section className="relative overflow-hidden py-24 md:py-36 bg-[#f5c842]">
+      <section className="relative overflow-hidden py-24 md:py-36 bg-[#fde68a]">
 
   {/* soft background glow */}
   <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-white/10 blur-[120px] rounded-full" />
@@ -1033,49 +1013,12 @@ const Landing = () => {
         md:top-[140px]
 
         rotate-[-13deg]
-        z-10
+        hover:rotate-[-6deg]
+        transition-all duration-700
+        z-10 hover:z-40
       "
     >
-      <div className="relative">
-
-        {/* emoji */}
-        <div className="absolute -top-6 -left-6 text-5xl z-30">
-          💜
-        </div>
-
-        {/* tags */}
-        <div className="absolute -right-10 top-24 flex flex-col gap-3 z-30">
-          <span
-            className="
-              backdrop-blur-xl
-              bg-[#2a004f]/90
-              text-white
-              px-5 py-2
-              rounded-full
-              text-xs
-              font-bold
-              shadow-2xl
-            "
-          >
-            Dancing 💃
-          </span>
-
-          <span
-            className="
-              backdrop-blur-xl
-              bg-[#2a004f]/90
-              text-white
-              px-5 py-2
-              rounded-full
-              text-xs
-              font-bold
-              shadow-2xl
-            "
-          >
-            Sports 🏀
-          </span>
-        </div>
-
+      <div className="relative group cursor-pointer">
         {/* image card */}
         <div
           className="
@@ -1083,6 +1026,7 @@ const Landing = () => {
             overflow-hidden
             rounded-[2.8rem]
             shadow-[0_40px_120px_rgba(0,0,0,0.18)]
+            border-[6px] border-white/10
           "
         >
           <img
@@ -1096,20 +1040,23 @@ const Landing = () => {
               md:h-[470px]
 
               object-cover
+              group-hover:scale-110
+              transition-transform duration-700
             "
           />
 
           {/* overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-black/90 via-black/30 to-transparent pointer-events-none" />
 
           {/* text */}
-          <div className="absolute bottom-6 left-6 text-white z-20">
-            <h3 className="font-black text-2xl md:text-3xl">
+          <div className="absolute bottom-7 left-7 text-white z-20">
+            <h3 className="font-black text-2xl md:text-3xl tracking-tight">
               Moriya Hos, 24
             </h3>
 
-            <p className="text-sm text-white/80 mt-2">
-              📍 10 km away
+            <p className="text-sm font-bold text-white/90 mt-2 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.8)]"></span>
+              10 km away
             </p>
           </div>
         </div>
@@ -1129,49 +1076,12 @@ const Landing = () => {
         md:-translate-y-1/2
 
         rotate-[7deg]
-        z-30
+        hover:rotate-[2deg]
+        transition-all duration-700
+        z-30 hover:z-50
       "
     >
-      <div className="relative">
-
-        {/* emoji */}
-        <div className="absolute -top-8 right-0 text-6xl z-30">
-          😍
-        </div>
-
-        {/* tags */}
-        <div className="absolute -left-10 top-24 flex flex-col gap-3 z-30">
-          <span
-            className="
-              backdrop-blur-xl
-              bg-[#2a004f]/90
-              text-white
-              px-5 py-2
-              rounded-full
-              text-xs
-              font-bold
-              shadow-2xl
-            "
-          >
-            Travel ✈️
-          </span>
-
-          <span
-            className="
-              backdrop-blur-xl
-              bg-[#2a004f]/90
-              text-white
-              px-5 py-2
-              rounded-full
-              text-xs
-              font-bold
-              shadow-2xl
-            "
-          >
-            Coffee ☕
-          </span>
-        </div>
-
+      <div className="relative group cursor-pointer">
         {/* image */}
         <div
           className="
@@ -1179,6 +1089,7 @@ const Landing = () => {
             overflow-hidden
             rounded-[3rem]
             shadow-[0_50px_140px_rgba(0,0,0,0.22)]
+            border-[8px] border-white/20
           "
         >
           <img
@@ -1192,20 +1103,23 @@ const Landing = () => {
               md:h-[580px]
 
               object-cover
+              group-hover:scale-105
+              transition-transform duration-700
             "
           />
 
           {/* overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-black/90 via-black/30 to-transparent pointer-events-none" />
 
           {/* text */}
-          <div className="absolute bottom-7 left-7 text-white z-20">
-            <h3 className="font-black text-3xl md:text-5xl leading-none">
+          <div className="absolute bottom-8 left-8 text-white z-20">
+            <h3 className="font-black text-3xl md:text-5xl leading-none tracking-tight">
               Lissa Moni, 22
             </h3>
 
-            <p className="text-sm md:text-base text-white/80 mt-3">
-              📍 10 km away
+            <p className="text-sm md:text-base font-bold text-white/90 mt-3 flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.8)]"></span>
+              10 km away
             </p>
           </div>
         </div>
@@ -1224,34 +1138,12 @@ const Landing = () => {
         md:top-[260px]
 
         rotate-[12deg]
-        z-20
+        hover:rotate-[6deg]
+        transition-all duration-700
+        z-20 hover:z-40
       "
     >
-      <div className="relative">
-
-        {/* emoji */}
-        <div className="absolute -top-6 left-0 text-5xl z-30">
-          ✨
-        </div>
-
-        {/* tag */}
-        <div className="absolute -left-8 top-20 z-30">
-          <span
-            className="
-              backdrop-blur-xl
-              bg-[#2a004f]/90
-              text-white
-              px-5 py-2
-              rounded-full
-              text-xs
-              font-bold
-              shadow-2xl
-            "
-          >
-            Yoga 🧘
-          </span>
-        </div>
-
+      <div className="relative group cursor-pointer">
         {/* image */}
         <div
           className="
@@ -1259,6 +1151,7 @@ const Landing = () => {
             overflow-hidden
             rounded-[2.8rem]
             shadow-[0_40px_120px_rgba(0,0,0,0.18)]
+            border-[6px] border-white/10
           "
         >
           <img
@@ -1272,20 +1165,23 @@ const Landing = () => {
               md:h-[460px]
 
               object-cover
+              group-hover:scale-110
+              transition-transform duration-700
             "
           />
 
           {/* overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-black/90 via-black/30 to-transparent pointer-events-none" />
 
           {/* text */}
-          <div className="absolute bottom-6 left-6 text-white z-20">
-            <h3 className="font-black text-2xl md:text-3xl">
+          <div className="absolute bottom-7 left-7 text-white z-20">
+            <h3 className="font-black text-2xl md:text-3xl tracking-tight">
               Ashife, 23
             </h3>
 
-            <p className="text-sm text-white/80 mt-2">
-              📍 3 km away
+            <p className="text-sm font-bold text-white/90 mt-2 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.8)]"></span>
+              3 km away
             </p>
           </div>
         </div>

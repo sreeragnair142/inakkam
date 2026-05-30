@@ -2,8 +2,8 @@ import { createSlice } from '@reduxjs/toolkit';
 import { mockCurrentUser } from '../../data/mockData';
 
 const initialState = {
-  isAuthenticated: true, // starts true for UI preview speed
-  user: mockCurrentUser,
+  isAuthenticated: false, // starts false — user must sign in
+  user: null,
   loading: false,
   error: null,
 };

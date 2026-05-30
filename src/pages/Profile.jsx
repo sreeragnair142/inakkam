@@ -41,7 +41,7 @@ const Profile = () => {
   }
 
   return (
-    <div className="w-full min-h-screen bg-[#f5f5f3] text-left pb-24 font-sans">
+    <div className="w-full min-h-screen bg-[#f5f5f3] text-left pb-24 pt-14 lg:pt-20 font-sans">
       
       {/* 1) FULL WIDTH EDGE-TO-EDGE BANNER */}
       <div className="relative w-full h-[30vh] sm:h-[40vh] lg:h-[45vh] min-h-[220px] sm:min-h-[280px] lg:min-h-[350px] bg-slate-900 overflow-hidden">
