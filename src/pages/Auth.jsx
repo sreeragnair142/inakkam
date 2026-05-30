@@ -6,10 +6,26 @@ import { Flame } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const introSlides = [
-  { title: "Find Your Spark: Where Connections Ignite.", image: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=600" },
-  { title: "Connecting Hearts, One Swipe at a Time", image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=600" },
-  { title: "Discover, Connect, Love: Your Journey Starts Here", image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=600" },
-  { title: "It's a match", image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=600" }
+  { 
+    title: "Find Your Spark: Where Connections Ignite.", 
+    image: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=600",
+    name: "Lissa Moni", age: 22, emoji: "😍", tag: "Travel ✈️"
+  },
+  { 
+    title: "Connecting Hearts, One Swipe at a Time", 
+    image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=600",
+    name: "Jenny Lopez", age: 24, emoji: "🥰", tag: "Yoga 🧘"
+  },
+  { 
+    title: "Discover, Connect, Love: Your Journey Starts Here", 
+    image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=600",
+    name: "Mika Singh", age: 24, emoji: "😎", tag: "Sports 🏀"
+  },
+  { 
+    title: "It's a match", 
+    image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=600",
+    name: "Ashife", age: 23, emoji: "✨", tag: "Dancing 💃"
+  }
 ];
 
 const Auth = () => {
@@ -85,14 +101,22 @@ const Auth = () => {
               key={introStep}
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              className="w-full max-w-[280px] sm:max-w-xs aspect-[3/4.2] rounded-[2.5rem] bg-bumble-charcoal shadow-2xl shadow-black/20 overflow-hidden mb-8 relative"
+              className="relative w-full max-w-[280px] sm:max-w-xs h-[380px] mb-8 mt-6"
             >
-              <div className="absolute top-8 left-4 text-3xl z-10 rotate-12 drop-shadow-lg">💖</div>
-              <div className="absolute top-1/3 right-2 text-2xl z-10 -rotate-12 opacity-90 drop-shadow-lg">✨</div>
-              <div className="absolute bottom-1/4 left-3 text-2xl z-10 rotate-45 drop-shadow-lg">🔥</div>
-              <img src={introSlides[introStep].image} alt="Slide" className="w-full h-full object-cover filter brightness-[0.85] hover:scale-105 transition-transform duration-700" />
-              {/* Soft gradient overlay at the bottom to give it depth */}
-              <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/50 to-transparent pointer-events-none" />
+              {/* BACK CARD */}
+              <div className="absolute top-0 right-[-30px] w-[80%] h-[90%] rotate-[15deg] z-0 opacity-80">
+                <div className="w-full h-full rounded-[2.5rem] shadow-xl overflow-hidden relative">
+                  <img src={introSlides[(introStep + 1) % introSlides.length].image} className="w-full h-full object-cover filter brightness-[0.65]" />
+                </div>
+              </div>
+
+              {/* FRONT CARD */}
+              <div className="absolute top-4 left-[-15px] w-[90%] h-[95%] -rotate-[6deg] z-10">
+                <div className="w-full h-full rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden relative border border-white/10">
+                  <img src={introSlides[introStep].image} className="w-full h-full object-cover filter brightness-[0.85]" />
+                  <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+                </div>
+              </div>
             </motion.div>
 
             <h2 className="text-3xl font-black text-bumble-charcoal max-w-[320px] mb-8 min-h-[80px] text-center leading-tight drop-shadow-sm">
