@@ -25,7 +25,7 @@ const AppRoutes = () => {
     <Routes>
       {/* Public Routes */}
       <Route path="/" element={isAuthenticated ? <Navigate to="/swipe" replace /> : <Auth />} />
-      <Route path="/auth" element={isAuthenticated ? <Navigate to="/swipe" replace /> : <Auth />} />
+      <Route path="/auth" element={<Auth />} />
       <Route path="/landing" element={<Landing />} />
 
       {/* Onboarding (after login, before main app) */}

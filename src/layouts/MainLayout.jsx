@@ -71,7 +71,7 @@ const MainLayout = ({ children }) => {
 
   // BOTTOM MOBILE NAV ITEMS (Matches 2nd Screenshot)
   const navItems = [
-    { id: 'home', label: 'Home', icon: Home, path: '/' },
+    { id: 'home', label: 'Home', icon: Home, path: '/landing' },
     { id: 'discover', label: 'Discover', icon: Flame, path: '/swipe' },
     { id: 'explore', label: 'Explore', icon: Heart, path: '/explore', isSpecial: true },
     { id: 'chat', label: 'Chat', icon: MessageSquare, path: '/chat' },
@@ -80,7 +80,7 @@ const MainLayout = ({ children }) => {
 
   // SIDEBAR ITEMS (Matches 1st Screenshot perfectly)
   const sidebarItems = [
-    { id: 'home', label: 'Home', icon: Home, path: '/' },
+    { id: 'home', label: 'Home', icon: Home, path: '/landing' },
     { id: 'discover', label: 'Discover', icon: Flame, path: '/swipe' },
     { id: 'explore', label: 'Explore', icon: Heart, path: '/explore' },
     { id: 'settings', label: 'Settings', icon: Settings, action: () => { setShowSettingsModal(true); setShowSidebar(false); } },
@@ -111,7 +111,7 @@ const MainLayout = ({ children }) => {
         return (
           <div className="fixed top-4 left-4 md:top-6 md:left-6 z-40">
             <div 
-              onClick={() => handleNavClick('/')}
+              onClick={() => handleNavClick('/landing')}
               className="flex items-center gap-2 cursor-pointer hover:scale-105 transition-transform"
             >
               <div className={`w-7 h-7 md:w-8 md:h-8 rounded-lg md:rounded-xl flex items-center justify-center shadow-md ${isDarkBg ? 'bg-white/20 backdrop-blur-sm' : 'bg-bumble-charcoal'}`}>
