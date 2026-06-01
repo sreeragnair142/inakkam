@@ -44,10 +44,10 @@ const Profile = () => {
   }
 
   return (
-    <div className="w-full min-h-screen bg-[#f5f5f3] text-left pb-24 font-sans">
+    <div className="w-full min-h-screen bg-[#f5f5f3] text-left pb-28 font-sans overflow-x-hidden">
       
       {/* 1) FULL WIDTH EDGE-TO-EDGE BANNER */}
-      <div className="relative w-full h-[30vh] sm:h-[40vh] lg:h-[45vh] min-h-[220px] sm:min-h-[280px] lg:min-h-[350px] bg-slate-900 overflow-hidden">
+      <div className="relative w-full h-[25vh] sm:h-[35vh] lg:h-[45vh] min-h-[180px] sm:min-h-[260px] lg:min-h-[350px] bg-slate-900 overflow-hidden">
         {/* Background Image Blurred */}
         <div 
           className="absolute inset-0 bg-cover bg-center" 
@@ -57,10 +57,10 @@ const Profile = () => {
         <div className="absolute inset-0 bg-gradient-to-t from-[#f5f5f3] via-transparent to-transparent" />
         
         {/* View Toggle positioned absolutely over the banner */}
-        <div className="absolute top-6 right-6 lg:right-12 z-20 flex gap-2">
+        <div className="absolute top-4 right-4 sm:top-6 sm:right-6 lg:right-12 z-20 flex flex-col sm:flex-row gap-2 items-end sm:items-center">
           <button
             onClick={() => setViewSelf(false)}
-            className={`px-5 py-2.5 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer shadow-lg backdrop-blur-md
+            className={`px-3 py-2 sm:px-5 sm:py-2.5 rounded-full text-[10px] sm:text-xs font-bold transition-all duration-300 cursor-pointer shadow-lg backdrop-blur-md
               ${!viewSelf 
                 ? 'bg-bumble-yellow text-bumble-charcoal border border-bumble-yellow'
                 : 'bg-black/30 border border-white/20 text-white hover:bg-black/50'
@@ -70,7 +70,7 @@ const Profile = () => {
           </button>
           <button
             onClick={() => setViewSelf(true)}
-            className={`px-5 py-2.5 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer shadow-lg backdrop-blur-md
+            className={`px-3 py-2 sm:px-5 sm:py-2.5 rounded-full text-[10px] sm:text-xs font-bold transition-all duration-300 cursor-pointer shadow-lg backdrop-blur-md
               ${viewSelf 
                 ? 'bg-bumble-yellow text-bumble-charcoal border border-bumble-yellow'
                 : 'bg-black/30 border border-white/20 text-white hover:bg-black/50'
@@ -82,12 +82,12 @@ const Profile = () => {
       </div>
 
       {/* 2) MAIN WIDE CONTENT CONTAINER (Overlapping the banner) */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 relative -mt-16 sm:-mt-24 lg:-mt-32 z-10 grid lg:grid-cols-12 gap-8 lg:gap-12">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 relative -mt-12 sm:-mt-24 lg:-mt-32 z-10 grid lg:grid-cols-12 gap-5 sm:gap-8 lg:gap-12">
         
         {/* LEFT COLUMN: Profile Identity Card & Stats (Spans 4 columns) */}
         <div className="lg:col-span-4 space-y-6">
           {/* Main Identity Card */}
-          <div className="bg-white rounded-[2rem] p-6 shadow-2xl border border-slate-100 relative">
+          <div className="bg-white rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 shadow-2xl border border-slate-100 relative">
             
             {/* Avatar Image */}
             <div className="relative w-32 h-32 md:w-full md:h-auto md:aspect-[4/5] rounded-full md:rounded-[1.5rem] overflow-hidden shadow-xl mb-6 mx-auto md:mx-0 bg-slate-200 shrink-0">
@@ -128,11 +128,11 @@ const Profile = () => {
             {/* Primary Action Button */}
             <div className="mt-6 md:mt-8">
               {viewSelf ? (
-                <button className="w-full py-3.5 md:py-4 rounded-2xl text-xs font-black uppercase tracking-widest bg-slate-100 hover:bg-slate-200 text-bumble-charcoal transition-colors cursor-pointer border border-slate-200 shadow-sm">
+                <button className="w-full py-3 sm:py-3.5 md:py-4 rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest bg-slate-100 hover:bg-slate-200 text-bumble-charcoal transition-colors cursor-pointer border border-slate-200 shadow-sm">
                   Edit Profile Info
                 </button>
               ) : (
-                <button className="w-full py-3.5 md:py-4 rounded-2xl text-xs font-black uppercase tracking-widest bg-bumble-yellow text-bumble-charcoal hover:bg-black hover:text-white transition-all cursor-pointer shadow-lg shadow-bumble-yellow/20 flex items-center justify-center gap-2">
+                <button className="w-full py-3 sm:py-3.5 md:py-4 rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest bg-bumble-yellow text-bumble-charcoal hover:bg-black hover:text-white transition-all cursor-pointer shadow-lg shadow-bumble-yellow/20 flex items-center justify-center gap-2">
                   <Sparkles className="w-4 h-4 fill-current" />
                   Send Spark
                 </button>
@@ -141,7 +141,7 @@ const Profile = () => {
           </div>
 
           {/* Quick Stats Widget */}
-          <div className="bg-white rounded-[2rem] p-6 shadow-xl border border-slate-100">
+          <div className="bg-white rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 shadow-xl border border-slate-100">
             <h3 className="font-black text-xs text-slate-400 uppercase tracking-widest mb-4">Profile Analytics</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 bg-bumble-light-gray rounded-2xl text-center border border-slate-100">
@@ -159,10 +159,10 @@ const Profile = () => {
         </div>
 
         {/* RIGHT COLUMN: Bio, Details, Galleries (Spans 8 columns) */}
-        <div className="lg:col-span-8 space-y-8 mt-16 lg:mt-0 pt-4">
+        <div className="lg:col-span-8 space-y-5 sm:space-y-8 mt-4 sm:mt-8 lg:mt-0 pt-2 sm:pt-4">
           
           {/* Custom Tabs */}
-          <div className="flex gap-2 p-1.5 rounded-full bg-white shadow-md border border-slate-100 w-fit max-w-full overflow-x-auto no-scrollbar">
+          <div className="flex gap-1 sm:gap-2 p-1 sm:p-1.5 rounded-full bg-white shadow-md border border-slate-100 w-full sm:w-fit max-w-full overflow-x-auto no-scrollbar">
             {[
               { id: 'about', label: 'About Me', icon: User },
               { id: 'media', label: 'Photo Gallery', icon: ImageIcon },
@@ -172,14 +172,15 @@ const Profile = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-5 sm:px-8 py-3.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap
+                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 lg:px-8 py-2.5 sm:py-3.5 rounded-full text-[10px] sm:text-xs font-bold transition-all cursor-pointer whitespace-nowrap
                   ${activeTab === tab.id 
                     ? 'bg-bumble-charcoal text-white shadow-md' 
                     : 'text-slate-500 hover:bg-slate-50 hover:text-bumble-charcoal'
                   }`}
               >
-                <tab.icon className="w-4 h-4" />
-                <span>{tab.label}</span>
+                <tab.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
               </button>
             ))}
           </div>
@@ -195,31 +196,31 @@ const Profile = () => {
               {activeTab === 'about' && (
                 <div className="space-y-8">
                   {/* Bio Card */}
-                  <div className="bg-white rounded-[2rem] p-8 shadow-xl border border-slate-100">
-                    <h3 className="font-serif italic font-semibold text-2xl text-bumble-charcoal mb-4">The basics</h3>
-                    <p className="text-lg leading-relaxed text-slate-600 font-medium max-w-2xl">
+                  <div className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 shadow-xl border border-slate-100">
+                    <h3 className="font-serif italic font-semibold text-xl sm:text-2xl text-bumble-charcoal mb-3 sm:mb-4">The basics</h3>
+                    <p className="text-base sm:text-lg leading-relaxed text-slate-600 font-medium max-w-2xl break-words">
                       {profileUser.bio}
                     </p>
                   </div>
 
                   {/* Badges / Meta Grid */}
-                  <div className="grid sm:grid-cols-2 gap-6">
-                    <div className="bg-white rounded-[2rem] p-8 shadow-xl border border-slate-100 space-y-6">
+                  <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
+                    <div className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 shadow-xl border border-slate-100 space-y-4 sm:space-y-6">
                       <h3 className="font-serif italic font-semibold text-xl text-bumble-charcoal border-b border-slate-100 pb-4">Work & Education</h3>
                       
                       <div className="space-y-4">
-                        <div className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Occupation</span>
-                          <span className="text-sm font-black text-bumble-charcoal text-right">{profileUser.work}</span>
+                        <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-1 sm:gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                          <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Occupation</span>
+                          <span className="text-sm font-black text-bumble-charcoal text-left sm:text-right break-words w-full sm:w-auto">{profileUser.work}</span>
                         </div>
-                        <div className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Education</span>
-                          <span className="text-sm font-black text-bumble-charcoal text-right">{profileUser.education}</span>
+                        <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-1 sm:gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                          <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Education</span>
+                          <span className="text-sm font-black text-bumble-charcoal text-left sm:text-right break-words w-full sm:w-auto">{profileUser.education}</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="bg-white rounded-[2rem] p-8 shadow-xl border border-slate-100 space-y-6">
+                    <div className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 shadow-xl border border-slate-100 space-y-4 sm:space-y-6">
                       <h3 className="font-serif italic font-semibold text-xl text-bumble-charcoal border-b border-slate-100 pb-4">More about me</h3>
                       
                       <div className="flex flex-wrap gap-3">
@@ -240,7 +241,7 @@ const Profile = () => {
                   </div>
 
                   {/* Interests */}
-                  <div className="bg-white rounded-[2rem] p-8 shadow-xl border border-slate-100">
+                  <div className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 shadow-xl border border-slate-100">
                     <h3 className="font-serif italic font-semibold text-2xl text-bumble-charcoal mb-6">My Interests</h3>
                     <div className="flex flex-wrap gap-3">
                       {profileUser.interests.map((interest, idx) => (
@@ -257,8 +258,8 @@ const Profile = () => {
               )}
 
               {activeTab === 'media' && (
-                <div className="bg-white rounded-[2rem] p-8 shadow-xl border border-slate-100">
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                <div className="bg-white rounded-2xl sm:rounded-[2rem] p-4 sm:p-8 shadow-xl border border-slate-100">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
                     {profileUser.images.map((img, idx) => (
                       <div key={idx} className="aspect-[4/5] rounded-3xl overflow-hidden shadow-md group relative">
                         <img
@@ -287,13 +288,13 @@ const Profile = () => {
                     profileUser.prompts.map((prompt, idx) => (
                       <div
                         key={idx}
-                        className="bg-white p-8 rounded-[2rem] shadow-xl border border-slate-100 relative overflow-hidden group hover:border-bumble-yellow transition-colors"
+                        className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] shadow-xl border border-slate-100 relative overflow-hidden group hover:border-bumble-yellow transition-colors"
                       >
                         <div className="absolute top-0 left-0 w-2 h-full bg-bumble-yellow transition-transform group-hover:scale-y-110" />
                         <span className="text-xs text-slate-400 font-bold uppercase tracking-widest block mb-4">
                           {prompt.question}
                         </span>
-                        <p className="text-2xl font-serif italic font-semibold text-bumble-charcoal leading-relaxed">
+                        <p className="text-lg sm:text-2xl font-serif italic font-semibold text-bumble-charcoal leading-relaxed">
                           "{prompt.answer}"
                         </p>
                       </div>
@@ -309,10 +310,10 @@ const Profile = () => {
 
               {activeTab === 'wallet' && (
                 <div className="space-y-6">
-                  <div className="bg-white rounded-[2rem] p-8 shadow-xl border border-slate-100 flex items-center justify-between">
+                  <div className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 shadow-xl border border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
-                      <h3 className="font-serif italic font-semibold text-2xl text-bumble-charcoal mb-2">My Balance</h3>
-                      <p className="text-slate-500 font-medium">Use coins to supercharge your matches.</p>
+                      <h3 className="font-serif italic font-semibold text-xl sm:text-2xl text-bumble-charcoal mb-1 sm:mb-2">My Balance</h3>
+                      <p className="text-sm sm:text-base text-slate-500 font-medium">Use coins to supercharge your matches.</p>
                     </div>
                     <div className="flex items-center gap-3 bg-slate-50 px-6 py-4 rounded-2xl border border-slate-100">
                       <Sparkles className="w-8 h-8 text-bumble-yellow" />
