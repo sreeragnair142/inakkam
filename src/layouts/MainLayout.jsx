@@ -364,11 +364,11 @@ const MainLayout = ({ children }) => {
         left: 0,
         right: 0,
         zIndex: 40,
-        backgroundColor: isDarkBg ? 'rgba(0,0,0,0.5)' : '#ffffff',
-        backdropFilter: isDarkBg ? 'blur(16px)' : 'none',
-        WebkitBackdropFilter: isDarkBg ? 'blur(16px)' : 'none',
-        borderTop: isDarkBg ? '1px solid rgba(255,255,255,0.1)' : '1px solid #f1f5f9',
-        boxShadow: isDarkBg ? 'none' : '0 -4px 20px -10px rgba(0,0,0,0.08)',
+        backgroundColor: 'rgba(20, 20, 20, 0.85)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderTop: '1px solid rgba(255,255,255,0.08)',
+        boxShadow: '0 -10px 40px -10px rgba(0,0,0,0.2)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
       className="mobile-bottom-nav lg:hidden"
@@ -385,11 +385,11 @@ const MainLayout = ({ children }) => {
                 className="flex flex-col items-center justify-center flex-1 h-full relative cursor-pointer border-none bg-transparent"
               >
                 <div className={`w-[42px] h-[42px] rounded-full flex items-center justify-center transition-all shadow-md mt-[-10px]
-                  ${isActive ? 'bg-purple-600 shadow-purple-600/30 border-2 border-white scale-110' : (isDarkBg ? 'bg-white/10 border-2 border-white/20' : 'bg-white border-2 border-slate-200')}`}
+                  ${isActive ? 'bg-[#D51659] shadow-lg shadow-[#D51659]/30 border border-[#D51659] scale-110' : 'bg-white/5 border border-white/10'}`}
                 >
-                  <item.icon className={`w-[22px] h-[22px] ${isActive ? 'text-white fill-white' : (isDarkBg ? 'text-white/70' : 'text-slate-400')}`} strokeWidth={isActive ? 0 : 2} />
+                  <item.icon className={`w-[22px] h-[22px] ${isActive ? 'text-white fill-white' : 'text-white/60'}`} strokeWidth={isActive ? 0 : 2} />
                 </div>
-                <span className={`text-[9px] font-bold mt-1 ${isActive ? 'text-purple-600' : (isDarkBg ? 'text-white/70' : 'text-slate-400')}`}>
+                <span className={`text-[9px] font-bold mt-1 ${isActive ? 'text-[#D51659]' : 'text-white/60'}`}>
                   {item.label}
                 </span>
               </button>
@@ -411,7 +411,7 @@ const MainLayout = ({ children }) => {
                 border: 'none',
                 background: 'none',
                 cursor: 'pointer',
-                color: isActive ? '#9333ea' : (isDarkBg ? 'rgba(255,255,255,0.5)' : '#94a3b8'),
+                color: isActive ? '#D51659' : 'rgba(255,255,255,0.6)',
                 transition: 'all 0.2s',
                 padding: 0,
               }}

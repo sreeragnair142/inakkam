@@ -1650,9 +1650,11 @@ const Landing = () => {
             left: 0,
             right: 0,
             zIndex: 99999,
-            backgroundColor: "#ffffff",
-            borderTop: "1px solid #f1f5f9",
-            boxShadow: "0 -4px 20px -10px rgba(0,0,0,0.08)",
+            backgroundColor: "rgba(20, 20, 20, 0.85)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            borderTop: "1px solid rgba(255,255,255,0.08)",
+            boxShadow: "0 -10px 40px -10px rgba(0,0,0,0.2)",
             paddingBottom: "env(safe-area-inset-bottom, 0px)",
           }}
           className="mobile-bottom-nav"
@@ -1683,7 +1685,7 @@ const Landing = () => {
                     border: "none",
                     background: "none",
                     cursor: "pointer",
-                    color: isActive ? "#1E1E1E" : "#94a3b8",
+                    color: isActive ? "#D51659" : "rgba(255, 255, 255, 0.6)",
                     transition: "all 0.2s",
                     position: "relative",
                     padding: 0,
@@ -1714,7 +1716,7 @@ const Landing = () => {
                           height: "8px",
                           backgroundColor: "#FFCB37",
                           borderRadius: "50%",
-                          border: "1.5px solid white",
+                          border: "1.5px solid rgba(20, 20, 20, 0.9)",
                         }}
                       />
                     )}
