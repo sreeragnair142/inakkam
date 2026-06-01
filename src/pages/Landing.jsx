@@ -369,7 +369,7 @@ const Landing = () => {
   return (
     <div className="min-h-screen bg-white text-bumble-charcoal overflow-x-hidden relative font-sans">
       {/* SECTION 1: Red Hero Canvas */}
-      <section style={{ backgroundColor: '#FF6B6B' }} className="px-6 pb-24 relative overflow-hidden flex flex-col min-h-screen justify-between">
+      <section style={{ backgroundColor: '#D51659' }} className="px-6 pb-24 relative overflow-hidden flex flex-col min-h-screen justify-between">
         {/* Shifting radial glow */}
         <div className="absolute -inset-px bg-gradient-to-b from-white/10 via-transparent to-black/5 opacity-40 pointer-events-none" />
 
@@ -412,7 +412,7 @@ const Landing = () => {
                     className={`px-6 py-2 rounded-full text-xs font-bold transition-colors cursor-pointer
                     ${
                       idx === 0
-                        ? "bg-[#FF6B6B]/10 text-bumble-charcoal"
+                        ? "bg-[#D51659]/10 text-bumble-charcoal"
                         : "text-bumble-charcoal hover:bg-slate-100"
                     }`}
                   >
@@ -973,7 +973,7 @@ const Landing = () => {
       </>
       )}
 
-      <section className="relative overflow-hidden py-24 md:py-36 bg-[#FF6B6B]">
+      <section className="relative overflow-hidden py-24 md:py-36 bg-[#D51659]">
 
   {/* soft background glow */}
   <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-white/10 blur-[120px] rounded-full" />
@@ -1305,9 +1305,7 @@ const Landing = () => {
           >
             {/* Quote details */}
             <div className="flex-1 space-y-6 z-10">
-              <span className="text-7xl font-serif text-bumble-yellow block mb-[-25px] leading-none">
-                â€œ
-              </span>
+
               <p className="text-2xl sm:text-4.5xl font-black text-bumble-charcoal leading-tight min-h-[160px]">
                 {testimonials[testIndex].quote}
               </p>

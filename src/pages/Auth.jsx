@@ -59,7 +59,7 @@ const Auth = () => {
   };
 
   return (
-    <div style={{ backgroundColor: '#FF6B6B' }} className="min-h-screen w-full relative overflow-hidden flex flex-col items-center justify-center p-4">
+    <div style={{ backgroundColor: '#D51659' }} className="min-h-screen w-full relative overflow-hidden flex flex-col items-center justify-center p-4">
       {/* Huge background text label "Inakkam" */}
       <div className="absolute inset-0 flex items-center justify-center select-none pointer-events-none z-0 overflow-hidden">
         <span className="text-[40vw] md:text-[32vw] lg:text-[24vw] font-black tracking-tighter text-black opacity-10 leading-none whitespace-nowrap">
@@ -135,7 +135,7 @@ const Auth = () => {
               </button>
               <button 
                 onClick={handleIntroNext}
-                className="flex-1 py-4 font-black text-black bg-white rounded-2xl shadow-xl shadow-black/10 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer"
+                className="flex-1 py-4 font-black text-white bg-black rounded-2xl shadow-xl shadow-black/20 hover:bg-slate-900 active:scale-95 transition-all cursor-pointer"
               >
                 {introStep === introSlides.length - 1 ? "Let's Start" : "Next"}
               </button>
@@ -156,17 +156,6 @@ const Auth = () => {
                 <Flame className="w-8 h-8 text-bumble-yellow" />
               </div>
               
-              {/* Skip Button */}
-              <button 
-                onClick={() => {
-                  dispatch(guestLogin());
-                  navigate("/swipe");
-                }}
-                className="absolute top-6 right-6 text-[10px] font-black uppercase tracking-wider text-slate-400 hover:text-bumble-charcoal transition-colors px-3 py-1.5 bg-slate-50 hover:bg-slate-100 rounded-full cursor-pointer"
-              >
-                Skip
-              </button>
-
               <h3 className="text-3xl font-black text-bumble-charcoal tracking-tight">
                 {isSignUp ? "Create Account" : "Welcome Back"}
               </h3>
@@ -233,6 +222,18 @@ const Auth = () => {
                   {isSignUp ? "Sign in" : "Sign up"}
                 </button>
               </span>
+            </div>
+            
+            <div className="mt-4 text-center">
+              <button 
+                onClick={() => {
+                  dispatch(guestLogin());
+                  navigate("/swipe");
+                }}
+                className="text-[11px] font-black uppercase tracking-wider text-slate-400 hover:text-bumble-charcoal transition-colors px-4 py-2 bg-slate-50 hover:bg-slate-100 rounded-full cursor-pointer"
+              >
+                Skip for now
+              </button>
             </div>
           </motion.div>
         )}
