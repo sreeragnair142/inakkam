@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { mockUsers, mockCurrentUser } from '../data/mockData';
 import { 
@@ -12,11 +13,13 @@ import {
   HelpCircle,
   ShieldAlert,
   Camera,
-  User
+  User,
+  Wallet
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Profile = () => {
+  const navigate = useNavigate();
   const themeMode = useSelector((state) => state.theme.mode);
   
   // Selected Profile state from Redux
@@ -163,7 +166,8 @@ const Profile = () => {
             {[
               { id: 'about', label: 'About Me', icon: User },
               { id: 'media', label: 'Photo Gallery', icon: ImageIcon },
-              { id: 'prompts', label: 'Prompts', icon: MessageSquare }
+              { id: 'prompts', label: 'Prompts', icon: MessageSquare },
+              { id: 'wallet', label: 'Wallet', icon: Wallet }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -300,6 +304,35 @@ const Profile = () => {
                       <p className="text-slate-500 font-medium">No custom prompts answered yet. Spark a conversation by adding some!</p>
                     </div>
                   )}
+                </div>
+              )}
+
+              {activeTab === 'wallet' && (
+                <div className="space-y-6">
+                  <div className="bg-white rounded-[2rem] p-8 shadow-xl border border-slate-100 flex items-center justify-between">
+                    <div>
+                      <h3 className="font-serif italic font-semibold text-2xl text-bumble-charcoal mb-2">My Balance</h3>
+                      <p className="text-slate-500 font-medium">Use coins to supercharge your matches.</p>
+                    </div>
+                    <div className="flex items-center gap-3 bg-slate-50 px-6 py-4 rounded-2xl border border-slate-100">
+                      <Sparkles className="w-8 h-8 text-bumble-yellow" />
+                      <span className="text-3xl font-black text-bumble-charcoal">450</span>
+                    </div>
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-6">
+                    <button onClick={() => navigate('/wallet')} className="bg-bumble-charcoal text-white p-6 rounded-[2rem] shadow-xl hover:bg-black transition-colors flex flex-col items-center justify-center gap-3 cursor-pointer group">
+                      <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Wallet className="w-6 h-6" />
+                      </div>
+                      <span className="font-bold">Buy More Coins</span>
+                    </button>
+                    <button className="bg-white border border-slate-200 text-bumble-charcoal p-6 rounded-[2rem] shadow-xl hover:bg-slate-50 transition-colors flex flex-col items-center justify-center gap-3 cursor-pointer group">
+                      <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Award className="w-6 h-6 text-slate-400" />
+                      </div>
+                      <span className="font-bold">View Transaction History</span>
+                    </button>
+                  </div>
                 </div>
               )}
 

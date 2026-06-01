@@ -59,10 +59,10 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen w-full relative overflow-hidden flex flex-col items-center justify-center bg-bumble-yellow p-4">
+    <div style={{ backgroundColor: '#FF6B6B' }} className="min-h-screen w-full relative overflow-hidden flex flex-col items-center justify-center p-4">
       {/* Huge background text label "Inakkam" */}
       <div className="absolute inset-0 flex items-center justify-center select-none pointer-events-none z-0 overflow-hidden">
-        <span className="text-[40vw] md:text-[32vw] lg:text-[24vw] font-black tracking-tighter text-bumble-charcoal opacity-10 leading-none whitespace-nowrap">
+        <span className="text-[40vw] md:text-[32vw] lg:text-[24vw] font-black tracking-tighter text-black opacity-10 leading-none whitespace-nowrap">
           Inakkam
         </span>
       </div>
@@ -77,13 +77,13 @@ const Auth = () => {
             transition={{ duration: 0.5 }}
             className="relative z-10 flex flex-col items-center justify-center"
           >
-            <div className="w-24 h-24 rounded-3xl bg-bumble-charcoal flex items-center justify-center shadow-2xl shadow-black/20">
+            <div className="w-24 h-24 rounded-3xl bg-white flex items-center justify-center shadow-2xl shadow-black/20">
               <Flame className="w-12 h-12 text-bumble-yellow" />
             </div>
-            <h1 className="text-4xl font-black text-bumble-charcoal tracking-tight mt-6">
+            <h1 className="text-4xl font-black text-black tracking-tight mt-6">
               Inakkam
             </h1>
-            <p className="text-sm font-bold text-bumble-charcoal/60 mt-1 tracking-wider uppercase">
+            <p className="text-sm font-bold text-black/60 mt-1 tracking-wider uppercase">
               Infinite Match
             </p>
           </motion.div>
@@ -119,23 +119,23 @@ const Auth = () => {
               </div>
             </motion.div>
 
-            <h2 className="text-3xl font-black text-bumble-charcoal max-w-[320px] mb-8 min-h-[80px] text-center leading-tight drop-shadow-sm">
+            <h2 className="text-3xl font-black text-black max-w-[320px] mb-8 min-h-[80px] text-center leading-tight">
               {introSlides[introStep].title}
             </h2>
 
             <div className="flex gap-2.5 mb-10">
               {introSlides.map((_, i) => (
-                <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${i === introStep ? 'w-8 bg-bumble-charcoal' : 'w-2 bg-bumble-charcoal/20'}`} />
+                <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${i === introStep ? 'w-8 bg-black' : 'w-2 bg-black/20'}`} />
               ))}
             </div>
 
             <div className="flex items-center gap-4 w-full max-w-[320px]">
-              <button onClick={() => setPhase("login")} className="flex-1 py-4 font-bold text-bumble-charcoal/60 hover:text-bumble-charcoal hover:bg-bumble-charcoal/5 rounded-2xl transition-colors cursor-pointer">
+              <button onClick={() => setPhase("login")} className="flex-1 py-4 font-bold text-black/70 hover:text-black hover:bg-black/5 rounded-2xl transition-colors cursor-pointer">
                 Skip
               </button>
               <button 
                 onClick={handleIntroNext}
-                className="flex-1 py-4 font-black text-white bg-bumble-charcoal rounded-2xl shadow-xl shadow-black/15 hover:bg-black active:scale-95 transition-all cursor-pointer"
+                className="flex-1 py-4 font-black text-black bg-white rounded-2xl shadow-xl shadow-black/10 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer"
               >
                 {introStep === introSlides.length - 1 ? "Let's Start" : "Next"}
               </button>

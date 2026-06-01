@@ -75,7 +75,7 @@ const Landing = () => {
       name: "Jenny Lopez",
       age: 24,
       distance: "15 km away",
-      hobby1: "Yoga 🧘",
+      hobby1: "Yoga ðŸ§˜",
       hobby2: "Music",
       rotate: "-12deg",
       image:
@@ -85,8 +85,8 @@ const Landing = () => {
       name: "Lissa Moni",
       age: 22,
       distance: "10 km away",
-      hobby1: "Travel ✈️",
-      hobby2: "Coffee ☕",
+      hobby1: "Travel âœˆï¸",
+      hobby2: "Coffee â˜•",
       rotate: "8deg",
       image:
         "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=800",
@@ -95,8 +95,8 @@ const Landing = () => {
       name: "Moriya Hos",
       age: 24,
       distance: "10 km away",
-      hobby1: "Sports 🏀",
-      hobby2: "Dancing 💃",
+      hobby1: "Sports ðŸ€",
+      hobby2: "Dancing ðŸ’ƒ",
       rotate: "-10deg",
       image:
         "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=800",
@@ -368,8 +368,8 @@ const Landing = () => {
   };
   return (
     <div className="min-h-screen bg-white text-bumble-charcoal overflow-x-hidden relative font-sans">
-      {/* SECTION 1: Yellow Hero Canvas (Matching Screenshot 1) */}
-      <section className="bg-bumble-yellow px-6 pb-24 relative overflow-hidden flex flex-col min-h-screen justify-between">
+      {/* SECTION 1: Red Hero Canvas */}
+      <section style={{ backgroundColor: '#FF6B6B' }} className="px-6 pb-24 relative overflow-hidden flex flex-col min-h-screen justify-between">
         {/* Shifting radial glow */}
         <div className="absolute -inset-px bg-gradient-to-b from-white/10 via-transparent to-black/5 opacity-40 pointer-events-none" />
 
@@ -404,7 +404,7 @@ const Landing = () => {
             </div>
           ) : (
             <div className="hidden md:flex items-center gap-1.5 bg-white px-2 py-1.5 rounded-full shadow-sm border border-black/5">
-              {["Date", "BFF", "Stories", "Safety", "Support"].map(
+              {["Home", "Discover", "Explore", "Chat", "Profile"].map(
                 (pill, idx) => (
                   <button
                     key={idx}
@@ -412,7 +412,7 @@ const Landing = () => {
                     className={`px-6 py-2 rounded-full text-xs font-bold transition-colors cursor-pointer
                     ${
                       idx === 0
-                        ? "bg-bumble-yellow/10 text-bumble-charcoal"
+                        ? "bg-[#FF6B6B]/10 text-bumble-charcoal"
                         : "text-bumble-charcoal hover:bg-slate-100"
                     }`}
                   >
@@ -426,11 +426,6 @@ const Landing = () => {
           <div className="flex items-center gap-3">
             {isAuthenticated ? (
               <div className="flex items-center gap-3 relative z-50">
-                {/* Likes counter badge */}
-                <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-bumble-red/10 text-bumble-red border border-bumble-red/5">
-                  <Heart className="w-3.5 h-3.5 fill-current animate-pulse" />
-                  <span>{user?.likesCount || 14} Likes</span>
-                </div>
 
                 {/* Notification bell widget */}
                 <div className="relative">
@@ -498,7 +493,7 @@ const Landing = () => {
                                     </span>
                                   </div>
                                   {!notif.read && (
-                                    <span className="w-2 h-2 rounded-full bg-bumble-yellow self-center shrink-0" />
+                                    <span className="w-2 h-2 rounded-full bg-[#FF6B6B] self-center shrink-0" />
                                   )}
                                 </div>
                               ))
@@ -742,7 +737,7 @@ const Landing = () => {
 
       {false && (
         <>
-          {/* SECTION 2 — PREMIUM LOVE EXPERIENCE */}
+          {/* SECTION 2 â€” PREMIUM LOVE EXPERIENCE */}
           <section
             id="closer-to-love"
             className="relative py-32 px-6 overflow-hidden bg-[#f5f5f3]"
@@ -753,7 +748,7 @@ const Landing = () => {
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center relative z-10">
           <div className="space-y-8">
             <div className="inline-flex items-center gap-2 bg-white shadow-md border border-black/5 px-5 py-2 rounded-full">
-              <div className="w-2 h-2 rounded-full bg-bumble-yellow animate-pulse" />
+              <div className="w-2 h-2 rounded-full bg-[#FF6B6B] animate-pulse" />
               <span className="text-xs font-black uppercase tracking-[0.2em] text-bumble-charcoal">
                 Genuine Connections
               </span>
@@ -769,7 +764,7 @@ const Landing = () => {
 
               <p className="text-lg leading-relaxed text-slate-500 max-w-xl font-medium">
                 Meet people who match your energy, lifestyle, and vibe. Inakkam
-                helps meaningful conversations happen naturally — without the
+                helps meaningful conversations happen naturally â€” without the
                 awkwardness.
               </p>
             </div>
@@ -845,10 +840,10 @@ const Landing = () => {
 
                 <div className="absolute top-6 left-6 flex flex-col gap-3">
                   <span className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-full text-xs font-black text-bumble-charcoal shadow">
-                    ✨ Verified Profile
+                    âœ¨ Verified Profile
                   </span>
 
-                  <span className="bg-bumble-yellow px-4 py-2 rounded-full text-xs font-black text-bumble-charcoal shadow-lg">
+                  <span className="bg-[#FF6B6B] px-4 py-2 rounded-full text-xs font-black text-bumble-charcoal shadow-lg">
                     98% Match
                   </span>
                 </div>
@@ -861,7 +856,7 @@ const Landing = () => {
                   </div>
 
                   <p className="mt-2 text-sm text-white/80 font-medium leading-relaxed">
-                    Designer • Traveler • Coffee lover ☕
+                    Designer â€¢ Traveler â€¢ Coffee lover â˜•
                   </p>
 
                   <div className="flex flex-wrap gap-2 mt-5">
@@ -907,7 +902,7 @@ const Landing = () => {
               transition={{ duration: 0 }}
               className="absolute -right-4 md:-right-12 top-16 bg-white p-4 rounded-3xl shadow-xl border border-slate-100 z-20 hidden sm:flex items-center gap-4"
             >
-              <div className="w-12 h-12 bg-bumble-yellow rounded-full flex items-center justify-center">
+              <div className="w-12 h-12 bg-[#FF6B6B] rounded-full flex items-center justify-center">
                 <Star className="w-6 h-6 text-bumble-charcoal fill-current" />
               </div>
               <div>
@@ -941,8 +936,8 @@ const Landing = () => {
           <div className="space-y-8 z-10">
             <div className="inline-flex items-center gap-2 bg-white/60 backdrop-blur-sm shadow-sm border border-slate-200 px-4 py-2 rounded-full">
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-bumble-yellow opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-bumble-yellow"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FF6B6B] opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#FF6B6B]"></span>
               </span>
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-bumble-charcoal">
                 Community Driven
@@ -978,7 +973,7 @@ const Landing = () => {
       </>
       )}
 
-      <section className="relative overflow-hidden py-24 md:py-36 bg-[#fde68a]">
+      <section className="relative overflow-hidden py-24 md:py-36 bg-[#FF6B6B]">
 
   {/* soft background glow */}
   <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-white/10 blur-[120px] rounded-full" />
@@ -1195,7 +1190,7 @@ const Landing = () => {
       <section className="py-24 px-6 max-w-7xl mx-auto">
         <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
           {/* Card 1: Inakkam Date (Dark Theme) */}
-          <div className="group relative bg-bumble-yellow text-bumble-charcoal rounded-[3rem] p-12 flex flex-col justify-between overflow-hidden h-[600px] border border-black/5 shadow-2xl transition-all duration-500 hover:-translate-y-2">
+          <div className="group relative bg-[#FF6B6B] text-bumble-charcoal rounded-[3rem] p-12 flex flex-col justify-between overflow-hidden h-[600px] border border-black/5 shadow-2xl transition-all duration-500 hover:-translate-y-2">
             {/* Background glowing orb */}
             <div className="absolute top-[-20%] left-[-20%] w-[300px] h-[300px] bg-white/40 blur-[80px] rounded-full group-hover:bg-white/60 transition-colors duration-500" />
 
@@ -1252,7 +1247,7 @@ const Landing = () => {
             <div className="relative z-10 w-full max-w-[240px] mx-auto mt-4 transition-transform duration-500 group-hover:scale-105 group-hover:-translate-y-4">
               <div className="bg-white rounded-3xl p-3 shadow-2xl border border-black/5">
                 <div className="relative rounded-2xl overflow-hidden aspect-[3/4]">
-                  <div className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-bumble-yellow flex items-center justify-center shadow-lg border border-white/50">
+                  <div className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-[#FF6B6B] flex items-center justify-center shadow-lg border border-white/50">
                     <Heart className="w-5 h-5 text-bumble-charcoal fill-current animate-bounce" />
                   </div>
                   <img
@@ -1266,7 +1261,7 @@ const Landing = () => {
                       Book club
                     </span>
                     <span className="text-xs text-white/80 mt-1 block">
-                      Events • Chat
+                      Events â€¢ Chat
                     </span>
                   </div>
                 </div>
@@ -1311,7 +1306,7 @@ const Landing = () => {
             {/* Quote details */}
             <div className="flex-1 space-y-6 z-10">
               <span className="text-7xl font-serif text-bumble-yellow block mb-[-25px] leading-none">
-                “
+                â€œ
               </span>
               <p className="text-2xl sm:text-4.5xl font-black text-bumble-charcoal leading-tight min-h-[160px]">
                 {testimonials[testIndex].quote}
@@ -1351,7 +1346,7 @@ const Landing = () => {
               onClick={() => setTestIndex(idx)}
               className={`w-2.5 h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
                 testIndex === idx
-                  ? "bg-bumble-yellow w-8"
+                  ? "bg-[#FF6B6B] w-8"
                   : "bg-slate-300 hover:bg-slate-400"
               }`}
               aria-label={`Go to slide ${idx + 1}`}
@@ -1408,7 +1403,7 @@ const Landing = () => {
               {/* Header */}
               <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-bumble-yellow flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-[#FF6B6B] flex items-center justify-center">
                     <Settings className="w-5 h-5 text-bumble-charcoal" />
                   </div>
                   <div>
@@ -1531,7 +1526,7 @@ const Landing = () => {
                             }))
                           }
                           className={`w-11 h-6 rounded-full p-0.5 transition-all duration-300 relative shrink-0 cursor-pointer
-                            ${privacyToggles[toggle.key] ? "bg-bumble-yellow" : "bg-slate-300"}`}
+                            ${privacyToggles[toggle.key] ? "bg-[#FF6B6B]" : "bg-slate-300"}`}
                         >
                           <div
                             className={`w-5 h-5 rounded-full bg-white shadow-md transition-all duration-300 transform
@@ -1594,7 +1589,7 @@ const Landing = () => {
                             }))
                           }
                           className={`w-11 h-6 rounded-full p-0.5 transition-all duration-300 relative shrink-0 cursor-pointer
-                            ${notificationToggles[toggle.key] ? "bg-bumble-yellow" : "bg-slate-300"}`}
+                            ${notificationToggles[toggle.key] ? "bg-[#FF6B6B]" : "bg-slate-300"}`}
                         >
                           <div
                             className={`w-5 h-5 rounded-full bg-white shadow-md transition-all duration-300 transform
@@ -1766,3 +1761,4 @@ const GlobeIcon = ({ className }) => (
 );
 
 export default Landing;
+
