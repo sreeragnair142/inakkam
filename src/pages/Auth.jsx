@@ -60,7 +60,7 @@ const Auth = () => {
   };
 
   return (
-    <div style={{ backgroundColor: '#d51616ff' }} className="min-h-screen w-full relative overflow-hidden flex flex-col items-center justify-center p-4">
+    <div style={{ backgroundColor: '#D51659' }} className="min-h-screen w-full relative overflow-hidden flex flex-col items-center justify-center p-4">
       
       {/* Animated glowing orbs on the red background */}
       <motion.div
