@@ -65,7 +65,7 @@ const Explore = () => {
   const [activeCategory, setActiveCategory] = useState('New Match');
 
   return (
-    <div className="w-full min-h-screen bg-bumble-yellow flex flex-col relative pt-16 md:pt-24 pb-24">
+    <div className="w-full min-h-screen bg-premium-dark-gradient flex flex-col relative pt-16 md:pt-24 pb-24">
       <div className="max-w-7xl mx-auto w-full px-4 flex flex-col flex-grow">
         {/* Category Horizontal Scroll */}
         <div className="flex items-center gap-3 overflow-x-auto no-scrollbar mb-6 pb-1 px-2">
@@ -76,8 +76,8 @@ const Explore = () => {
             className={`whitespace-nowrap px-5 py-2.5 rounded-full text-xs font-black transition-all duration-300 flex items-center gap-1.5 border-2 
               ${
                 activeCategory === cat
-                  ? 'bg-bumble-charcoal text-white border-bumble-charcoal shadow-xl shadow-black/20 scale-105'
-                  : 'bg-white/40 text-bumble-charcoal border-white/60 hover:bg-white/80 backdrop-blur-sm'
+                  ? 'bg-white/20 text-white backdrop-blur-md border-white/30 shadow-xl shadow-black/20 scale-105'
+                  : 'bg-white/5 text-white/70 border-white/10 hover:bg-white/10 hover:text-white backdrop-blur-sm'
               }`}
           >
             {cat === 'New Match' && <Heart className="w-3.5 h-3.5 fill-current" />}

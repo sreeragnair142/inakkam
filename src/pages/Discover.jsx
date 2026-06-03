@@ -104,21 +104,7 @@ const Discover = () => {
   return (
     <div className="flex-1 flex items-center justify-center relative min-h-[80vh] lg:min-h-[90vh] pt-24 pb-8 lg:pt-32 lg:pb-12 px-4">
       
-      {/* Background blur */}
-      {activeProfile && (
-        <div className="absolute inset-0 z-0">
-          <motion.img 
-            key={activeProfile.images[activeImageIndex]}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-            src={activeProfile.images[activeImageIndex]}
-            className="w-full h-full object-cover filter blur-[40px] scale-110 brightness-[0.35]"
-            alt="background"
-          />
-          <div className="absolute inset-0 bg-black/20" />
-        </div>
-      )}
+
 
       {activeProfile ? (
         <div className="relative z-10 flex flex-col lg:flex-row items-center lg:items-stretch gap-6 w-full max-w-5xl">
@@ -215,7 +201,7 @@ const Discover = () => {
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
-            className="flex-1 bg-white rounded-[2rem] shadow-2xl overflow-y-auto max-h-[75vh] border border-slate-100 hidden lg:block"
+            className="flex-1 bg-black/40 backdrop-blur-2xl rounded-[2rem] shadow-2xl overflow-y-auto max-h-[75vh] border border-white/10 hidden lg:block"
           >
             <div className="p-8 space-y-7">
 
@@ -223,48 +209,48 @@ const Discover = () => {
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-black text-bumble-charcoal">{activeProfile.name} ({activeProfile.age})</h2>
+                    <h2 className="text-2xl font-black text-white">{activeProfile.name} ({activeProfile.age})</h2>
                     {activeProfile.verified && <CheckCircle2 className="w-5 h-5 text-green-500 fill-green-500/20" />}
                   </div>
-                  <p className="text-sm text-slate-500 mt-1 flex items-center gap-1.5">
+                  <p className="text-sm text-white/50 mt-1 flex items-center gap-1.5">
                     <MapPin className="w-3.5 h-3.5" /> {activeProfile.distance}
                   </p>
                 </div>
-                <button onClick={() => animateSwipe('left')} className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
+                <button onClick={() => animateSwipe('left')} className="p-2 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-colors cursor-pointer">
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               {/* Bio */}
-              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
-                <p className="text-sm leading-relaxed text-bumble-charcoal flex items-start gap-2">
-                  <BookOpen className="w-4 h-4 text-bumble-yellow mt-0.5 shrink-0" />
+              <div className="bg-white/5 rounded-2xl p-5 border border-white/5">
+                <p className="text-sm leading-relaxed text-white/90 flex items-start gap-2">
+                  <BookOpen className="w-4 h-4 text-[#D51659] mt-0.5 shrink-0" />
                   {activeProfile.bio}
                 </p>
               </div>
 
               {/* Work & Education */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                  <div className="flex items-center gap-2 text-xs font-black uppercase text-slate-400 tracking-wider mb-2">
+                <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+                  <div className="flex items-center gap-2 text-xs font-black uppercase text-white/40 tracking-wider mb-2">
                     <Briefcase className="w-3.5 h-3.5" /> Work
                   </div>
-                  <p className="text-sm font-bold text-bumble-charcoal">{activeProfile.work}</p>
+                  <p className="text-sm font-bold text-white/90">{activeProfile.work}</p>
                 </div>
-                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                  <div className="flex items-center gap-2 text-xs font-black uppercase text-slate-400 tracking-wider mb-2">
+                <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+                  <div className="flex items-center gap-2 text-xs font-black uppercase text-white/40 tracking-wider mb-2">
                     <GraduationCap className="w-3.5 h-3.5" /> Education
                   </div>
-                  <p className="text-sm font-bold text-bumble-charcoal">{activeProfile.education}</p>
+                  <p className="text-sm font-bold text-white/90">{activeProfile.education}</p>
                 </div>
               </div>
 
               {/* Interests */}
               <div>
-                <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Interests</h4>
+                <h4 className="text-xs font-black uppercase tracking-widest text-white/40 mb-3">Interests</h4>
                 <div className="flex flex-wrap gap-2">
                   {activeProfile.interests.map((interest, idx) => (
-                    <span key={idx} className="text-xs px-4 py-2 rounded-full font-bold bg-bumble-yellow/10 border border-bumble-yellow/20 text-bumble-charcoal hover:bg-bumble-yellow/20 transition-colors">
+                    <span key={idx} className="text-xs px-4 py-2 rounded-full font-bold bg-[#D51659]/20 border border-[#D51659]/30 text-white hover:bg-[#D51659]/30 transition-colors">
                       {interest}
                     </span>
                   ))}
@@ -273,12 +259,12 @@ const Discover = () => {
 
               {/* Languages */}
               <div>
-                <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-1.5">
+                <h4 className="text-xs font-black uppercase tracking-widest text-white/40 mb-3 flex items-center gap-1.5">
                   <Globe className="w-3.5 h-3.5" /> Languages I Know
                 </h4>
                 <div className="flex flex-wrap gap-2">
                   {languages.map((lang, idx) => (
-                    <span key={idx} className="text-xs px-4 py-2 rounded-full font-bold bg-blue-50 border border-blue-100 text-blue-700">
+                    <span key={idx} className="text-xs px-4 py-2 rounded-full font-bold bg-white/10 border border-white/20 text-white">
                       {lang}
                     </span>
                   ))}
@@ -287,11 +273,11 @@ const Discover = () => {
 
               {/* Relationship Goals */}
               <div>
-                <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-1.5">
+                <h4 className="text-xs font-black uppercase tracking-widest text-white/40 mb-3 flex items-center gap-1.5">
                   <Target className="w-3.5 h-3.5" /> Relationship Goals
                 </h4>
                 <div className="flex flex-wrap gap-2">
-                  <span className="text-xs px-4 py-2 rounded-full font-bold bg-rose-50 border border-rose-100 text-rose-600">
+                  <span className="text-xs px-4 py-2 rounded-full font-bold bg-white/10 border border-white/20 text-white">
                     {activeProfile.relationship}
                   </span>
                 </div>
@@ -299,19 +285,19 @@ const Discover = () => {
 
               {/* Religion */}
               <div>
-                <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Religion</h4>
-                <span className="text-xs px-4 py-2 rounded-full font-bold bg-purple-50 border border-purple-100 text-purple-600">
+                <h4 className="text-xs font-black uppercase tracking-widest text-white/40 mb-3">Religion</h4>
+                <span className="text-xs px-4 py-2 rounded-full font-bold bg-white/10 border border-white/20 text-white">
                   {religion}
                 </span>
               </div>
 
               {/* Prompts */}
               {activeProfile.prompts && activeProfile.prompts.map((p, idx) => (
-                <div key={idx} className="bg-bumble-yellow/5 p-5 rounded-2xl border border-bumble-yellow/10">
-                  <span className="text-[10px] bg-bumble-yellow/20 text-bumble-charcoal px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
+                <div key={idx} className="bg-white/5 p-5 rounded-2xl border border-white/10">
+                  <span className="text-[10px] bg-[#D51659]/20 text-[#D51659] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
                     {p.question}
                   </span>
-                  <p className="text-sm font-bold mt-3 italic leading-relaxed text-bumble-charcoal">"{p.answer}"</p>
+                  <p className="text-sm font-bold mt-3 italic leading-relaxed text-white/90">"{p.answer}"</p>
                 </div>
               ))}
 

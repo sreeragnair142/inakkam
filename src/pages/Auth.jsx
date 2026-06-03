@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { login, guestLogin } from "../redux/slices/authSlice";
 import { Flame, ArrowRight, Eye, EyeOff, Sparkles } from "lucide-react";
+import loaderLogo from "../assets/loaderinakkam.png";
 import { motion, AnimatePresence } from "framer-motion";
 
 const introSlides = [
@@ -60,31 +61,37 @@ const Auth = () => {
   };
 
   return (
-    <div style={{ backgroundColor: '#D51659' }} className="min-h-screen w-full relative overflow-hidden flex flex-col items-center justify-center p-4">
+    <div style={{ background: 'linear-gradient(135deg, #0A0A0A 0%, #1a0a15 25%, #15061a 50%, #0d0515 75%, #0A0A0A 100%)' }} className="min-h-screen w-full relative overflow-hidden flex flex-col items-center justify-center p-4">
       
-      {/* Animated glowing orbs on the red background */}
+      {/* Animated glowing orbs matching logo gradient */}
       <motion.div
         className="absolute w-[500px] h-[500px] rounded-full pointer-events-none"
-        style={{ background: "radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%)", top: "-10%", left: "-10%" }}
+        style={{ background: "radial-gradient(circle, rgba(213,22,89,0.2) 0%, transparent 60%)", top: "-10%", left: "-10%" }}
         animate={{ scale: [1, 1.3, 1], x: [0, 40, 0] }}
         transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
         className="absolute w-[400px] h-[400px] rounded-full pointer-events-none"
-        style={{ background: "radial-gradient(circle, rgba(0,0,0,0.1) 0%, transparent 60%)", bottom: "-10%", right: "-5%" }}
+        style={{ background: "radial-gradient(circle, rgba(180,77,220,0.18) 0%, transparent 60%)", bottom: "-10%", right: "-5%" }}
         animate={{ scale: [1, 1.2, 1], y: [0, -30, 0] }}
         transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 2 }}
       />
       <motion.div
-        className="absolute w-[300px] h-[300px] rounded-full pointer-events-none"
-        style={{ background: "radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 60%)", top: "50%", right: "20%" }}
+        className="absolute w-[350px] h-[350px] rounded-full pointer-events-none"
+        style={{ background: "radial-gradient(circle, rgba(213,22,89,0.12) 0%, transparent 60%)", top: "50%", right: "20%" }}
         animate={{ scale: [1, 1.25, 1] }}
         transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 4 }}
+      />
+      <motion.div
+        className="absolute w-[250px] h-[250px] rounded-full pointer-events-none"
+        style={{ background: "radial-gradient(circle, rgba(150,40,200,0.1) 0%, transparent 60%)", top: "20%", left: "30%" }}
+        animate={{ scale: [1, 1.15, 1], x: [0, -20, 0] }}
+        transition={{ duration: 14, repeat: Infinity, ease: "easeInOut", delay: 6 }}
       />
 
       {/* Huge background text label "Inakkam" */}
       <div className="absolute inset-0 flex items-center justify-center select-none pointer-events-none z-0 overflow-hidden">
-        <span className="text-[40vw] md:text-[32vw] lg:text-[24vw] font-black tracking-tighter text-black opacity-10 leading-none whitespace-nowrap">
+        <span className="text-[40vw] md:text-[32vw] lg:text-[24vw] font-black tracking-tighter text-white opacity-[0.04] leading-none whitespace-nowrap">
           Inakkam
         </span>
       </div>
@@ -116,9 +123,9 @@ const Auth = () => {
                 initial={{ scale: 0, rotate: -45 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                className="w-24 h-24 rounded-3xl bg-white flex items-center justify-center shadow-2xl shadow-black/20 relative z-10"
+                className="w-28 h-auto relative z-10"
               >
-                <Flame className="w-12 h-12 text-[#D51659]" />
+                <img src={loaderLogo} alt="Inakkam" className="w-full h-auto drop-shadow-xl" />
               </motion.div>
             </div>
 
@@ -220,13 +227,13 @@ const Auth = () => {
                   key={i}
                   animate={{ width: i === introStep ? 32 : 8 }}
                   className="h-1.5 rounded-full transition-colors duration-300"
-                  style={{ background: i === introStep ? "white" : "rgba(0,0,0,0.2)" }}
+                  style={{ background: i === introStep ? "white" : "rgba(255,255,255,0.2)" }}
                 />
               ))}
             </div>
 
             <div className="flex items-center gap-4 w-full max-w-[320px]">
-              <button onClick={() => setPhase("login")} className="flex-1 py-4 font-bold text-black/50 hover:text-black hover:bg-black/5 rounded-2xl transition-colors cursor-pointer">
+              <button onClick={() => setPhase("login")} className="flex-1 py-4 font-bold text-white/60 hover:text-white hover:bg-white/10 rounded-2xl transition-colors cursor-pointer">
                 Skip
               </button>
               <button 
@@ -248,12 +255,12 @@ const Auth = () => {
             initial={{ y: 50, opacity: 0, scale: 0.95 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="relative z-10 w-full max-w-sm sm:max-w-[420px] rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 border border-white/20"
+            className="relative z-10 w-full max-w-sm sm:max-w-[420px] rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 border border-white/10"
             style={{
-              background: "rgba(255,255,255,0.92)",
+              background: "rgba(15,8,20,0.85)",
               backdropFilter: "blur(20px)",
               WebkitBackdropFilter: "blur(20px)",
-              boxShadow: "0 25px 60px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.1) inset",
+              boxShadow: "0 25px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05) inset",
             }}
           >
             {/* Decorative glow dot */}
@@ -266,13 +273,12 @@ const Auth = () => {
                 initial={{ scale: 0, rotate: -30 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ type: "spring", stiffness: 250, delay: 0.1 }}
-                className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-pink-500/15"
-                style={{ background: "linear-gradient(135deg, #D51659 0%, #b51350 100%)" }}
+                className="w-20 h-auto mx-auto mb-5"
               >
-                <Flame className="w-8 h-8 text-white" />
+                <img src={loaderLogo} alt="Inakkam" className="w-full h-auto drop-shadow-lg" />
               </motion.div>
               
-              <h3 className="text-3xl font-black text-bumble-charcoal tracking-tight">
+              <h3 className="text-3xl font-black text-white tracking-tight">
                 {isSignUp ? "Create Account" : "Welcome Back"}
               </h3>
               <p className="text-sm text-slate-500 font-bold mt-2">
@@ -288,7 +294,7 @@ const Auth = () => {
                 <input
                   type="text"
                   placeholder="you@example.com"
-                  className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-2 border-slate-100 text-sm font-bold text-bumble-charcoal placeholder-slate-400 focus:border-[#D51659] focus:bg-white focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
+                  className="w-full px-5 py-4 rounded-2xl bg-white/5 border-2 border-white/10 text-sm font-bold text-white placeholder-white/40 focus:border-[#D51659] focus:bg-white/10 focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
                 />
               </div>
               <div className="relative">
@@ -298,11 +304,11 @@ const Auth = () => {
                 <input
                   type={showPw ? "text" : "password"}
                   placeholder="••••••••"
-                  className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-2 border-slate-100 text-sm font-bold text-bumble-charcoal placeholder-slate-400 focus:border-[#D51659] focus:bg-white focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all pr-12"
+                  className="w-full px-5 py-4 rounded-2xl bg-white/5 border-2 border-white/10 text-sm font-bold text-white placeholder-white/40 focus:border-[#D51659] focus:bg-white/10 focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all pr-12"
                 />
                 <button
                   onClick={() => setShowPw(!showPw)}
-                  className="absolute right-4 top-[38px] text-slate-400 hover:text-bumble-charcoal transition-colors cursor-pointer"
+                  className="absolute right-4 top-[38px] text-slate-400 hover:text-white transition-colors cursor-pointer"
                 >
                   {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -316,7 +322,7 @@ const Auth = () => {
                   <input
                     type="password"
                     placeholder="••••••••"
-                    className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-2 border-slate-100 text-sm font-bold text-bumble-charcoal placeholder-slate-400 focus:border-[#D51659] focus:bg-white focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
+                    className="w-full px-5 py-4 rounded-2xl bg-white/5 border-2 border-white/10 text-sm font-bold text-white placeholder-white/40 focus:border-[#D51659] focus:bg-white/10 focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
                   />
                 </div>
               )}
@@ -341,7 +347,7 @@ const Auth = () => {
 
             </div>
             
-            <div className="mt-8 text-center border-t border-slate-100 pt-6">
+            <div className="mt-8 text-center border-t border-white/10 pt-6">
               <span className="text-slate-500 text-xs font-bold">
                 {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
                 <button onClick={() => setIsSignUp(!isSignUp)} className="text-[#D51659] font-black hover:text-[#b51350] transition-colors cursor-pointer ml-1">
@@ -356,7 +362,7 @@ const Auth = () => {
                   dispatch(guestLogin());
                   navigate("/swipe");
                 }}
-                className="text-[11px] font-black uppercase tracking-wider text-slate-400 hover:text-bumble-charcoal transition-colors px-4 py-2 bg-slate-50 hover:bg-slate-100 rounded-full cursor-pointer"
+                className="text-[11px] font-black uppercase tracking-wider text-white/40 hover:text-white transition-colors px-4 py-2 bg-white/5 hover:bg-white/10 rounded-full cursor-pointer border border-white/10"
               >
                 Skip for now
               </button>

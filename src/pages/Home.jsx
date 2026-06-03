@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import coupleImg from '../assets/couple.jpg';
+import landscapeLogo from '../assets/landscapelogo.png';
 
 const Home = () => {
   const dispatch = useDispatch();
@@ -421,12 +422,7 @@ const Home = () => {
             {/* Logo & Slogan Column */}
             <div className="col-span-2 space-y-4 text-left">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-bumble-yellow flex items-center justify-center shadow">
-                  <Flame className="w-4.5 h-4.5 text-bumble-charcoal fill-current" />
-                </div>
-                <span className="font-black text-lg tracking-tight text-bumble-charcoal">
-                  Inakkam
-                </span>
+                <img src={landscapeLogo} alt="Inakkam" className="h-10 w-auto filter invert" />
               </div>
               <p className="text-slate-400 text-xs leading-relaxed max-w-sm font-semibold">
                 Find authentic, meaningful connections that spark confidence and joy. Built with premium light details, editable matchmaking profiles, and real-time chat.

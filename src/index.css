@@ -2,13 +2,13 @@
 
 @theme {
   --color-bumble-yellow: #D51659;
-  --color-bumble-red: #FF5A5F;
+  --color-bumble-red: #b44ddc;
   --color-bumble-charcoal: #1E1E1E;
-  --color-bumble-cream: #FCF9F2;
-  --color-bumble-light-gray: #F6F4EE;
+  --color-bumble-cream: #0A0A0A;
+  --color-bumble-light-gray: #111111;
   
-  --color-dark-glass: rgba(30, 26, 22, 0.45);
-  --color-light-glass: rgba(255, 255, 255, 0.75);
+  --color-dark-glass: rgba(10, 10, 10, 0.75);
+  --color-light-glass: rgba(20, 15, 25, 0.85);
 
   --animate-float-slow: float 8s ease-in-out infinite;
   --animate-float-medium: float 6s ease-in-out infinite alternate;
@@ -33,6 +33,10 @@
       background-position: 100% 50%;
     }
   }
+}
+
+.bg-premium-dark-gradient {
+  background: linear-gradient(135deg, #0A0A0A 0%, #1a0a15 20%, #15061a 45%, #0d0515 70%, #0A0A0A 100%);
 }
 
 /* Custom Scrollbar Styles */

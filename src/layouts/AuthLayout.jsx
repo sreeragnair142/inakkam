@@ -1,5 +1,6 @@
 import React from 'react';
 import { Flame } from 'lucide-react';
+import landscapeLogo from '../assets/landscapelogo.png';
 
 const AuthLayout = ({ children }) => {
   return (
@@ -11,41 +12,33 @@ const AuthLayout = ({ children }) => {
       <div className="absolute top-[40%] right-[30%] w-[35rem] h-[35rem] rounded-full bg-rose-500/5 blur-[100px] pointer-events-none animate-float-fast" />
 
       {/* Left Pane - Premium Branding Showcase */}
-      <div className="hidden md:flex md:w-1/2 bg-bumble-yellow p-12 flex-col justify-between relative overflow-hidden">
+      <div className="hidden md:flex md:w-1/2 p-12 flex-col justify-between relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #D51659 0%, #b44ddc 100%)' }}>
         
         {/* Shifting radial glow */}
         <div className="absolute -inset-px bg-gradient-to-tr from-white/10 via-transparent to-black/5 opacity-50 pointer-events-none" />
 
         {/* Logo */}
-        <div className="flex items-center gap-3 relative z-10">
-          <div className="w-11 h-11 rounded-xl bg-bumble-charcoal flex items-center justify-center shadow-lg shadow-black/10">
-            <Flame className="w-6 h-6 text-bumble-yellow animate-pulse" />
-          </div>
-          <div>
-            <span className="font-extrabold text-2xl tracking-tight text-bumble-charcoal">
-              Inakkam
-            </span>
-            <p className="text-[9px] text-bumble-charcoal/80 font-bold uppercase tracking-wider">Premium Dating Experience</p>
-          </div>
+        <div className="flex items-center gap-3 relative z-10 drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]">
+          <img src={landscapeLogo} alt="Inakkam" className="h-12 w-auto" />
         </div>
 
         {/* Core Slogan & Features */}
         <div className="my-auto max-w-md relative z-10">
-          <span className="text-bumble-charcoal font-bold text-xs uppercase tracking-widest px-3 py-1 rounded-full bg-black/5 border border-black/10 inline-block mb-4 shadow-sm">
+          <span className="text-white font-bold text-xs uppercase tracking-widest px-3 py-1 rounded-full bg-black/10 border border-white/10 inline-block mb-4 shadow-sm">
             Welcome to the future of connection
           </span>
-          <h2 className="text-4xl lg:text-5xl font-black tracking-tight leading-none mb-6 text-bumble-charcoal">
+          <h2 className="text-4xl lg:text-5xl font-black tracking-tight leading-none mb-6 text-white">
             Where sparks meet{' '}
-            <span className="text-bumble-red">
+            <span className="text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">
               elegance.
             </span>
           </h2>
-          <p className="text-bumble-charcoal/70 text-sm leading-relaxed mb-8">
-            Experience dating redefined. Crafted with a premium aesthetic, HoneyGlow brings high-fidelity match-swiping, sleek glassmorphism dashboard structures, and authentic messaging to help you meet quality connections.
+          <p className="text-white/80 text-sm leading-relaxed mb-8">
+            Experience dating redefined. Crafted with a premium aesthetic, Inakkam brings high-fidelity match-swiping, sleek glassmorphism dashboard structures, and authentic messaging to help you meet quality connections.
           </p>
 
           {/* Interactive Floating Card Mockup */}
-          <div className="bg-white p-4.5 rounded-2xl border border-black/5 shadow-2xl flex items-center gap-4 animate-float-medium max-w-sm text-bumble-charcoal">
+          <div className="bg-black/20 backdrop-blur-xl p-4.5 rounded-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex items-center gap-4 animate-float-medium max-w-sm text-white">
             <img
               src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=150"
               alt="Sophia Profile Preview"
@@ -53,24 +46,24 @@ const AuthLayout = ({ children }) => {
             />
             <div>
               <div className="flex items-center gap-1.5">
-                <h4 className="font-bold text-sm">Sophia, 24</h4>
-                <span className="w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
+                <h4 className="font-bold text-sm text-white">Sophia, 24</h4>
+                <span className="w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white/20" />
               </div>
-              <p className="text-[11px] text-slate-500 line-clamp-1">Product Designer • Stanford</p>
+              <p className="text-[11px] text-white/60 line-clamp-1">Product Designer • Stanford</p>
               <div className="flex items-center gap-1.5 mt-1.5">
-                <span className="text-[10px] bg-bumble-yellow/20 text-slate-800 px-1.5 py-0.5 rounded-md font-bold">96% Match</span>
-                <span className="text-[10px] bg-bumble-red/10 text-bumble-red px-1.5 py-0.5 rounded-md font-bold">Verified</span>
+                <span className="text-[10px] bg-[#D51659]/20 text-white px-1.5 py-0.5 rounded-md font-bold border border-[#D51659]/30">96% Match</span>
+                <span className="text-[10px] bg-green-500/10 text-green-400 px-1.5 py-0.5 rounded-md font-bold border border-green-500/30">Verified</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="text-bumble-charcoal/60 text-xs relative z-10 flex justify-between items-center font-medium">
-          <span>&copy; {new Date().getFullYear()} HoneyGlow Inc.</span>
+        <div className="text-white/60 text-xs relative z-10 flex justify-between items-center font-medium">
+          <span>&copy; {new Date().getFullYear()} Inakkam Inc.</span>
           <div className="flex gap-4">
-            <span className="hover:text-bumble-charcoal cursor-pointer transition-colors">Privacy Policy</span>
-            <span className="hover:text-bumble-charcoal cursor-pointer transition-colors">Terms of Service</span>
+            <span className="hover:text-white cursor-pointer transition-colors">Privacy Policy</span>
+            <span className="hover:text-white cursor-pointer transition-colors">Terms of Service</span>
           </div>
         </div>
 

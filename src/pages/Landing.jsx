@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import landscapeLogo from "../assets/landscapelogo.png";
 import toast from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
 import { login, logout } from "../redux/slices/authSlice";
@@ -367,31 +368,26 @@ const Landing = () => {
     };
   };
   return (
-    <div className="min-h-screen bg-white text-bumble-charcoal overflow-x-hidden relative font-sans">
+    <div style={{ background: 'linear-gradient(135deg, #0A0A0A 0%, #1a0a15 20%, #15061a 45%, #0d0515 70%, #0A0A0A 100%)' }} className="min-h-screen text-white overflow-x-hidden relative font-sans">
       {/* SECTION 1: Red Hero Canvas */}
-      <section style={{ backgroundColor: '#D51659' }} className="px-6 pb-24 relative overflow-hidden flex flex-col min-h-screen justify-between">
+      <section className="px-6 pb-24 relative overflow-hidden flex flex-col min-h-screen justify-between">
         {/* Shifting radial glow */}
-        <div className="absolute -inset-px bg-gradient-to-b from-white/10 via-transparent to-black/5 opacity-40 pointer-events-none" />
+        <div className="absolute -inset-px bg-gradient-to-b from-[#D51659]/8 via-transparent to-[#b44ddc]/5 opacity-80 pointer-events-none" />
 
         {/* Header (Matching Navigation in Screenshots) */}
         <header className="max-w-7xl mx-auto w-full py-6 flex items-center justify-between relative z-20">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-bumble-charcoal flex items-center justify-center shadow-lg shadow-black/10">
-              <Flame className="w-5 h-5 text-bumble-yellow animate-pulse" />
-            </div>
-            <span className="font-black text-2xl tracking-tight text-bumble-charcoal animate-pulse">
-              Inakkam
-            </span>
+          <div className="flex items-center gap-3 drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]">
+            <img src={landscapeLogo} alt="Inakkam" className="h-8 w-auto" />
           </div>
 
           {/* Desktop Middle Pills */}
           {isAuthenticated ? (
-            <div className="hidden md:flex items-center gap-1 bg-white px-2.5 py-1.5 rounded-full shadow-sm border border-black/5">
+            <div className="hidden md:flex items-center gap-1 bg-white/10 backdrop-blur-md px-2.5 py-1.5 rounded-full shadow-sm border border-white/10">
               {navItems.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => handleNavClick(item.path)}
-                  className="px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer text-bumble-charcoal hover:bg-slate-100 flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer text-white/80 hover:bg-white/10 flex items-center gap-1.5"
                 >
                   <span>{item.label}</span>
                   {item.premium && (
@@ -403,7 +399,7 @@ const Landing = () => {
               ))}
             </div>
           ) : (
-            <div className="hidden md:flex items-center gap-1.5 bg-white px-2 py-1.5 rounded-full shadow-sm border border-black/5">
+            <div className="hidden md:flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-2 py-1.5 rounded-full shadow-sm border border-white/10">
               {["Home", "Discover", "Explore", "Chat", "Profile"].map(
                 (pill, idx) => (
                   <button
@@ -412,8 +408,8 @@ const Landing = () => {
                     className={`px-6 py-2 rounded-full text-xs font-bold transition-colors cursor-pointer
                     ${
                       idx === 0
-                        ? "bg-[#D51659]/10 text-bumble-charcoal"
-                        : "text-bumble-charcoal hover:bg-slate-100"
+                        ? "bg-[#D51659]/20 text-white"
+                        : "text-white/70 hover:bg-white/10"
                     }`}
                   >
                     {pill}
@@ -431,11 +427,11 @@ const Landing = () => {
                 <div className="relative">
                   <button
                     onClick={() => setShowNotifications(!showNotifications)}
-                    className="p-2.5 rounded-full border border-black/5 bg-white text-bumble-charcoal hover:bg-slate-50 transition-colors flex items-center justify-center relative cursor-pointer"
+                    className="p-2.5 rounded-full border border-white/10 bg-[#D51659] text-white hover:bg-[#b44ddc] transition-colors flex items-center justify-center relative cursor-pointer shadow-lg"
                   >
                     <Bell className="w-4.5 h-4.5" />
                     {unreadNotifCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-4.5 h-4.5 bg-bumble-red text-white text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-white animate-bounce">
+                      <span className="absolute -top-1 -right-1 w-4.5 h-4.5 bg-white text-[#D51659] text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-[#D51659] animate-bounce shadow-sm">
                         {unreadNotifCount}
                       </span>
                     )}
@@ -509,7 +505,7 @@ const Landing = () => {
                 <div className="relative">
                   <div
                     onClick={() => setShowProfileMenu(!showProfileMenu)}
-                    className="flex items-center gap-2 p-1 pr-3 rounded-full border border-black/5 bg-white hover:bg-slate-50 cursor-pointer shadow-sm transition-all"
+                    className="flex items-center gap-2 p-1 pr-3 rounded-full border border-white/10 bg-[#D51659] hover:bg-[#b44ddc] cursor-pointer shadow-lg transition-all"
                   >
                     <img
                       src={
@@ -519,10 +515,10 @@ const Landing = () => {
                       alt={user?.name || "Alex"}
                       className="w-8 h-8 rounded-full object-cover border border-white"
                     />
-                    <span className="text-xs font-black hidden sm:inline-block text-bumble-charcoal">
+                    <span className="text-xs font-black hidden sm:inline-block text-white">
                       {user?.name || "Alex"}
                     </span>
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                    <ChevronDown className="w-3.5 h-3.5 text-white/80" />
                   </div>
 
                   {/* Profile Menu Dropdown */}
@@ -600,7 +596,7 @@ const Landing = () => {
                 </button>
                 <button
                   onClick={() => navigate("/auth")}
-                  className="text-xs sm:text-sm font-bold bg-bumble-charcoal text-white hover:bg-black px-6 py-2.5 rounded-full hover:scale-105 active:scale-95 transition-all duration-300 shadow-md shadow-black/15 cursor-pointer"
+                  className="text-xs sm:text-sm font-bold bg-[#D51659] text-white hover:bg-[#b51350] px-6 py-2.5 rounded-full hover:scale-105 active:scale-95 transition-all duration-300 shadow-md shadow-[#D51659]/30 cursor-pointer"
                 >
                   Sign In
                 </button>
@@ -613,7 +609,7 @@ const Landing = () => {
         <div className="max-w-7xl mx-auto w-full flex-grow flex flex-col justify-center items-center relative z-10 pt-8 pb-12">
           {/* Huge background text label "Bumble" (Matching Screenshot 2) */}
           <div className="absolute inset-0 flex items-center justify-center select-none pointer-events-none z-0">
-            <span className="text-[40vw] md:text-[32vw] lg:text-[24vw] font-black tracking-tighter text-bumble-charcoal opacity-15 leading-none whitespace-nowrap">
+            <span className="text-[40vw] md:text-[32vw] lg:text-[24vw] font-black tracking-tighter text-white opacity-[0.06] leading-none whitespace-nowrap">
               Inakkam
             </span>
           </div>
@@ -973,7 +969,7 @@ const Landing = () => {
       </>
       )}
 
-      <section className="relative overflow-hidden py-24 md:py-36 bg-[#D51659]">
+      <section className="relative overflow-hidden py-24 md:py-36" style={{ background: 'linear-gradient(135deg, #0A0A0A 0%, #1a0a15 25%, #15061a 50%, #0d0515 75%, #0A0A0A 100%)' }}>
 
   {/* soft background glow */}
   <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-white/10 blur-[120px] rounded-full" />
@@ -1190,15 +1186,15 @@ const Landing = () => {
       <section className="py-24 px-6 max-w-7xl mx-auto">
         <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
           {/* Card 1: Inakkam Date (Dark Theme) */}
-          <div className="group relative bg-[#FF6B6B] text-bumble-charcoal rounded-[3rem] p-12 flex flex-col justify-between overflow-hidden h-[600px] border border-black/5 shadow-2xl transition-all duration-500 hover:-translate-y-2">
+          <div className="group relative bg-black/40 backdrop-blur-2xl text-white rounded-[3rem] p-12 flex flex-col justify-between overflow-hidden h-[600px] border border-white/10 shadow-2xl transition-all duration-500 hover:-translate-y-2">
             {/* Background glowing orb */}
-            <div className="absolute top-[-20%] left-[-20%] w-[300px] h-[300px] bg-white/40 blur-[80px] rounded-full group-hover:bg-white/60 transition-colors duration-500" />
+            <div className="absolute top-[-20%] left-[-20%] w-[300px] h-[300px] bg-[#D51659]/30 blur-[80px] rounded-full group-hover:bg-[#D51659]/50 transition-colors duration-500" />
 
             {/* Graphic Layer */}
             <div className="relative z-10 w-full max-w-[240px] mx-auto mt-4 transition-transform duration-500 group-hover:scale-105 group-hover:-translate-y-4">
-              <div className="bg-white/40 backdrop-blur-md rounded-3xl p-3 shadow-2xl border border-white/50">
+              <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-3 shadow-2xl border border-white/10">
                 <div className="relative rounded-2xl overflow-hidden aspect-[3/4]">
-                  <div className="absolute top-4 left-4 z-20 text-[9px] bg-bumble-charcoal text-white font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-lg">
+                  <div className="absolute top-4 left-4 z-20 text-[9px] bg-black/80 backdrop-blur-md text-white font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-lg border border-white/10">
                     ID Verified
                   </div>
                   <img
@@ -1207,7 +1203,7 @@ const Landing = () => {
                     className="w-full h-full object-cover scale-110 group-hover:scale-100 transition-transform duration-700 ease-out"
                   />
                   {/* Glass overlay text */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pt-12">
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pt-12">
                     <span className="font-extrabold text-white text-lg block">
                       Tiana, 30
                     </span>
@@ -1221,16 +1217,16 @@ const Landing = () => {
 
             {/* Text Layer */}
             <div className="relative z-10 mt-8">
-              <h3 className="text-4xl font-serif italic font-semibold text-bumble-charcoal mb-3">
+              <h3 className="text-4xl font-serif italic font-semibold text-white mb-3">
                 Inakkam Date
               </h3>
-              <p className="text-bumble-charcoal/80 text-sm leading-relaxed max-w-sm mb-6 font-medium">
+              <p className="text-white/70 text-sm leading-relaxed max-w-sm mb-6 font-medium">
                 Whether you're new to dating or ready to try again, Inakkam Date
                 is built to bring you closer to love safely and meaningfully.
               </p>
               <button
                 onClick={() => handleActionClick("/swipe")}
-                className="inline-flex items-center gap-2 bg-bumble-charcoal text-white px-6 py-3 rounded-full font-bold text-xs uppercase tracking-widest hover:bg-black transition-colors"
+                className="inline-flex items-center gap-2 bg-[#D51659] text-white px-6 py-3 rounded-full font-bold text-xs uppercase tracking-widest hover:bg-[#b44ddc] transition-colors shadow-[0_2px_12px_rgba(213,22,89,0.4)]"
               >
                 <span>Find your person</span>
                 <ArrowRight className="w-4 h-4" />
@@ -1238,17 +1234,17 @@ const Landing = () => {
             </div>
           </div>
 
-          {/* Card 2: Inakkam BFF (Light Theme) */}
-          <div className="group relative bg-[#FFEBA2] text-bumble-charcoal rounded-[3rem] p-12 flex flex-col justify-between overflow-hidden h-[600px] border border-black/5 shadow-2xl transition-all duration-500 hover:-translate-y-2">
+          {/* Card 2: Inakkam BFF (Dark Theme) */}
+          <div className="group relative bg-black/40 backdrop-blur-2xl text-white rounded-[3rem] p-12 flex flex-col justify-between overflow-hidden h-[600px] border border-white/10 shadow-2xl transition-all duration-500 hover:-translate-y-2">
             {/* Background glowing orb */}
-            <div className="absolute bottom-[-20%] right-[-20%] w-[300px] h-[300px] bg-white/60 blur-[80px] rounded-full group-hover:scale-150 transition-transform duration-700" />
+            <div className="absolute bottom-[-20%] right-[-20%] w-[300px] h-[300px] bg-[#9333ea]/30 blur-[80px] rounded-full group-hover:scale-150 transition-transform duration-700" />
 
             {/* Graphic Layer */}
             <div className="relative z-10 w-full max-w-[240px] mx-auto mt-4 transition-transform duration-500 group-hover:scale-105 group-hover:-translate-y-4">
-              <div className="bg-white rounded-3xl p-3 shadow-2xl border border-black/5">
+              <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-3 shadow-2xl border border-white/10">
                 <div className="relative rounded-2xl overflow-hidden aspect-[3/4]">
-                  <div className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-[#FF6B6B] flex items-center justify-center shadow-lg border border-white/50">
-                    <Heart className="w-5 h-5 text-bumble-charcoal fill-current animate-bounce" />
+                  <div className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-[#D51659] flex items-center justify-center shadow-lg border border-white/10">
+                    <Heart className="w-5 h-5 text-white fill-current animate-bounce" />
                   </div>
                   <img
                     src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=500"
@@ -1256,12 +1252,12 @@ const Landing = () => {
                     className="w-full h-full object-cover scale-110 group-hover:scale-100 transition-transform duration-700 ease-out"
                   />
                   {/* Glass overlay text */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pt-12">
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pt-12">
                     <span className="font-extrabold text-white text-lg block">
                       Book club
                     </span>
                     <span className="text-xs text-white/80 mt-1 block">
-                      Events â€¢ Chat
+                      Events • Chat
                     </span>
                   </div>
                 </div>
@@ -1270,17 +1266,17 @@ const Landing = () => {
 
             {/* Text Layer */}
             <div className="relative z-10 mt-8">
-              <h3 className="text-4xl font-serif italic font-semibold text-bumble-charcoal mb-3">
+              <h3 className="text-4xl font-serif italic font-semibold text-white mb-3">
                 Inakkam BFF
               </h3>
-              <p className="text-bumble-charcoal/80 text-sm leading-relaxed max-w-sm mb-6 font-medium">
+              <p className="text-white/70 text-sm leading-relaxed max-w-sm mb-6 font-medium">
                 Whether you've moved to a new city or just want to expand your
                 circle, BFF makes it easy to meet like-minded friends who match
                 your vibe.
               </p>
               <button
                 onClick={() => handleActionClick("/swipe")}
-                className="inline-flex items-center gap-2 bg-bumble-charcoal text-white px-6 py-3 rounded-full font-bold text-xs uppercase tracking-widest hover:bg-black transition-colors"
+                className="inline-flex items-center gap-2 bg-white/10 text-white px-6 py-3 rounded-full font-bold text-xs uppercase tracking-widest hover:bg-white/20 transition-colors border border-white/10"
               >
                 <span>Find your people</span>
                 <ArrowRight className="w-4 h-4" />
@@ -1293,7 +1289,7 @@ const Landing = () => {
 
 
       {/* SECTION 5: Testimonials Slider */}
-      <section className="py-20 px-10 bg-bumble-light-gray max-w-6xl mx-auto rounded-[2.5rem] mb-24 relative overflow-hidden border border-black/5">
+      <section className="py-20 px-10 bg-black/40 backdrop-blur-2xl max-w-6xl mx-auto rounded-[2.5rem] mb-24 relative overflow-hidden border border-white/10 shadow-2xl">
         <AnimatePresence mode="wait">
           <motion.div
             key={testIndex}
@@ -1306,20 +1302,20 @@ const Landing = () => {
             {/* Quote details */}
             <div className="flex-1 space-y-6 z-10">
 
-              <p className="text-2xl sm:text-4.5xl font-black text-bumble-charcoal leading-tight min-h-[160px]">
+              <p className="text-2xl sm:text-4.5xl font-black text-white/90 leading-tight min-h-[160px]">
                 {testimonials[testIndex].quote}
               </p>
               <div>
-                <h4 className="font-extrabold text-base text-bumble-charcoal">
+                <h4 className="font-extrabold text-base text-white">
                   {testimonials[testIndex].name}
                 </h4>
-                <span className="text-xs text-slate-500 font-semibold block mt-0.5">
+                <span className="text-xs text-white/50 font-semibold block mt-0.5">
                   {testimonials[testIndex].meta}
                 </span>
               </div>
               <button
                 onClick={() => handleActionClick("/home")}
-                className="px-8 py-3.5 bg-bumble-charcoal hover:bg-black text-white rounded-full font-bold text-xs uppercase tracking-wider cursor-pointer transition-colors shadow-sm mt-4"
+                className="px-8 py-3.5 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-full font-bold text-xs uppercase tracking-wider cursor-pointer transition-colors shadow-sm mt-4"
               >
                 Read more stories
               </button>
@@ -1330,7 +1326,7 @@ const Landing = () => {
               <img
                 src={testimonials[testIndex].image}
                 alt={testimonials[testIndex].name}
-                className="w-full aspect-[3/3.8] object-cover rounded-3xl shadow-2xl filter grayscale border border-black/5"
+                className="w-full aspect-[3/3.8] object-cover rounded-3xl shadow-2xl filter grayscale border border-white/10"
               />
             </div>
           </motion.div>
@@ -1344,8 +1340,8 @@ const Landing = () => {
               onClick={() => setTestIndex(idx)}
               className={`w-2.5 h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
                 testIndex === idx
-                  ? "bg-[#FF6B6B] w-8"
-                  : "bg-slate-300 hover:bg-slate-400"
+                  ? "bg-[#D51659] w-8"
+                  : "bg-white/20 hover:bg-white/40"
               }`}
               aria-label={`Go to slide ${idx + 1}`}
             />
@@ -1354,27 +1350,22 @@ const Landing = () => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-100 bg-bumble-light-gray py-16">
+      <footer className="border-t border-white/10 py-16">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-bumble-charcoal flex items-center justify-center shadow-md shadow-black/10">
-              <Flame className="w-4.5 h-4.5 text-bumble-yellow" />
-            </div>
-            <span className="font-black text-lg tracking-tight text-bumble-charcoal">
-              Inakkam
-            </span>
+          <div className="flex items-center gap-3 drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]">
+            <img src={landscapeLogo} alt="Inakkam" className="h-7 w-auto" />
           </div>
-          <div className="flex gap-6 text-sm text-slate-500 font-semibold">
-            <span className="hover:text-slate-800 cursor-pointer">Support</span>
-            <span className="hover:text-slate-800 cursor-pointer">
+          <div className="flex gap-6 text-sm text-white/50 font-semibold">
+            <span className="hover:text-white cursor-pointer transition-colors">Support</span>
+            <span className="hover:text-white cursor-pointer transition-colors">
               Safety Tips
             </span>
-            <span className="hover:text-slate-800 cursor-pointer">
+            <span className="hover:text-white cursor-pointer transition-colors">
               Community Rules
             </span>
-            <span className="hover:text-slate-800 cursor-pointer">Careers</span>
+            <span className="hover:text-white cursor-pointer transition-colors">Careers</span>
           </div>
-          <div className="text-slate-400 text-xs font-medium">
+          <div className="text-white/30 text-xs font-medium">
             &copy; {new Date().getFullYear()} Inakkam Inc. All rights reserved.
           </div>
         </div>

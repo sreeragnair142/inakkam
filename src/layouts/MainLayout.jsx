@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
+import landscapeLogo from '../assets/landscapelogo.png';
+import phoneLogo from '../assets/phoneinakkam.png';
 import toast from 'react-hot-toast';
 import { setActiveTab } from '../redux/slices/uiSlice';
 import { logout } from '../redux/slices/authSlice';
@@ -105,33 +107,32 @@ const MainLayout = ({ children }) => {
 
   return (
     <>
-    <div className="min-h-screen flex flex-col bg-white text-bumble-charcoal font-sans relative overflow-x-hidden">
+    <div className="min-h-screen flex flex-col text-white font-sans relative overflow-x-hidden" style={{ background: 'linear-gradient(135deg, #0A0A0A 0%, #1a0a15 20%, #15061a 45%, #0d0515 70%, #0A0A0A 100%)' }}>
 
-      {/* BRAND LOGO (Top Left for all screens) */}
+      {/* BRAND LOGO (Top Left for all screens) — hidden on chat */}
       {(() => {
+        if (location.pathname === '/chat') return null;
         const isDarkBg = location.pathname === '/swipe' || location.pathname === '/profile';
         return (
           <div className="fixed top-4 left-4 md:top-6 md:left-6 z-40">
             <div 
               onClick={() => handleNavClick('/landing')}
-              className="flex items-center gap-2 cursor-pointer hover:scale-105 transition-transform"
+              className="flex items-center gap-2 cursor-pointer hover:scale-105 transition-transform px-2 py-1 drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]"
             >
-              <div className={`w-7 h-7 md:w-8 md:h-8 rounded-lg md:rounded-xl flex items-center justify-center shadow-md ${isDarkBg ? 'bg-white/20 backdrop-blur-sm' : 'bg-bumble-charcoal'}`}>
-                <Flame className="w-4 h-4 text-bumble-yellow animate-pulse" />
-              </div>
-              <span className={`font-black text-lg md:text-xl tracking-tight ${isDarkBg ? 'text-white/90 drop-shadow-md' : 'text-bumble-charcoal'}`}>
-                Inakkam
-              </span>
+              <img src={landscapeLogo} alt="Inakkam" className="hidden md:block h-8 w-auto" />
+              <img src={phoneLogo} alt="Inakkam" className="block md:hidden h-8 w-auto" />
             </div>
           </div>
         );
       })()}
 
       {(() => {
-        const isDarkBg = location.pathname === '/swipe' || location.pathname === '/profile';
+        const isChatBg = location.pathname === '/chat';
+        if (isChatBg) return null; // Hide header on chat page
+
         return (
           <header className="fixed top-6 left-0 right-0 z-40 flex items-center justify-center pointer-events-none hidden lg:flex">
-            <nav className={`${isDarkBg ? 'bg-black/20 backdrop-blur-md border-white/10' : 'bg-white border-black/5'} px-3 py-2 rounded-full shadow-lg border flex items-center gap-2 pointer-events-auto transition-colors`}>
+            <nav className="bg-white/10 backdrop-blur-md border-white/10 px-3 py-2 rounded-full shadow-lg border flex items-center gap-2 pointer-events-auto transition-colors">
               {navItems.map((item) => {
                 const isActive = activeTab === item.id || (item.id === 'home' && activeTab === 'home');
                 return (
@@ -140,8 +141,8 @@ const MainLayout = ({ children }) => {
                     onClick={() => handleNavClick(item.path)}
                     className={`px-5 py-2.5 rounded-full text-xs font-black capitalize transition-all cursor-pointer flex items-center gap-1.5
                       ${isActive
-                        ? (isDarkBg ? 'text-white bg-white/20' : 'text-black bg-slate-100')
-                        : (isDarkBg ? 'text-white/70 hover:bg-white/10 hover:text-white' : 'text-black hover:bg-slate-50')
+                        ? 'text-white bg-white/20'
+                        : 'text-white/70 hover:bg-white/10 hover:text-white'
                       }`}
                   >
                     <span>{item.label}</span>
@@ -223,7 +224,7 @@ const MainLayout = ({ children }) => {
 
       {/* MAIN CONTENT PORTAL (100% FULL-WIDTH CAPABLE VIEWPORT) */}
       <main 
-        className="flex-grow w-full flex flex-col z-10 relative pb-20 lg:pb-0 bg-[#f8f9fa]"
+        className="flex-grow w-full flex flex-col z-10 relative pb-20 lg:pb-0"
         onClickCapture={(e) => {
           if (isGuest) {
             e.stopPropagation();
