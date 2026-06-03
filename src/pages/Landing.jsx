@@ -376,8 +376,8 @@ const Landing = () => {
 
         {/* Header (Matching Navigation in Screenshots) */}
         <header className="max-w-7xl mx-auto w-full py-6 flex items-center justify-between relative z-20">
-          <div className="flex items-center gap-3 drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]">
-            <img src={landscapeLogo} alt="Inakkam" className="h-8 w-auto" />
+          <div className="flex items-center gap-3">
+            <img src={landscapeLogo} alt="Inakkam" className="h-14 w-auto" />
           </div>
 
           {/* Desktop Middle Pills */}
@@ -984,7 +984,7 @@ const Landing = () => {
         md:text-[18vw]
         font-black
         tracking-[-0.08em]
-        text-black/[0.08]
+        text-white/[0.06]
       "
     >
       Inakkam

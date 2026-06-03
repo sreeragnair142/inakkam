@@ -251,8 +251,8 @@ export default function Onboarding() {
         {/* DESKTOP SPLIT BANNER */}
         <div className="hidden lg:flex w-5/12 p-16 flex-col justify-between relative overflow-hidden shrink-0" style={{ background: 'linear-gradient(135deg, #D51659 0%, #b44ddc 100%)' }}>
           <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-8 drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]">
-              <img src={landscapeLogo} alt="Inakkam" className="h-10 w-auto" />
+            <div className="flex items-center gap-3 mb-8">
+              <img src={landscapeLogo} alt="Inakkam" className="h-14 w-auto" />
             </div>
             <h2 className="text-4xl font-black text-white mb-4 leading-tight">{title}</h2>
             <p className="text-white/80 font-medium text-lg leading-relaxed">{sub}</p>
@@ -277,8 +277,8 @@ export default function Onboarding() {
               <button onClick={handleFormBack} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 active:scale-95 transition-all cursor-pointer border border-white/10">
                 <ArrowLeft className="w-5 h-5 text-white" />
               </button>
-              <div className="flex items-center gap-2 drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]">
-                <img src={landscapeLogo} alt="Inakkam" className="h-6 w-auto" />
+              <div className="flex items-center gap-2">
+                <img src={landscapeLogo} alt="Inakkam" className="h-10 w-auto" />
               </div>
               <span className="text-xs font-black text-white/70 bg-white/10 px-3 py-1.5 rounded-full border border-white/10">{formStep}/{totalFormSteps}</span>
             </div>

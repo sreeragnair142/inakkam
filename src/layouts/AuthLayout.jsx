@@ -18,8 +18,8 @@ const AuthLayout = ({ children }) => {
         <div className="absolute -inset-px bg-gradient-to-tr from-white/10 via-transparent to-black/5 opacity-50 pointer-events-none" />
 
         {/* Logo */}
-        <div className="flex items-center gap-3 relative z-10 drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]">
-          <img src={landscapeLogo} alt="Inakkam" className="h-12 w-auto" />
+        <div className="flex items-center gap-3 relative z-10">
+          <img src={landscapeLogo} alt="Inakkam" className="h-16 w-auto" />
         </div>
 
         {/* Core Slogan & Features */}

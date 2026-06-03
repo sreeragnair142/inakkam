@@ -117,10 +117,10 @@ const MainLayout = ({ children }) => {
           <div className="fixed top-4 left-4 md:top-6 md:left-6 z-40">
             <div 
               onClick={() => handleNavClick('/landing')}
-              className="flex items-center gap-2 cursor-pointer hover:scale-105 transition-transform px-2 py-1 drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]"
+              className="flex items-center gap-2 cursor-pointer hover:scale-105 transition-transform px-2 py-1"
             >
-              <img src={landscapeLogo} alt="Inakkam" className="hidden md:block h-8 w-auto" />
-              <img src={phoneLogo} alt="Inakkam" className="block md:hidden h-8 w-auto" />
+              <img src={landscapeLogo} alt="Inakkam" className="hidden md:block h-14 w-auto" />
+              <img src={phoneLogo} alt="Inakkam" className="block md:hidden h-10 w-auto" />
             </div>
           </div>
         );
