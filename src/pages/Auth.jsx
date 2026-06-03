@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { login, guestLogin } from "../redux/slices/authSlice";
 import { Flame, ArrowRight, Eye, EyeOff, Sparkles } from "lucide-react";
@@ -31,9 +31,14 @@ const introSlides = [
 
 const Auth = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
 
-  const [phase, setPhase] = useState("splash"); // splash, intro, login
+  const [phase, setPhase] = useState(() => {
+    // If state explicitly requests skipping splash (e.g., from guest clicking a feature)
+    if (location.state?.skipSplash) return 'login';
+    return 'splash';
+  });
   const [introStep, setIntroStep] = useState(0);
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPw, setShowPw] = useState(false);
@@ -178,31 +183,31 @@ const Auth = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className="relative w-full max-w-[280px] sm:max-w-xs h-[380px] mb-8 mt-6"
+              className="relative w-full max-w-[260px] sm:max-w-xs h-[40vh] max-h-[380px] min-h-[300px] mb-6 md:mb-8 mt-4 md:mt-6"
             >
               {/* BACK CARD - glass border */}
               <div className="absolute top-0 right-[-30px] w-[80%] h-[90%] rotate-[15deg] z-0 opacity-80">
-                <div className="w-full h-full rounded-[2.5rem] shadow-xl overflow-hidden relative border border-white/10">
+                <div className="w-full h-full rounded-[2rem] sm:rounded-[2.5rem] shadow-xl overflow-hidden relative border border-white/10">
                   <img src={introSlides[(introStep + 1) % introSlides.length].image} className="w-full h-full object-cover filter brightness-[0.65]" alt="" />
                 </div>
               </div>
 
               {/* FRONT CARD - enhanced shadow and border */}
               <div className="absolute top-4 left-[-15px] w-[90%] h-[95%] -rotate-[6deg] z-10">
-                <div className="w-full h-full rounded-[2.5rem] shadow-[0_20px_60px_rgba(0,0,0,0.35)] overflow-hidden relative border-2 border-white/15">
+                <div className="w-full h-full rounded-[2rem] sm:rounded-[2.5rem] shadow-[0_20px_60px_rgba(0,0,0,0.35)] overflow-hidden relative border-2 border-white/15">
                   <img src={introSlides[introStep].image} className="w-full h-full object-cover filter brightness-[0.85]" alt="" />
                   <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/60 via-black/20 to-transparent pointer-events-none" />
                   
                   {/* Card info overlay */}
-                  <div className="absolute bottom-5 left-5 right-5 z-20">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="px-3 py-1 rounded-full text-[10px] font-bold text-white backdrop-blur-md"
+                  <div className="absolute bottom-4 sm:bottom-5 left-4 sm:left-5 right-4 sm:right-5 z-20">
+                    <div className="flex items-center gap-2 mb-1.5 sm:mb-2">
+                      <span className="px-2 sm:px-3 py-1 rounded-full text-[9px] sm:text-[10px] font-bold text-white backdrop-blur-md"
                         style={{ background: "rgba(213,22,89,0.5)" }}>
                         {introSlides[introStep].tag}
                       </span>
-                      <span className="text-lg">{introSlides[introStep].emoji}</span>
+                      <span className="text-base sm:text-lg">{introSlides[introStep].emoji}</span>
                     </div>
-                    <h3 className="font-black text-white text-lg drop-shadow-lg">
+                    <h3 className="font-black text-white text-base sm:text-lg drop-shadow-lg">
                       {introSlides[introStep].name}, {introSlides[introStep].age}
                     </h3>
                   </div>
@@ -214,14 +219,14 @@ const Auth = () => {
               key={`t-${introStep}`}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-3xl font-black text-white max-w-[320px] mb-8 min-h-[80px] text-center leading-tight"
+              className="text-2xl sm:text-3xl font-black text-white max-w-[280px] sm:max-w-[320px] mb-6 md:mb-8 min-h-[60px] sm:min-h-[80px] text-center leading-tight"
               style={{ textShadow: "0 2px 15px rgba(0,0,0,0.15)" }}
             >
               {introSlides[introStep].title}
             </motion.h2>
 
             {/* Progress dots */}
-            <div className="flex gap-2.5 mb-10">
+            <div className="flex gap-2 mb-6 md:mb-10">
               {introSlides.map((_, i) => (
                 <motion.div
                   key={i}

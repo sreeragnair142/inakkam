@@ -1,347 +1,209 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { swipeLeft, swipeRight, undoSwipe } from '../redux/slices/userSlice';
+
 import { setMatchedModal } from '../redux/slices/uiSlice';
 import { createNewChat } from '../redux/slices/chatSlice';
 import { addNotification } from '../redux/slices/notificationSlice';
-import { 
+import {
   X, 
   Heart, 
-  RotateCcw, 
-  Star, 
   MapPin, 
-  CheckCircle2, 
   MessageSquare,
   Sparkles,
   Flame,
-  Globe,
-  Target,
-  BookOpen,
-  Briefcase,
-  GraduationCap
+  Gift,
+  CheckCircle2
 } from 'lucide-react';
-import { motion, AnimatePresence, useMotionValue, useTransform, useAnimation } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 
 const Discover = () => {
   const dispatch = useDispatch();
-  const themeMode = useSelector((state) => state.theme.mode);
-  
   const discoveredUsers = useSelector((state) => state.user.discoveredUsers);
-  const swipeIndex = useSelector((state) => state.user.currentSwipeIndex);
-  const swipeHistory = useSelector((state) => state.user.swipeHistory);
   const isMatchedOpen = useSelector((state) => state.ui.isMatchedModalOpen);
   const matchedUser = useSelector((state) => state.ui.lastMatchedUser);
   const currentUser = useSelector((state) => state.auth.user);
-
-  const activeProfile = discoveredUsers[swipeIndex];
-  const nextProfile = discoveredUsers[swipeIndex + 1];
-
-  const [expandedInfo, setExpandedInfo] = useState(false);
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
-
-  const motionX = useMotionValue(0);
-  const motionY = useMotionValue(0);
-  const rotate = useTransform(motionX, [-200, 200], [-15, 15]);
-  const scale = useTransform(motionX, [-150, 0, 150], [0.95, 1, 0.95]);
-  const stampLikeOpacity = useTransform(motionX, [0, 100], [0, 1]);
-  const stampNopeOpacity = useTransform(motionX, [-100, 0], [1, 0]);
-  const controls = useAnimation();
-
-  useEffect(() => {
-    setActiveImageIndex(0);
-    setExpandedInfo(false);
-  }, [swipeIndex]);
-
-  const animateSwipe = async (direction) => {
-    if (!activeProfile) return;
-    if (direction === 'right') {
-      await controls.start({ x: 400, opacity: 0, rotate: 20, transition: { duration: 0.3 } });
-      handleSwipeRight();
-    } else {
-      await controls.start({ x: -400, opacity: 0, rotate: -20, transition: { duration: 0.3 } });
-      handleSwipeLeft();
-    }
-    motionX.set(0);
-    motionY.set(0);
-    controls.set({ x: 0, opacity: 1, rotate: 0 });
-  };
-
-  const handleSwipeLeft = () => { dispatch(swipeLeft()); };
-
-  const handleSwipeRight = () => {
-    const willMatch = activeProfile.matchPercentage > 90 || Math.random() > 0.3;
-    dispatch(swipeRight());
-    if (willMatch) {
-      confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-      dispatch(setMatchedModal({ isOpen: true, user: activeProfile }));
-      dispatch(createNewChat(activeProfile));
-      dispatch(addNotification({
-        type: 'match',
-        userId: activeProfile.id,
-        userName: activeProfile.name,
-        text: `You and ${activeProfile.name} matched! Send a greeting.`
-      }));
-    }
-  };
-
-  const handleUndo = () => {
-    if (swipeHistory.length > 0) dispatch(undoSwipe());
-  };
-
-  const handleDragEnd = (event, info) => {
-    const threshold = 140;
-    if (info.offset.x > threshold) animateSwipe('right');
-    else if (info.offset.x < -threshold) animateSwipe('left');
-    else controls.start({ x: 0, y: 0, rotate: 0, transition: { type: 'spring', stiffness: 200, damping: 20 } });
-  };
-
-  // Extra mock data for the detailed panel
-  const languages = activeProfile ? ['English 🇬🇧', 'Bengali 🇮🇳'] : [];
-  const relationshipGoals = activeProfile ? ['Dating 💕'] : [];
-  const religion = activeProfile ? 'Spiritual 🙏' : '';
+  const [selectedProfile, setSelectedProfile] = useState(null);
 
   return (
-    <div className="flex-1 flex items-center justify-center relative min-h-[80vh] lg:min-h-[90vh] pt-24 pb-8 lg:pt-32 lg:pb-12 px-4">
+    <div className="flex-1 flex items-start justify-center relative min-h-screen pt-28 pb-16 lg:pt-36 lg:pb-20 px-4">
       
 
 
-      {activeProfile ? (
-        <div className="relative z-10 flex flex-col lg:flex-row items-center lg:items-stretch gap-6 w-full max-w-5xl">
-          
-          {/* LEFT: Photo Card with Swipe */}
-          <div className="w-full max-w-[380px] lg:w-[380px] flex-shrink-0 flex flex-col items-center">
-            <div className="w-full aspect-[3/4] relative mb-6 select-none">
-              
-              {/* Next card underneath */}
-              {nextProfile && (
-                <div className="absolute inset-0 rounded-[2rem] overflow-hidden shadow-xl scale-[0.94] translate-y-3 opacity-70 border border-white/10">
-                  <img src={nextProfile.images[0]} alt={nextProfile.name} className="w-full h-full object-cover brightness-[0.5]" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
-                </div>
-              )}
-
-              {/* Active non-draggable card */}
-              <motion.div
-                style={{ x: motionX, y: motionY, rotate, scale, touchAction: 'none' }}
-                animate={controls}
-                className="absolute inset-0 rounded-[2rem] overflow-hidden shadow-2xl select-none z-20 bg-white border border-white/20"
+      {discoveredUsers && discoveredUsers.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-x-8 md:gap-y-12 w-full max-w-7xl mx-auto px-4 z-10 relative">
+          {discoveredUsers.map((profile) => (
+            <div key={profile.id} className="relative w-full aspect-[3/4] rounded-[2rem] overflow-visible group mt-4">
+              {/* Card Inner */}
+              <div 
+                onClick={() => setSelectedProfile(profile)}
+                className="w-full h-full rounded-[2rem] overflow-hidden relative border border-white/10 shadow-2xl bg-black/40 cursor-pointer"
               >
-                <div className="relative w-full h-full overflow-hidden flex flex-col justify-between p-5">
-                  <img 
-                    src={activeProfile.images[activeImageIndex]} 
-                    alt={activeProfile.name} 
-                    className="absolute inset-0 w-full h-full object-cover brightness-[0.75] transition-all duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/5 pointer-events-none" />
-
-                  {/* Stamps */}
-                  <motion.div style={{ opacity: stampLikeOpacity }} className="absolute top-14 left-6 border-4 border-emerald-400 text-emerald-400 font-black text-3xl px-4 py-1.5 rounded-2xl rotate-[-12deg] uppercase pointer-events-none z-30 backdrop-blur-sm bg-emerald-500/10">LIKE</motion.div>
-                  <motion.div style={{ opacity: stampNopeOpacity }} className="absolute top-14 right-6 border-4 border-rose-400 text-rose-400 font-black text-3xl px-4 py-1.5 rounded-2xl rotate-[12deg] uppercase pointer-events-none z-30 backdrop-blur-sm bg-rose-500/10">NOPE</motion.div>
-
-                  {/* Image indicators */}
-                  <div className="relative z-10 flex gap-1.5 w-full justify-center">
-                    {activeProfile.images.map((_, idx) => (
-                      <button
-                        key={idx}
-                        onClick={(e) => { e.stopPropagation(); setActiveImageIndex(idx); }}
-                        className={`h-1 flex-1 rounded-full transition-all duration-300 ${idx === activeImageIndex ? 'bg-bumble-yellow shadow-sm shadow-bumble-yellow/50' : 'bg-white/30'}`}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Click zones for image switching */}
-                  <div className="absolute inset-x-0 top-1/4 bottom-1/3 flex z-10">
-                    <div className="w-1/2 cursor-pointer" onClick={(e) => { e.stopPropagation(); setActiveImageIndex(prev => Math.max(0, prev - 1)); }} />
-                    <div className="w-1/2 cursor-pointer" onClick={(e) => { e.stopPropagation(); setActiveImageIndex(prev => Math.min(activeProfile.images.length - 1, prev + 1)); }} />
-                  </div>
-
-                  {/* Bottom info on card */}
-                  <div className="relative z-20 text-white mt-auto space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-black bg-bumble-yellow text-bumble-charcoal px-3 py-1 rounded-full shadow-lg uppercase tracking-wider">
-                        {activeProfile.matchPercentage}% Match
-                      </span>
-                      <div className="flex items-center gap-1 text-[10px] text-white/80 bg-white/10 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
-                        <MapPin className="w-3 h-3" />
-                        <span>{activeProfile.distance}</span>
-                      </div>
+                <img src={profile.images[0]} alt={profile.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                {/* Premium clean gradient only at the bottom for text readability */}
+                <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none" />
+                
+                {/* Info Container */}
+                <div className="absolute inset-x-0 bottom-10 px-5 flex justify-between items-end">
+                  {/* Left: Name and Age */}
+                  <h3 className="text-white font-black text-xl drop-shadow-md pb-1 truncate max-w-[60%]">
+                    {profile.name}, {profile.age}
+                  </h3>
+                  
+                  {/* Right: Ring and Location */}
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    {/* Ring */}
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center relative bg-black/10 backdrop-blur-sm border border-white/10">
+                      <svg className="absolute inset-0 w-full h-full -rotate-90">
+                        <circle cx="50%" cy="50%" r="42%" stroke="rgba(255,255,255,0.15)" strokeWidth="2.5" fill="none" />
+                        <circle cx="50%" cy="50%" r="42%" stroke="white" strokeWidth="2.5" fill="none" strokeDasharray="100" strokeDashoffset={100 - profile.matchPercentage} strokeLinecap="round" />
+                      </svg>
+                      <span className="text-white text-[11px] font-black">{profile.matchPercentage}%</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-2xl font-black tracking-tight">{activeProfile.name}, {activeProfile.age}</h2>
-                      {activeProfile.verified && <CheckCircle2 className="w-5 h-5 text-blue-400 fill-blue-400/20" />}
+                    {/* Location Pill */}
+                    <div className="bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-1.5 border border-white/20 text-white shadow-lg">
+                      <MapPin className="w-3 h-3 text-white/80" />
+                      <span className="text-[10px] font-bold tracking-wider uppercase">{profile.distance}</span>
                     </div>
-                    <p className="text-white/60 text-xs font-medium">{activeProfile.work}</p>
                   </div>
                 </div>
-              </motion.div>
-            </div>
+              </div>
 
-            {/* Swipe Action Buttons */}
-            <div className="flex items-center justify-center gap-4 relative z-20">
-              <button onClick={handleUndo} disabled={swipeHistory.length === 0}
-                className={`p-3.5 rounded-full transition-all shadow-lg border-2 group ${swipeHistory.length === 0 ? 'opacity-30 cursor-not-allowed border-slate-200 bg-white' : 'bg-white border-slate-200 text-slate-400 hover:text-bumble-yellow hover:border-bumble-yellow hover:scale-110 active:scale-90 cursor-pointer'}`}>
-                <RotateCcw className="w-5 h-5 group-hover:rotate-[-45deg] transition-transform" />
-              </button>
-              <button onClick={() => animateSwipe('left')} className="p-4.5 rounded-full shadow-xl transition-all border-2 hover:scale-110 active:scale-90 bg-white border-rose-200 text-rose-500 hover:bg-rose-500 hover:text-white hover:border-rose-500 cursor-pointer">
-                <X className="w-6 h-6" strokeWidth={3} />
-              </button>
-              <button onClick={() => { confetti({ particleCount: 80, spread: 50 }); animateSwipe('right'); }}
-                className="p-3.5 rounded-full shadow-lg transition-all border-2 hover:scale-110 active:scale-90 bg-white border-blue-200 text-blue-500 hover:bg-blue-500 hover:text-white hover:border-blue-500 cursor-pointer">
-                <Star className="w-5 h-5 fill-current" />
-              </button>
-              <button onClick={() => animateSwipe('right')} className="p-4.5 rounded-full shadow-xl transition-all border-2 hover:scale-110 active:scale-90 bg-white border-emerald-200 text-emerald-500 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 cursor-pointer">
-                <Heart className="w-6 h-6 fill-current" />
-              </button>
-            </div>
-          </div>
-
-          {/* RIGHT: Detailed Profile Info Panel */}
-          <motion.div 
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-            className="flex-1 bg-black/40 backdrop-blur-2xl rounded-[2rem] shadow-2xl overflow-y-auto max-h-[75vh] border border-white/10 hidden lg:block"
-          >
-            <div className="p-8 space-y-7">
-
-              {/* Name & Close */}
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-black text-white">{activeProfile.name} ({activeProfile.age})</h2>
-                    {activeProfile.verified && <CheckCircle2 className="w-5 h-5 text-green-500 fill-green-500/20" />}
-                  </div>
-                  <p className="text-sm text-white/50 mt-1 flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5" /> {activeProfile.distance}
-                  </p>
-                </div>
-                <button onClick={() => animateSwipe('left')} className="p-2 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-colors cursor-pointer">
-                  <X className="w-5 h-5" />
+              {/* Overlapping Action Buttons */}
+              <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2.5 z-20" onClick={(e) => e.stopPropagation()}>
+                <button className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                  <X className="w-5 h-5 text-yellow-500" strokeWidth={2.5} />
                 </button>
-              </div>
-
-              {/* Bio */}
-              <div className="bg-white/5 rounded-2xl p-5 border border-white/5">
-                <p className="text-sm leading-relaxed text-white/90 flex items-start gap-2">
-                  <BookOpen className="w-4 h-4 text-[#D51659] mt-0.5 shrink-0" />
-                  {activeProfile.bio}
-                </p>
-              </div>
-
-              {/* Work & Education */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-                  <div className="flex items-center gap-2 text-xs font-black uppercase text-white/40 tracking-wider mb-2">
-                    <Briefcase className="w-3.5 h-3.5" /> Work
-                  </div>
-                  <p className="text-sm font-bold text-white/90">{activeProfile.work}</p>
-                </div>
-                <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-                  <div className="flex items-center gap-2 text-xs font-black uppercase text-white/40 tracking-wider mb-2">
-                    <GraduationCap className="w-3.5 h-3.5" /> Education
-                  </div>
-                  <p className="text-sm font-bold text-white/90">{activeProfile.education}</p>
-                </div>
-              </div>
-
-              {/* Interests */}
-              <div>
-                <h4 className="text-xs font-black uppercase tracking-widest text-white/40 mb-3">Interests</h4>
-                <div className="flex flex-wrap gap-2">
-                  {activeProfile.interests.map((interest, idx) => (
-                    <span key={idx} className="text-xs px-4 py-2 rounded-full font-bold bg-[#D51659]/20 border border-[#D51659]/30 text-white hover:bg-[#D51659]/30 transition-colors">
-                      {interest}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Languages */}
-              <div>
-                <h4 className="text-xs font-black uppercase tracking-widest text-white/40 mb-3 flex items-center gap-1.5">
-                  <Globe className="w-3.5 h-3.5" /> Languages I Know
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {languages.map((lang, idx) => (
-                    <span key={idx} className="text-xs px-4 py-2 rounded-full font-bold bg-white/10 border border-white/20 text-white">
-                      {lang}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Relationship Goals */}
-              <div>
-                <h4 className="text-xs font-black uppercase tracking-widest text-white/40 mb-3 flex items-center gap-1.5">
-                  <Target className="w-3.5 h-3.5" /> Relationship Goals
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  <span className="text-xs px-4 py-2 rounded-full font-bold bg-white/10 border border-white/20 text-white">
-                    {activeProfile.relationship}
-                  </span>
-                </div>
-              </div>
-
-              {/* Religion */}
-              <div>
-                <h4 className="text-xs font-black uppercase tracking-widest text-white/40 mb-3">Religion</h4>
-                <span className="text-xs px-4 py-2 rounded-full font-bold bg-white/10 border border-white/20 text-white">
-                  {religion}
-                </span>
-              </div>
-
-              {/* Prompts */}
-              {activeProfile.prompts && activeProfile.prompts.map((p, idx) => (
-                <div key={idx} className="bg-white/5 p-5 rounded-2xl border border-white/10">
-                  <span className="text-[10px] bg-[#D51659]/20 text-[#D51659] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">
-                    {p.question}
-                  </span>
-                  <p className="text-sm font-bold mt-3 italic leading-relaxed text-white/90">"{p.answer}"</p>
-                </div>
-              ))}
-
-              {/* Attributes Grid */}
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { label: 'Zodiac', value: activeProfile.zodiac, emoji: '✨' },
-                  { label: 'Height', value: activeProfile.height, emoji: '📏' },
-                  { label: 'Exercise', value: activeProfile.exercise, emoji: '🏃' },
-                  { label: 'Match', value: `${activeProfile.matchPercentage}%`, emoji: '💯' },
-                ].map((attr, idx) => (
-                  <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center hover:bg-slate-100 transition-colors">
-                    <span className="text-lg block mb-1">{attr.emoji}</span>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">{attr.label}</span>
-                    <span className="text-xs font-black text-bumble-charcoal block mt-0.5">{attr.value}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Bottom Action Buttons */}
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => animateSwipe('left')} className="flex-1 py-3.5 rounded-2xl text-xs uppercase tracking-widest font-black bg-slate-100 text-slate-500 hover:bg-rose-50 hover:text-rose-500 border border-slate-200 transition-all flex items-center justify-center gap-2 cursor-pointer">
-                  <X className="w-4 h-4" /> Pass
+                <button className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                  <Heart className="w-5 h-5 text-rose-500 fill-current" />
                 </button>
-                <button onClick={() => animateSwipe('right')} className="flex-1 py-3.5 rounded-2xl text-xs uppercase tracking-widest font-black bg-bumble-charcoal text-white hover:bg-black shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer">
-                  <Heart className="w-4 h-4 fill-current" /> Like
+                <button className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                  <MessageSquare className="w-5 h-5 text-purple-500 fill-current" />
+                </button>
+                <button className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                  <Gift className="w-5 h-5 text-yellow-400 fill-current" />
                 </button>
               </div>
             </div>
-          </motion.div>
+          ))}
         </div>
       ) : (
         /* Empty State */
-        <div className="relative z-10 max-w-md w-full p-10 rounded-[2.5rem] text-center bg-white border border-slate-200 shadow-xl">
-          <div className="w-20 h-20 rounded-full bg-bumble-yellow/10 flex items-center justify-center border-2 border-bumble-yellow/20 mb-6 mx-auto">
-            <Sparkles className="w-10 h-10 text-bumble-yellow" />
+        <div className="relative z-10 max-w-md w-full p-10 rounded-[2.5rem] text-center bg-black/40 backdrop-blur-2xl border border-white/10 shadow-xl">
+          <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center border-2 border-white/10 mb-6 mx-auto">
+            <Sparkles className="w-10 h-10 text-white/50" />
           </div>
-          <h3 className="font-black text-2xl mb-2 text-bumble-charcoal">You've Swiped Everyone!</h3>
-          <p className="text-slate-500 text-sm leading-relaxed mb-8">No new profiles in your area right now. Expand your filters or upgrade to Premium.</p>
-          <button onClick={() => dispatch({ type: 'user/resetSwipes' })} className="px-8 py-3.5 rounded-full font-black text-xs uppercase tracking-widest bg-bumble-charcoal text-white shadow-xl hover:bg-black transition-colors cursor-pointer">
-            Reset Swipes
+          <h3 className="font-black text-2xl mb-2 text-white">You've Seen Everyone!</h3>
+          <p className="text-white/50 text-sm leading-relaxed mb-8">No new profiles in your area right now. Expand your filters or wait for more people to join.</p>
+          <button onClick={() => dispatch({ type: 'user/resetSwipes' })} className="px-8 py-3.5 rounded-full font-black text-xs uppercase tracking-widest bg-white/10 text-white border border-white/10 hover:bg-white/20 transition-colors cursor-pointer">
+            Refresh
           </button>
         </div>
       )}
+
+      {/* DETAILED PROFILE MODAL */}
+      <AnimatePresence>
+        {selectedProfile && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pt-24 pb-6 sm:px-6 bg-black/60 backdrop-blur-md" onClick={() => setSelectedProfile(null)}>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-4xl bg-black/80 backdrop-blur-3xl border border-white/10 rounded-[2rem] overflow-hidden shadow-2xl flex flex-col md:flex-row max-h-[80vh]"
+            >
+              {/* Close Button */}
+              <button onClick={() => setSelectedProfile(null)} className="absolute top-4 right-4 z-30 p-2.5 bg-black/40 hover:bg-black/80 text-white rounded-full transition-colors cursor-pointer backdrop-blur-md border border-white/10">
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Left: Image */}
+              <div className="w-full md:w-[400px] shrink-0 relative h-[45vh] md:h-auto">
+                <img src={selectedProfile.images[0]} alt={selectedProfile.name} className="w-full h-full object-cover" />
+                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none" />
+                
+                {/* Action buttons at the bottom of the image */}
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 z-20">
+                  <button className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-lg border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                    <X className="w-5 h-5 text-yellow-500" strokeWidth={2.5} />
+                  </button>
+                  <button className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-lg border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                    <Heart className="w-5 h-5 text-rose-500 fill-current" />
+                  </button>
+                  <button className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-lg border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                    <MessageSquare className="w-5 h-5 text-purple-500 fill-current" />
+                  </button>
+                  <button className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-lg border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                    <Gift className="w-5 h-5 text-yellow-400 fill-current" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Right: Info Scrollable Area */}
+              <div className="flex-1 p-6 md:p-8 overflow-y-auto no-scrollbar">
+                {/* Header */}
+                <div className="flex justify-between items-start mb-6 border-b border-white/10 pb-6">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-3xl font-black text-white tracking-tight">{selectedProfile.name} ({selectedProfile.age})</h2>
+                    {selectedProfile.verified && <CheckCircle2 className="w-6 h-6 text-blue-400 fill-blue-400/20 mt-1" />}
+                  </div>
+                  <div className="flex items-center gap-1.5 text-purple-400 font-bold text-xs bg-purple-500/10 px-3 py-1.5 rounded-full border border-purple-500/20 shrink-0 mt-1">
+                    <MapPin className="w-3.5 h-3.5" /> {selectedProfile.distance}
+                  </div>
+                </div>
+
+                {/* Interests */}
+                {selectedProfile.interests && selectedProfile.interests.length > 0 && (
+                  <div className="mb-6 border-b border-white/10 pb-6">
+                    <h3 className="text-sm font-bold text-white/50 uppercase tracking-widest mb-4">Interests</h3>
+                    <div className="flex flex-wrap gap-2.5">
+                      {selectedProfile.interests.map((interest, idx) => (
+                        <span key={idx} className="px-4 py-2 rounded-full text-xs font-bold bg-transparent border border-purple-500/40 text-white hover:bg-purple-500/10 transition-colors">
+                          {interest}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Languages */}
+                <div className="mb-6 border-b border-white/10 pb-6">
+                  <h3 className="text-sm font-bold text-white/50 uppercase tracking-widest mb-4">Languages</h3>
+                  <div className="flex flex-wrap gap-2.5">
+                    {/* Mock languages since not all dummy profiles have them */}
+                    {['English 🇬🇧', 'Spanish 🇪🇸'].map((lang, idx) => (
+                      <span key={idx} className="px-4 py-2 rounded-full text-xs font-bold bg-transparent border border-purple-500/40 text-white hover:bg-purple-500/10 transition-colors">
+                        {lang}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Relationship Goals */}
+                <div className="mb-6 border-b border-white/10 pb-6">
+                  <h3 className="text-sm font-bold text-white/50 uppercase tracking-widest mb-4">Relationship Goals</h3>
+                  <div className="flex flex-wrap gap-2.5">
+                    <span className="px-4 py-2 rounded-full text-xs font-bold bg-transparent border border-purple-500/40 text-white hover:bg-purple-500/10 transition-colors">
+                      {selectedProfile.relationship || 'Dating 💕'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Religion */}
+                <div className="mb-2">
+                  <h3 className="text-sm font-bold text-white/50 uppercase tracking-widest mb-4">Religion</h3>
+                  <div className="flex flex-wrap gap-2.5">
+                    <span className="px-4 py-2 rounded-full text-xs font-bold bg-transparent border border-purple-500/40 text-white hover:bg-purple-500/10 transition-colors">
+                      Spiritual 🙏
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* MATCH MODAL */}
       <AnimatePresence>
