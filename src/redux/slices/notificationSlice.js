@@ -1,9 +1,9 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { mockNotifications } from '../../data/mockData';
+// ─── Initial State ──────────────────────────────────
 
 const initialState = {
-  items: mockNotifications,
-  unreadCount: mockNotifications.filter(n => !n.read).length,
+  items: [],
+  unreadCount: 0,
 };
 
 const notificationSlice = createSlice({

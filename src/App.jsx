@@ -2,9 +2,13 @@ import React, { useState, useEffect } from "react";
 import { Flame } from "lucide-react";
 import loaderLogo from "./assets/loaderinakkam.png";
 import { motion, AnimatePresence } from "framer-motion";
-import { Provider, useSelector } from "react-redux";
+import { Provider, useSelector, useDispatch } from "react-redux";
 import { BrowserRouter, useNavigate, useLocation } from "react-router-dom";
 import { store } from "./redux/store";
+import { fetchMe } from "./redux/slices/authSlice";
+import { initiateSocketConnection, disconnectSocket } from "./utils/socket";
+import { addMessage, setTyping } from "./redux/slices/chatSlice";
+import { addNotification } from "./redux/slices/notificationSlice";
 import AppRoutes from "./routes";
 
 import { Toaster } from "react-hot-toast";
@@ -59,9 +63,9 @@ function SplashScreen({ onComplete }) {
         transition={{ duration: 0.8, type: "spring", bounce: 0.5 }}
         className="relative z-10"
       >
-        <img 
-          src={loaderLogo} 
-          alt="Inakkam Loader" 
+        <img
+          src={loaderLogo}
+          alt="Inakkam Loader"
           className="w-48 md:w-64 h-auto drop-shadow-[0_0_15px_rgba(213,22,89,0.3)] animate-pulse"
         />
       </motion.div>
@@ -98,6 +102,44 @@ function SplashScreen({ onComplete }) {
 
 /* Inner app component that has access to router context */
 function AppContent() {
+  const dispatch = useDispatch();
+  const { isAuthenticated, user, isGuest } = useSelector((state) => state.auth);
+  const token = localStorage.getItem('inakkam_token');
+
+  // ─── App Initialization ─────────────────────────────
+  useEffect(() => {
+    if (token && !isAuthenticated) {
+      dispatch(fetchMe());
+    }
+  }, [dispatch, token, isAuthenticated]);
+
+  // ─── Socket Integration ──────────────────────────────
+  useEffect(() => {
+    if (isAuthenticated && user?._id && token && !isGuest) {
+      const socket = initiateSocketConnection(user._id, token);
+
+      socket.on('new_message', (message) => {
+        dispatch(addMessage(message));
+      });
+
+      socket.on('user_typing', ({ userId, conversationId }) => {
+        dispatch(setTyping(true));
+      });
+
+      socket.on('user_stop_typing', ({ userId, conversationId }) => {
+        dispatch(setTyping(false));
+      });
+
+      socket.on('new_notification', (notif) => {
+        dispatch(addNotification(notif));
+      });
+
+      return () => {
+        disconnectSocket();
+      };
+    }
+  }, [isAuthenticated, user, token, isGuest, dispatch]);
+
   return (
     <>
       <AppRoutes />
