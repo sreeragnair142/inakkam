@@ -1,12 +1,16 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ChevronRight, EyeOff, CheckCircle2, Plus, X, Search, Flame } from "lucide-react";
+import { ArrowLeft, ChevronRight, EyeOff, CheckCircle2, Plus, X, Search, Flame, Loader2 } from "lucide-react";
 import landscapeLogo from "../assets/landscapelogo.png";
+import { useDispatch } from "react-redux";
+import api from "../utils/api";
+import { updateProfile } from "../redux/slices/authSlice";
 
 export default function Onboarding() {
-  const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [formStep, setFormStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const totalFormSteps = 11;
 
   const [formData, setFormData] = useState({
@@ -18,10 +22,56 @@ export default function Onboarding() {
   });
   const [otpSent, setOtpSent] = useState(false);
 
-  const handleFormNext = () => {
+  const handleFormNext = async () => {
     if (formStep === 2 && !otpSent) { setOtpSent(true); return; }
-    if (formStep < totalFormSteps) { setFormStep(formStep + 1); setOtpSent(false); }
-    else { navigate('/swipe'); }
+    if (formStep < totalFormSteps) {
+      setFormStep(formStep + 1);
+      setOtpSent(false);
+    }
+    else {
+      await submitOnboarding();
+    }
+  };
+
+  const calculateAge = (birthday) => {
+    const birthDate = new Date(birthday);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const submitOnboarding = async () => {
+    setIsSubmitting(true);
+    try {
+      const mappedData = {
+        name: formData.firstName,
+        bio: formData.bio,
+        age: calculateAge(formData.birthday),
+        gender: formData.gender,
+        relationship: formData.goals,
+        maxDistance: parseInt(formData.distance),
+        interests: formData.interests,
+        languages: formData.languages,
+        religion: formData.religion,
+        interestedIn: formData.searchPreference === 'Both' ? ['Man', 'Woman'] : [formData.searchPreference],
+        isComplete: true
+      };
+
+      const res = await api.put('/users/me/onboarding', mappedData);
+      if (res.data.success) {
+        dispatch(updateProfile(res.data.user));
+        navigate('/swipe');
+      }
+    } catch (err) {
+      console.error("Onboarding failed:", err);
+      // Optional: show toast or error UI
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   const handleFormBack = () => {
     if (formStep === 2 && otpSent) { setOtpSent(false); return; }
@@ -88,7 +138,7 @@ export default function Onboarding() {
           <h2 className="text-2xl font-black text-white mb-2">Awesome 🎉</h2>
           <p className="text-sm text-white/50 font-medium mb-8">We sent an OTP to +91 {formData.phone}</p>
           <div className="flex gap-3 mb-8 justify-center lg:justify-start">
-            {[1,2,3,4,5].map(i => (
+            {[1, 2, 3, 4, 5].map(i => (
               <input key={i} type="text" maxLength={1} className="w-12 h-14 lg:w-14 lg:h-16 border-2 border-white/10 rounded-2xl text-center text-xl lg:text-2xl font-black focus:border-[#D51659] focus:ring-4 focus:ring-[#D51659]/10 outline-none bg-white/5 text-white" />
             ))}
           </div>
@@ -223,7 +273,7 @@ export default function Onboarding() {
 
   const Step11 = () => (
     <div className="grid grid-cols-3 gap-3 lg:gap-5">
-      {[0,1,2,3,4,5].map(i => (
+      {[0, 1, 2, 3, 4, 5].map(i => (
         <div key={i} className="aspect-[3/4] rounded-2xl border-2 border-dashed border-white/10 bg-white/5 relative overflow-hidden flex items-center justify-center cursor-pointer hover:bg-white/10 hover:border-white/20 transition-all group">
           {formData.photos[i] ? (
             <>
@@ -313,8 +363,12 @@ export default function Onboarding() {
                 <ChevronRight className="w-5 h-5" />
               </button>
               {/* Desktop: circle button */}
-              <button onClick={handleFormNext} className="hidden lg:flex w-20 h-20 bg-[#D51659] hover:bg-[#b44ddc] active:scale-95 transition-all text-white rounded-full items-center justify-center shadow-2xl shadow-[#D51659]/20 cursor-pointer group">
-                <ChevronRight className="w-10 h-10 group-hover:translate-x-1 transition-transform" />
+              <button disabled={isSubmitting} onClick={handleFormNext} className="hidden lg:flex w-20 h-20 bg-[#D51659] hover:bg-[#b44ddc] active:scale-95 transition-all text-white rounded-full items-center justify-center shadow-2xl shadow-[#D51659]/20 cursor-pointer group disabled:opacity-50">
+                {isSubmitting ? (
+                  <Loader2 className="w-10 h-10 animate-spin" />
+                ) : (
+                  <ChevronRight className="w-10 h-10 group-hover:translate-x-1 transition-transform" />
+                )}
               </button>
             </div>
           )}

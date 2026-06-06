@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { mockUsers, mockCurrentUser } from '../data/mockData';
-import { 
-  CheckCircle2, 
-  MapPin, 
-  Sparkles, 
-  Image as ImageIcon, 
-  Heart, 
-  Award, 
+import {
+  CheckCircle2,
+  MapPin,
+  Sparkles,
+  Image as ImageIcon,
+  Heart,
+  Award,
   MessageSquare,
   HelpCircle,
   ShieldAlert,
@@ -21,7 +21,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const Profile = () => {
   const navigate = useNavigate();
   const themeMode = useSelector((state) => state.theme.mode);
-  
+
   // Selected Profile state from Redux
   const selectedUserId = useSelector((state) => state.user.selectedUserId);
   const discoveredUsers = useSelector((state) => state.user.discoveredUsers);
@@ -31,8 +31,8 @@ const Profile = () => {
   const [viewSelf, setViewSelf] = useState(false);
 
   // Determine which user profile to render
-  const profileUser = viewSelf 
-    ? authUser 
+  const profileUser = viewSelf
+    ? authUser
     : (discoveredUsers.find(u => u.id === selectedUserId) || authUser);
 
   if (!profileUser) {
@@ -45,23 +45,26 @@ const Profile = () => {
 
   return (
     <div className="w-full min-h-screen text-left pb-28 font-sans overflow-x-hidden">
-      
+
       {/* 1) FULL WIDTH EDGE-TO-EDGE BANNER */}
       <div className="relative w-full h-[25vh] sm:h-[35vh] lg:h-[45vh] min-h-[180px] sm:min-h-[260px] lg:min-h-[350px] bg-slate-900 overflow-hidden">
         {/* Background Image Blurred */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center" 
-          style={{ backgroundImage: `url('${profileUser.images[0]}')`, filter: 'blur(30px) brightness(0.4)' }} 
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{
+            backgroundImage: `url('${profileUser.images?.[0] || 'https://images.unsplash.com/photo-1511367461989-f85a21fda167?auto=format&fit=crop&q=80&w=1200'}')`,
+            filter: 'blur(30px) brightness(0.4)'
+          }}
         />
         {/* Soft Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-transparent" />
-        
+
         {/* View Toggle positioned absolutely over the banner */}
         <div className="absolute top-4 right-4 sm:top-6 sm:right-6 lg:right-12 z-20 flex flex-col sm:flex-row gap-2 items-end sm:items-center">
           <button
             onClick={() => setViewSelf(false)}
             className={`px-3 py-2 sm:px-5 sm:py-2.5 rounded-full text-[10px] sm:text-xs font-bold transition-all duration-300 cursor-pointer shadow-lg backdrop-blur-md
-              ${!viewSelf 
+              ${!viewSelf
                 ? 'bg-[#D51659] text-white shadow-[0_2px_12px_rgba(213,22,89,0.4)]'
                 : 'bg-black/30 border border-white/20 text-white hover:bg-black/50'
               }`}
@@ -71,7 +74,7 @@ const Profile = () => {
           <button
             onClick={() => setViewSelf(true)}
             className={`px-3 py-2 sm:px-5 sm:py-2.5 rounded-full text-[10px] sm:text-xs font-bold transition-all duration-300 cursor-pointer shadow-lg backdrop-blur-md
-              ${viewSelf 
+              ${viewSelf
                 ? 'bg-[#D51659] text-white shadow-[0_2px_12px_rgba(213,22,89,0.4)]'
                 : 'bg-black/30 border border-white/20 text-white hover:bg-black/50'
               }`}
@@ -83,16 +86,16 @@ const Profile = () => {
 
       {/* 2) MAIN WIDE CONTENT CONTAINER (Overlapping the banner) */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 relative -mt-12 sm:-mt-24 lg:-mt-32 z-10 grid lg:grid-cols-12 gap-5 sm:gap-8 lg:gap-12">
-        
+
         {/* LEFT COLUMN: Profile Identity Card & Stats (Spans 4 columns) */}
         <div className="lg:col-span-4 space-y-6">
           {/* Main Identity Card */}
           <div className="bg-black/40 backdrop-blur-2xl rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 shadow-2xl border border-white/10 relative">
-            
+
             {/* Avatar Image */}
             <div className="relative w-32 h-32 md:w-full md:h-auto md:aspect-[4/5] rounded-full md:rounded-[1.5rem] overflow-hidden shadow-xl mb-6 mx-auto md:mx-0 bg-slate-200 shrink-0">
               <img
-                src={profileUser.images[0]}
+                src={profileUser.images?.[0] || 'https://images.unsplash.com/photo-1511367461989-f85a21fda167?auto=format&fit=crop&q=80&w=600'}
                 alt={profileUser.name}
                 className="w-full h-full object-cover"
               />
@@ -160,7 +163,7 @@ const Profile = () => {
 
         {/* RIGHT COLUMN: Bio, Details, Galleries (Spans 8 columns) */}
         <div className="lg:col-span-8 space-y-5 sm:space-y-8 mt-4 sm:mt-8 lg:mt-0 pt-2 sm:pt-4">
-          
+
           {/* Custom Tabs */}
           <div className="flex gap-1 sm:gap-2 p-1 sm:p-1.5 rounded-full bg-black/40 backdrop-blur-xl shadow-md border border-white/10 w-full sm:w-fit max-w-full overflow-x-auto no-scrollbar">
             {[
@@ -173,8 +176,8 @@ const Profile = () => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 lg:px-8 py-2.5 sm:py-3.5 rounded-full text-[10px] sm:text-xs font-bold transition-all cursor-pointer whitespace-nowrap
-                  ${activeTab === tab.id 
-                    ? 'bg-[#D51659] text-white shadow-[0_2px_8px_rgba(213,22,89,0.3)]' 
+                  ${activeTab === tab.id
+                    ? 'bg-[#D51659] text-white shadow-[0_2px_8px_rgba(213,22,89,0.3)]'
                     : 'text-white/60 hover:bg-white/10 hover:text-white'
                   }`}
               >
@@ -207,7 +210,7 @@ const Profile = () => {
                   <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
                     <div className="bg-black/40 backdrop-blur-2xl rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 shadow-xl border border-white/10 space-y-4 sm:space-y-6">
                       <h3 className="font-serif italic font-semibold text-xl text-white border-b border-white/10 pb-4">Work & Education</h3>
-                      
+
                       <div className="space-y-4">
                         <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-1 sm:gap-4 bg-white/5 p-4 rounded-2xl border border-white/5">
                           <span className="text-[10px] sm:text-xs font-bold text-white/40 uppercase tracking-widest">Occupation</span>
@@ -222,7 +225,7 @@ const Profile = () => {
 
                     <div className="bg-black/40 backdrop-blur-2xl rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 shadow-xl border border-white/10 space-y-4 sm:space-y-6">
                       <h3 className="font-serif italic font-semibold text-xl text-white border-b border-white/10 pb-4">More about me</h3>
-                      
+
                       <div className="flex flex-wrap gap-3">
                         <div className="px-4 py-2.5 rounded-full bg-white/10 text-white text-xs font-bold border border-white/10">
                           📏 {profileUser.height || '5\'9"'}
@@ -244,14 +247,18 @@ const Profile = () => {
                   <div className="bg-black/40 backdrop-blur-2xl rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 shadow-xl border border-white/10">
                     <h3 className="font-serif italic font-semibold text-2xl text-white mb-6">My Interests</h3>
                     <div className="flex flex-wrap gap-3">
-                      {profileUser.interests.map((interest, idx) => (
-                        <span
-                          key={idx}
-                          className="px-5 py-3 rounded-2xl font-bold text-sm bg-white/5 border border-white/10 text-white/90 hover:border-[#D51659] hover:bg-[#D51659]/20 hover:text-white transition-all cursor-default"
-                        >
-                          {interest}
-                        </span>
-                      ))}
+                      {profileUser.interests?.length > 0 ? (
+                        profileUser.interests.map((interest, idx) => (
+                          <span
+                            key={idx}
+                            className="px-5 py-3 rounded-2xl font-bold text-sm bg-white/5 border border-white/10 text-white/90 hover:border-[#D51659] hover:bg-[#D51659]/20 hover:text-white transition-all cursor-default"
+                          >
+                            {interest}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-white/40 italic text-sm">No interests listed yet.</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -260,7 +267,7 @@ const Profile = () => {
               {activeTab === 'media' && (
                 <div className="bg-black/40 backdrop-blur-2xl rounded-2xl sm:rounded-[2rem] p-4 sm:p-8 shadow-xl border border-white/10">
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
-                    {profileUser.images.map((img, idx) => (
+                    {profileUser.images?.map((img, idx) => (
                       <div key={idx} className="aspect-[4/5] rounded-3xl overflow-hidden shadow-md group relative">
                         <img
                           src={img}
@@ -272,7 +279,7 @@ const Profile = () => {
                         </div>
                       </div>
                     ))}
-                    {profileUser.images.length < 6 && (
+                    {(profileUser.images?.length || 0) < 6 && (
                       <div className="aspect-[4/5] rounded-3xl border-2 border-dashed border-white/20 flex flex-col items-center justify-center gap-3 hover:border-[#D51659] hover:bg-[#D51659]/10 transition-colors cursor-pointer text-white/40 hover:text-white">
                         <Camera className="w-8 h-8" />
                         <span className="text-xs font-bold uppercase tracking-wider">Add Photo</span>

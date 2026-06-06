@@ -1,29 +1,29 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { login, guestLogin } from "../redux/slices/authSlice";
+import { login, guestLogin, loginUser, registerUser } from "../redux/slices/authSlice";
 import { Flame, ArrowRight, Eye, EyeOff, Sparkles } from "lucide-react";
 import loaderLogo from "../assets/loaderinakkam.png";
 import { motion, AnimatePresence } from "framer-motion";
 
 const introSlides = [
-  { 
-    title: "Find Your Spark: Where Connections Ignite.", 
+  {
+    title: "Find Your Spark: Where Connections Ignite.",
     image: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=600",
     name: "Lissa Moni", age: 22, emoji: "😍", tag: "Travel ✈️"
   },
-  { 
-    title: "Connecting Hearts, One Swipe at a Time", 
+  {
+    title: "Connecting Hearts, One Swipe at a Time",
     image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=600",
     name: "Jenny Lopez", age: 24, emoji: "🥰", tag: "Yoga 🧘"
   },
-  { 
-    title: "Discover, Connect, Love: Your Journey Starts Here", 
+  {
+    title: "Discover, Connect, Love: Your Journey Starts Here",
     image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=600",
     name: "Mika Singh", age: 24, emoji: "😎", tag: "Sports 🏀"
   },
-  { 
-    title: "It's a match", 
+  {
+    title: "It's a match",
     image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=600",
     name: "Ashife", age: 23, emoji: "✨", tag: "Dancing 💃"
   }
@@ -42,6 +42,13 @@ const Auth = () => {
   const [introStep, setIntroStep] = useState(0);
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPw, setShowPw] = useState(false);
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    name: '',
+    confirmPassword: ''
+  });
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (phase === "splash") {
@@ -60,14 +67,41 @@ const Auth = () => {
     }
   };
 
-  const handleLogin = () => {
-    dispatch(login({ username: "sree" }));
-    navigate("/onboarding");
+  const handleLogin = async () => {
+    const data = {
+      email: formData.email, // Assume formData exists or use local state
+      password: formData.password,
+      name: formData.name || 'User', // For signup
+      age: 20 // Default for signup
+    };
+
+    try {
+      let resultAction;
+      if (isSignUp) {
+        resultAction = await dispatch(registerUser(data));
+      } else {
+        resultAction = await dispatch(loginUser({ email: data.email, password: data.password }));
+      }
+
+      if (registerUser.fulfilled.match(resultAction) || loginUser.fulfilled.match(resultAction)) {
+        const user = resultAction.payload.user;
+        if (!user.isOnboarded) {
+          navigate("/onboarding");
+        } else {
+          navigate("/swipe");
+        }
+      } else {
+        setError(resultAction.payload || "Authentication failed");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred");
+      console.error("Auth failed:", err);
+    }
   };
 
   return (
     <div style={{ background: 'linear-gradient(135deg, #0A0A0A 0%, #1a0a15 25%, #15061a 50%, #0d0515 75%, #0A0A0A 100%)' }} className="min-h-screen w-full relative overflow-hidden flex flex-col items-center justify-center p-4">
-      
+
       {/* Animated glowing orbs matching logo gradient */}
       <motion.div
         className="absolute w-[500px] h-[500px] rounded-full pointer-events-none"
@@ -178,7 +212,7 @@ const Auth = () => {
             exit={{ opacity: 0, x: -50 }}
             className="relative z-10 w-full flex flex-col items-center justify-center h-full"
           >
-            <motion.div 
+            <motion.div
               key={introStep}
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -197,7 +231,7 @@ const Auth = () => {
                 <div className="w-full h-full rounded-[2rem] sm:rounded-[2.5rem] shadow-[0_20px_60px_rgba(0,0,0,0.35)] overflow-hidden relative border-2 border-white/15">
                   <img src={introSlides[introStep].image} className="w-full h-full object-cover filter brightness-[0.85]" alt="" />
                   <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/60 via-black/20 to-transparent pointer-events-none" />
-                  
+
                   {/* Card info overlay */}
                   <div className="absolute bottom-4 sm:bottom-5 left-4 sm:left-5 right-4 sm:right-5 z-20">
                     <div className="flex items-center gap-2 mb-1.5 sm:mb-2">
@@ -241,7 +275,7 @@ const Auth = () => {
               <button onClick={() => setPhase("login")} className="flex-1 py-4 font-bold text-white/60 hover:text-white hover:bg-white/10 rounded-2xl transition-colors cursor-pointer">
                 Skip
               </button>
-              <button 
+              <button
                 onClick={handleIntroNext}
                 className="flex-1 py-4 font-black text-white rounded-2xl shadow-xl shadow-black/20 hover:shadow-black/30 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
                 style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(10px)" }}
@@ -282,7 +316,7 @@ const Auth = () => {
               >
                 <img src={loaderLogo} alt="Inakkam" className="w-full h-auto drop-shadow-lg" />
               </motion.div>
-              
+
               <h3 className="text-3xl font-black text-white tracking-tight">
                 {isSignUp ? "Create Account" : "Welcome Back"}
               </h3>
@@ -292,6 +326,25 @@ const Auth = () => {
             </div>
 
             <div className="space-y-5">
+              {error && (
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs font-bold text-center">
+                  {error}
+                </div>
+              )}
+              {isSignUp && (
+                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-2 ml-1">
+                    Your Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Full Name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full px-5 py-4 rounded-2xl bg-white/5 border-2 border-white/10 text-sm font-bold text-white placeholder-white/40 focus:border-[#D51659] focus:bg-white/10 focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
+                  />
+                </motion.div>
+              )}
               <div>
                 <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-2 ml-1">
                   Email or Phone Number
@@ -299,6 +352,8 @@ const Auth = () => {
                 <input
                   type="text"
                   placeholder="you@example.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="w-full px-5 py-4 rounded-2xl bg-white/5 border-2 border-white/10 text-sm font-bold text-white placeholder-white/40 focus:border-[#D51659] focus:bg-white/10 focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
                 />
               </div>
@@ -309,6 +364,8 @@ const Auth = () => {
                 <input
                   type={showPw ? "text" : "password"}
                   placeholder="••••••••"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="w-full px-5 py-4 rounded-2xl bg-white/5 border-2 border-white/10 text-sm font-bold text-white placeholder-white/40 focus:border-[#D51659] focus:bg-white/10 focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all pr-12"
                 />
                 <button
@@ -327,6 +384,8 @@ const Auth = () => {
                   <input
                     type="password"
                     placeholder="••••••••"
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                     className="w-full px-5 py-4 rounded-2xl bg-white/5 border-2 border-white/10 text-sm font-bold text-white placeholder-white/40 focus:border-[#D51659] focus:bg-white/10 focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
                   />
                 </div>
@@ -351,7 +410,7 @@ const Auth = () => {
 
 
             </div>
-            
+
             <div className="mt-8 text-center border-t border-white/10 pt-6">
               <span className="text-slate-500 text-xs font-bold">
                 {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
@@ -360,9 +419,9 @@ const Auth = () => {
                 </button>
               </span>
             </div>
-            
+
             <div className="mt-4 text-center">
-              <button 
+              <button
                 onClick={() => {
                   dispatch(guestLogin());
                   navigate("/swipe");

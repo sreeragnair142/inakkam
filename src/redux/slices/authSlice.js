@@ -59,12 +59,28 @@ const authSlice = createSlice({
     login: (state, action) => {
       state.isAuthenticated = true;
       state.isGuest = false;
-      state.user = { name: action.payload?.username || 'User', membership: { plan: 'free' } };
+      state.user = {
+        name: action.payload?.username || 'User',
+        age: 25,
+        bio: 'Just joined Inakkam!',
+        images: [],
+        interests: [],
+        prompts: [],
+        membership: { plan: 'free' }
+      };
     },
     guestLogin: (state) => {
       state.isAuthenticated = true;
       state.isGuest = true;
-      state.user = { name: 'Guest User', membership: { plan: 'free' } };
+      state.user = {
+        name: 'Guest User',
+        age: 20,
+        bio: 'Exploring Inakkam as a guest.',
+        images: [],
+        interests: [],
+        prompts: [],
+        membership: { plan: 'free' }
+      };
     },
     logout: (state) => {
       state.isAuthenticated = false;
