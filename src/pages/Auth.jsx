@@ -294,7 +294,7 @@ const Auth = () => {
             initial={{ y: 50, opacity: 0, scale: 0.95 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="relative z-10 w-full max-w-sm sm:max-w-[420px] rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 border border-white/10"
+            className={`relative z-10 w-full max-w-sm sm:max-w-[420px] rounded-[2rem] sm:rounded-[2.5rem] border border-white/10 ${isSignUp ? 'p-5 sm:p-7' : 'p-6 sm:p-10'}`}
             style={{
               background: "rgba(15,8,20,0.85)",
               backdropFilter: "blur(20px)",
@@ -307,25 +307,25 @@ const Auth = () => {
               style={{ background: "radial-gradient(circle, rgba(213,22,89,0.2) 0%, transparent 70%)" }}
             />
 
-            <div className="text-center mb-8">
+            <div className={`text-center ${isSignUp ? 'mb-4' : 'mb-8'}`}>
               <motion.div
                 initial={{ scale: 0, rotate: -30 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ type: "spring", stiffness: 250, delay: 0.1 }}
-                className="w-20 h-auto mx-auto mb-5"
+                className={`${isSignUp ? 'w-12' : 'w-20'} h-auto mx-auto ${isSignUp ? 'mb-3' : 'mb-5'}`}
               >
                 <img src={loaderLogo} alt="Inakkam" className="w-full h-auto drop-shadow-lg" />
               </motion.div>
 
-              <h3 className="text-3xl font-black text-white tracking-tight">
+              <h3 className={`${isSignUp ? 'text-2xl' : 'text-3xl'} font-black text-white tracking-tight`}>
                 {isSignUp ? "Create Account" : "Welcome Back"}
               </h3>
-              <p className="text-sm text-slate-500 font-bold mt-2">
+              <p className={`text-sm text-slate-500 font-bold ${isSignUp ? 'mt-1' : 'mt-2'}`}>
                 {isSignUp ? "Join Inakkam today" : "Sign in to your Inakkam account"}
               </p>
             </div>
 
-            <div className="space-y-5">
+            <div className={isSignUp ? "space-y-3" : "space-y-5"}>
               {error && (
                 <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs font-bold text-center">
                   {error}
@@ -333,7 +333,7 @@ const Auth = () => {
               )}
               {isSignUp && (
                 <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-2 ml-1">
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-1.5 ml-1">
                     Your Name
                   </label>
                   <input
@@ -341,12 +341,12 @@ const Auth = () => {
                     placeholder="Full Name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-5 py-4 rounded-2xl bg-white/5 border-2 border-white/10 text-sm font-bold text-white placeholder-white/40 focus:border-[#D51659] focus:bg-white/10 focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border-2 border-white/10 text-sm font-bold text-white placeholder-white/40 focus:border-[#D51659] focus:bg-white/10 focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
                   />
                 </motion.div>
               )}
               <div>
-                <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-2 ml-1">
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-1.5 ml-1">
                   Email or Phone Number
                 </label>
                 <input
@@ -354,11 +354,11 @@ const Auth = () => {
                   placeholder="you@example.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-5 py-4 rounded-2xl bg-white/5 border-2 border-white/10 text-sm font-bold text-white placeholder-white/40 focus:border-[#D51659] focus:bg-white/10 focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
+                  className={`w-full ${isSignUp ? 'px-4 py-3 rounded-xl' : 'px-5 py-4 rounded-2xl'} bg-white/5 border-2 border-white/10 text-sm font-bold text-white placeholder-white/40 focus:border-[#D51659] focus:bg-white/10 focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all`}
                 />
               </div>
               <div className="relative">
-                <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-2 ml-1">
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-1.5 ml-1">
                   Password
                 </label>
                 <input
@@ -366,11 +366,11 @@ const Auth = () => {
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full px-5 py-4 rounded-2xl bg-white/5 border-2 border-white/10 text-sm font-bold text-white placeholder-white/40 focus:border-[#D51659] focus:bg-white/10 focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all pr-12"
+                  className={`w-full ${isSignUp ? 'px-4 py-3 rounded-xl' : 'px-5 py-4 rounded-2xl'} bg-white/5 border-2 border-white/10 text-sm font-bold text-white placeholder-white/40 focus:border-[#D51659] focus:bg-white/10 focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all pr-12`}
                 />
                 <button
                   onClick={() => setShowPw(!showPw)}
-                  className="absolute right-4 top-[38px] text-slate-400 hover:text-white transition-colors cursor-pointer"
+                  className={`absolute right-4 ${isSignUp ? 'top-[34px]' : 'top-[38px]'} text-slate-400 hover:text-white transition-colors cursor-pointer`}
                 >
                   {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -378,7 +378,7 @@ const Auth = () => {
 
               {isSignUp && (
                 <div>
-                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-2 ml-1">
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-1.5 ml-1">
                     Confirm Password
                   </label>
                   <input
@@ -386,22 +386,22 @@ const Auth = () => {
                     placeholder="••••••••"
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    className="w-full px-5 py-4 rounded-2xl bg-white/5 border-2 border-white/10 text-sm font-bold text-white placeholder-white/40 focus:border-[#D51659] focus:bg-white/10 focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border-2 border-white/10 text-sm font-bold text-white placeholder-white/40 focus:border-[#D51659] focus:bg-white/10 focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
                   />
                 </div>
               )}
 
-              <div className="text-right pb-2">
-                {!isSignUp && (
+              {!isSignUp && (
+                <div className="text-right pb-2">
                   <span className="text-xs text-slate-500 font-bold cursor-pointer hover:text-[#D51659] transition-colors underline underline-offset-4 decoration-slate-200 hover:decoration-[#D51659]">
                     Forgot password?
                   </span>
-                )}
-              </div>
+                </div>
+              )}
 
               <button
                 onClick={handleLogin}
-                className="w-full py-4.5 rounded-2xl text-base font-black text-white cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-[#D51659]/20 flex items-center justify-center gap-2"
+                className={`w-full ${isSignUp ? 'py-3.5 mt-1' : 'py-4.5'} rounded-2xl text-base font-black text-white cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-[#D51659]/20 flex items-center justify-center gap-2`}
                 style={{ background: "linear-gradient(135deg, #D51659 0%, #b51350 100%)" }}
               >
                 <Sparkles className="w-4 h-4" />
@@ -411,7 +411,7 @@ const Auth = () => {
 
             </div>
 
-            <div className="mt-8 text-center border-t border-white/10 pt-6">
+            <div className={`${isSignUp ? 'mt-4' : 'mt-8'} text-center border-t border-white/10 ${isSignUp ? 'pt-4' : 'pt-6'}`}>
               <span className="text-slate-500 text-xs font-bold">
                 {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
                 <button onClick={() => setIsSignUp(!isSignUp)} className="text-[#D51659] font-black hover:text-[#b51350] transition-colors cursor-pointer ml-1">
@@ -420,7 +420,7 @@ const Auth = () => {
               </span>
             </div>
 
-            <div className="mt-4 text-center">
+            <div className={`${isSignUp ? 'mt-3' : 'mt-4'} text-center`}>
               <button
                 onClick={() => {
                   dispatch(guestLogin());
