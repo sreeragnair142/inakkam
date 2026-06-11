@@ -1,6 +1,6 @@
 import React from 'react';
 import { Flame } from 'lucide-react';
-import landscapeLogo from '../assets/landscapelogo.png';
+import landscapeLogo from '../assets/landscapelogowhite.png';
 
 const AuthLayout = ({ children }) => {
   return (
@@ -19,7 +19,7 @@ const AuthLayout = ({ children }) => {
 
         {/* Logo */}
         <div className="flex items-center gap-3 relative z-10">
-          <img src={landscapeLogo} alt="Inakkam" className="h-16 w-auto" />
+          <img src={landscapeLogowhite} alt="Inakkam" className="h-16 w-auto" />
         </div>
 
         {/* Core Slogan & Features */}

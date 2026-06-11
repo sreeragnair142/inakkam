@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
-import landscapeLogo from '../assets/landscapelogo.png';
+import landscapeLogo from '../assets/landscapelogowhite.png';
 import phoneLogo from '../assets/phoneinakkam.png';
 import toast from 'react-hot-toast';
 import { setActiveTab } from '../redux/slices/uiSlice';
@@ -136,7 +136,7 @@ const MainLayout = ({ children }) => {
               className="flex items-center gap-2 cursor-pointer hover:scale-105 transition-transform px-2 py-1"
             >
               <img src={landscapeLogo} alt="Inakkam" className="hidden md:block h-14 w-auto" />
-              <img src={phoneLogo} alt="Inakkam" className="block md:hidden h-10 w-auto" />
+              <img src={landscapeLogo} alt="Inakkam" className="block md:hidden h-8 w-auto" />
             </div>
           </div>
         );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import landscapeLogo from "../assets/landscapelogo.png";
+import landscapeLogo from "../assets/landscapelogowhite.png";
 import toast from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
 import { login, logout } from "../redux/slices/authSlice";
@@ -377,7 +377,7 @@ const Landing = () => {
         {/* Header (Matching Navigation in Screenshots) */}
         <header className="max-w-7xl mx-auto w-full py-6 flex items-center justify-between relative z-20">
           <div className="flex items-center gap-3">
-            <img src={landscapeLogo} alt="Inakkam" className="h-14 w-auto" />
+            <img src={landscapeLogowhite} alt="Inakkam" className="h-14 w-auto" />
           </div>
 
           {/* Desktop Middle Pills */}
@@ -1353,7 +1353,7 @@ const Landing = () => {
       <footer className="border-t border-white/10 py-16">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="flex items-center gap-3 drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]">
-            <img src={landscapeLogo} alt="Inakkam" className="h-7 w-auto" />
+            <img src={landscapeLogowhite} alt="Inakkam" className="h-7 w-auto" />
           </div>
           <div className="flex gap-6 text-sm text-white/50 font-semibold">
             <span className="hover:text-white cursor-pointer transition-colors">Support</span>
