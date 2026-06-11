@@ -19,12 +19,12 @@ const ProtectedRoute = ({ children }) => {
 };
 
 const AppRoutes = () => {
-  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  const { isAuthenticated, user } = useSelector((state) => state.auth);
 
   return (
     <Routes>
       {/* Public Routes */}
-      <Route path="/" element={isAuthenticated ? <Navigate to="/swipe" replace /> : <Auth />} />
+      <Route path="/" element={isAuthenticated ? <Navigate to={user?.isOnboarded === false ? "/onboarding" : "/swipe"} replace /> : <Auth />} />
       <Route path="/auth" element={<Auth />} />
       <Route path="/landing" element={<Landing />} />
 

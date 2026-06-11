@@ -60,12 +60,14 @@ const authSlice = createSlice({
       state.isAuthenticated = true;
       state.isGuest = false;
       state.user = {
-        name: action.payload?.username || 'User',
-        age: 25,
+        name: action.payload?.name || action.payload?.username || 'User',
+        email: action.payload?.email || '',
+        age: action.payload?.age || 25,
         bio: 'Just joined Inakkam!',
-        images: [],
+        images: action.payload?.images || [],
         interests: [],
         prompts: [],
+        isOnboarded: action.payload?.isOnboarded ?? true,
         membership: { plan: 'free' }
       };
     },

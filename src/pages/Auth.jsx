@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { login, guestLogin, loginUser, registerUser } from "../redux/slices/authSlice";
+import { login, guestLogin } from "../redux/slices/authSlice";
 import { Flame, ArrowRight, Eye, EyeOff, Sparkles } from "lucide-react";
 import loaderLogo from "../assets/loaderinakkam.png";
 import { motion, AnimatePresence } from "framer-motion";
@@ -67,40 +67,32 @@ const Auth = () => {
     }
   };
 
-  const handleLogin = async () => {
-    const data = {
-      email: formData.email, // Assume formData exists or use local state
-      password: formData.password,
-      name: formData.name || 'User', // For signup
-      age: 20 // Default for signup
-    };
-
-    try {
-      let resultAction;
-      if (isSignUp) {
-        resultAction = await dispatch(registerUser(data));
-      } else {
-        resultAction = await dispatch(loginUser({ email: data.email, password: data.password }));
-      }
-
-      if (registerUser.fulfilled.match(resultAction) || loginUser.fulfilled.match(resultAction)) {
-        const user = resultAction.payload.user;
-        if (!user.isOnboarded) {
-          navigate("/onboarding");
-        } else {
-          navigate("/swipe");
-        }
-      } else {
-        setError(resultAction.payload || "Authentication failed");
-      }
-    } catch (err) {
-      setError("An unexpected error occurred");
-      console.error("Auth failed:", err);
+  const handleLogin = () => {
+    if (!formData.email || !formData.password) {
+      setError("Please fill in all fields");
+      return;
+    }
+    if (isSignUp && formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+    setError(null);
+    dispatch(login({
+      name: formData.name || formData.email.split('@')[0] || 'User',
+      email: formData.email,
+      age: 25,
+      images: [],
+      isOnboarded: !isSignUp,
+    }));
+    if (isSignUp) {
+      navigate("/onboarding");
+    } else {
+      navigate("/swipe");
     }
   };
 
   return (
-    <div style={{ background: 'linear-gradient(135deg, #0A0A0A 0%, #1a0a15 25%, #15061a 50%, #0d0515 75%, #0A0A0A 100%)' }} className="min-h-screen w-full relative overflow-hidden flex flex-col items-center justify-center p-4">
+    <div style={{ background: 'linear-gradient(135deg, #0A0A0A 0%, #1a0a15 25%, #15061a 50%, #0d0515 75%, #0A0A0A 100%)' }} className="h-screen w-full relative overflow-hidden flex flex-col items-center justify-center">
 
       {/* Animated glowing orbs matching logo gradient */}
       <motion.div
@@ -210,14 +202,15 @@ const Auth = () => {
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
-            className="relative z-10 w-full flex flex-col items-center justify-center h-full"
+            className="relative z-10 w-full flex flex-col items-center justify-between py-8 px-4"
+            style={{ height: '100dvh', maxHeight: '100vh' }}
           >
             <motion.div
               key={introStep}
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className="relative w-full max-w-[280px] sm:max-w-[320px] h-[55vh] max-h-[520px] min-h-[420px] mb-6 md:mb-8 mt-4 md:mt-6"
+              className="relative w-full max-w-[260px] sm:max-w-[300px] shrink-0" style={{ height: '58vh', maxHeight: '480px', minHeight: '320px' }}
             >
               {/* BACK CARD - glass border */}
               <div className="absolute top-0 right-[-30px] w-[80%] h-[90%] rotate-[15deg] z-0 opacity-80">
@@ -253,14 +246,14 @@ const Auth = () => {
               key={`t-${introStep}`}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-2xl sm:text-3xl font-black text-white max-w-[280px] sm:max-w-[320px] mb-6 md:mb-8 min-h-[60px] sm:min-h-[80px] text-center leading-tight"
+              className="text-xl sm:text-2xl font-black text-white max-w-[280px] text-center leading-tight mt-4 shrink-0"
               style={{ textShadow: "0 2px 15px rgba(0,0,0,0.15)" }}
             >
               {introSlides[introStep].title}
             </motion.h2>
 
             {/* Progress dots */}
-            <div className="flex gap-2 mb-6 md:mb-10">
+            <div className="flex gap-2 mt-3 shrink-0">
               {introSlides.map((_, i) => (
                 <motion.div
                   key={i}
@@ -271,13 +264,13 @@ const Auth = () => {
               ))}
             </div>
 
-            <div className="flex items-center gap-4 w-full max-w-[320px]">
-              <button onClick={() => setPhase("login")} className="flex-1 py-4 font-bold text-white/60 hover:text-white hover:bg-white/10 rounded-2xl transition-colors cursor-pointer">
+            <div className="flex items-center gap-4 w-full max-w-[320px] mt-4 shrink-0">
+              <button onClick={() => setPhase("login")} className="flex-1 py-3.5 font-bold text-white/60 hover:text-white hover:bg-white/10 rounded-2xl transition-colors cursor-pointer">
                 Skip
               </button>
               <button
                 onClick={handleIntroNext}
-                className="flex-1 py-4 font-black text-white rounded-2xl shadow-xl shadow-black/20 hover:shadow-black/30 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
+                className="flex-1 py-3.5 font-black text-white rounded-2xl shadow-xl shadow-black/20 hover:shadow-black/30 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
                 style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(10px)" }}
               >
                 {introStep === introSlides.length - 1 ? "Let's Start" : "Next"}
@@ -294,12 +287,13 @@ const Auth = () => {
             initial={{ y: 50, opacity: 0, scale: 0.95 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className={`relative z-10 w-full max-w-sm sm:max-w-[420px] rounded-[2rem] sm:rounded-[2.5rem] border border-white/10 ${isSignUp ? 'p-5 sm:p-7' : 'p-6 sm:p-10'}`}
+            className={`relative z-10 w-full max-w-sm sm:max-w-[420px] rounded-[2rem] sm:rounded-[2.5rem] border border-white/10 ${isSignUp ? 'p-5' : 'p-6 sm:p-10'} overflow-y-auto mx-4`}
             style={{
               background: "rgba(15,8,20,0.85)",
               backdropFilter: "blur(20px)",
               WebkitBackdropFilter: "blur(20px)",
               boxShadow: "0 25px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05) inset",
+              maxHeight: 'calc(100vh - 40px)',
             }}
           >
             {/* Decorative glow dot */}

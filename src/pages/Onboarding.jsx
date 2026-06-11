@@ -59,17 +59,13 @@ export default function Onboarding() {
         languages: formData.languages,
         religion: formData.religion,
         interestedIn: formData.searchPreference === 'Both' ? ['Man', 'Woman'] : [formData.searchPreference],
-        isComplete: true
+        isOnboarded: true,
+        photos: formData.photos,
       };
-
-      const res = await api.put('/users/me/onboarding', mappedData);
-      if (res.data.success) {
-        dispatch(updateProfile(res.data.user));
-        navigate('/swipe');
-      }
+      dispatch(updateProfile(mappedData));
+      navigate('/swipe');
     } catch (err) {
       console.error("Onboarding failed:", err);
-      // Optional: show toast or error UI
     } finally {
       setIsSubmitting(false);
     }
@@ -301,7 +297,7 @@ export default function Onboarding() {
         <div className="hidden lg:flex w-5/12 p-16 flex-col justify-between relative overflow-hidden shrink-0" style={{ background: 'linear-gradient(135deg, #6b0a2e 0%, #3d1252 100%)' }}>
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-8">
-              <img src={landscapeLogowhite} alt="Inakkam" className="h-14 w-auto" />
+              <img src={landscapeLogo} alt="Inakkam" className="h-14 w-auto" />
             </div>
             <h2 className="text-4xl font-black text-white mb-4 leading-tight">{title}</h2>
             <p className="text-white/80 font-medium text-lg leading-relaxed">{sub}</p>
@@ -327,7 +323,7 @@ export default function Onboarding() {
                 <ArrowLeft className="w-5 h-5 text-white" />
               </button>
               <div className="flex items-center gap-2">
-                <img src={landscapeLogowhite} alt="Inakkam" className="h-10 w-auto" />
+                <img src={landscapeLogo} alt="Inakkam" className="h-10 w-auto" />
               </div>
               <span className="text-xs font-black text-white/70 bg-white/10 px-3 py-1.5 rounded-full border border-white/10">{formStep}/{totalFormSteps}</span>
             </div>
