@@ -92,7 +92,7 @@ const Auth = () => {
   };
 
   return (
-    <div style={{ background: 'linear-gradient(135deg, #0A0A0A 0%, #1a0a15 25%, #15061a 50%, #0d0515 75%, #0A0A0A 100%)' }} className="h-screen w-full relative overflow-hidden flex flex-col items-center justify-center">
+    <div style={{ background: 'linear-gradient(135deg, #0A0A0A 0%, #1a0a15 25%, #15061a 50%, #0d0515 75%, #0A0A0A 100%)' }} className="fixed inset-0 w-full h-[100dvh] overflow-hidden flex flex-col items-center justify-center">
 
       {/* Animated glowing orbs matching logo gradient */}
       <motion.div
