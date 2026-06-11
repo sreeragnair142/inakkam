@@ -202,7 +202,7 @@ const Auth = () => {
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
-            className="relative z-10 w-full flex flex-col items-center justify-center gap-4 py-4 px-4"
+            className="relative z-10 w-full flex flex-col items-center justify-center gap-4 py-4 px-4 overflow-x-hidden"
             style={{ height: '100dvh', maxHeight: '100vh' }}
           >
             <motion.div
