@@ -290,8 +290,8 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center lg:p-10" style={{ background: 'linear-gradient(135deg, #0A0A0A 0%, #1a0a15 20%, #15061a 45%, #0d0515 70%, #0A0A0A 100%)' }}>
-      <div className="w-full h-screen lg:h-auto lg:max-w-5xl bg-black/30 backdrop-blur-xl border border-white/10 lg:rounded-[2.5rem] lg:shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col lg:flex-row relative">
+    <div className="h-[100dvh] w-full flex items-center justify-center lg:p-10" style={{ background: 'linear-gradient(135deg, #0A0A0A 0%, #1a0a15 20%, #15061a 45%, #0d0515 70%, #0A0A0A 100%)' }}>
+      <div className="w-full h-full lg:h-auto lg:max-w-5xl bg-black/30 backdrop-blur-xl border border-white/10 lg:rounded-[2.5rem] lg:shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col lg:flex-row relative">
 
         {/* DESKTOP SPLIT BANNER */}
         <div className="hidden lg:flex w-5/12 p-16 flex-col justify-between relative overflow-hidden shrink-0" style={{ background: 'linear-gradient(135deg, #6b0a2e 0%, #3d1252 100%)' }}>
