@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
 import landscapeLogo from '../assets/landscapelogo.png';
@@ -31,7 +31,7 @@ import {
   Wallet,
   ShieldCheck
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'framer-motion';
 
 const MainLayout = ({ children }) => {
   const dispatch = useDispatch();
@@ -49,6 +49,20 @@ const MainLayout = ({ children }) => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
+
+  // Scroll visibility state
+  const scrollRef = useRef(null);
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const { scrollY } = useScroll({ container: scrollRef });
+
+  useMotionValueEvent(scrollY, "change", (latest) => {
+    const previous = scrollY.getPrevious() || 0;
+    if (latest > previous && latest > 50) {
+      setIsHeaderVisible(false);
+    } else if (latest < previous) {
+      setIsHeaderVisible(true);
+    }
+  });
 
   // Settings local state
   const themeMode = useSelector((state) => state.theme.mode);
@@ -75,8 +89,7 @@ const MainLayout = ({ children }) => {
 
   // BOTTOM MOBILE NAV ITEMS (Matches 2nd Screenshot)
   const navItems = [
-    { id: 'home', label: 'Home', icon: Home, path: '/landing' },
-    { id: 'discover', label: 'Discover', icon: Flame, path: '/swipe' },
+    { id: 'swipe', label: 'Home', icon: Flame, path: '/swipe' },
     { id: 'explore', label: 'Explore', icon: Heart, path: '/explore', isSpecial: true },
     { id: 'chat', label: 'Chat', icon: MessageSquare, path: '/chat' },
     { id: 'profile', label: 'Profile', icon: User, path: '/profile' },
@@ -84,8 +97,7 @@ const MainLayout = ({ children }) => {
 
   // SIDEBAR ITEMS (Matches 1st Screenshot perfectly)
   const sidebarItems = [
-    { id: 'home', label: 'Home', icon: Home, path: '/landing' },
-    { id: 'discover', label: 'Discover', icon: Flame, path: '/swipe' },
+    { id: 'swipe', label: 'Home', icon: Flame, path: '/swipe' },
     { id: 'explore', label: 'Explore', icon: Heart, path: '/explore' },
     { id: 'settings', label: 'Settings', icon: Settings, action: () => { setShowSettingsModal(true); setShowSidebar(false); } },
     { id: 'wallet', label: 'Wallet', icon: Wallet, path: '/wallet' },
@@ -107,14 +119,18 @@ const MainLayout = ({ children }) => {
 
   return (
     <>
-    <div className="min-h-screen flex flex-col text-white font-sans relative overflow-x-hidden" style={{ background: 'linear-gradient(135deg, #0A0A0A 0%, #1a0a15 20%, #15061a 45%, #0d0515 70%, #0A0A0A 100%)' }}>
+    <div 
+      ref={scrollRef}
+      className="h-screen w-full flex flex-col text-white font-sans relative overflow-x-hidden overflow-y-auto scroll-smooth" 
+      style={{ background: 'linear-gradient(135deg, #0A0A0A 0%, #1a0a15 20%, #15061a 45%, #0d0515 70%, #0A0A0A 100%)' }}
+    >
 
       {/* BRAND LOGO (Top Left for all screens) — hidden on chat */}
       {(() => {
         if (location.pathname === '/chat') return null;
         const isDarkBg = location.pathname === '/swipe' || location.pathname === '/profile';
         return (
-          <div className="fixed top-4 left-4 md:top-6 md:left-6 z-40">
+          <div className={`fixed top-4 left-4 md:top-6 md:left-6 z-40 transition-all duration-500 ease-in-out ${isHeaderVisible ? 'translate-y-0 opacity-100' : '-translate-y-[150%] opacity-0'}`}>
             <div 
               onClick={() => handleNavClick('/landing')}
               className="flex items-center gap-2 cursor-pointer hover:scale-105 transition-transform px-2 py-1"
@@ -126,12 +142,98 @@ const MainLayout = ({ children }) => {
         );
       })()}
 
+      {/* TOP RIGHT PROFILE MENU for Desktop */}
+      {(() => {
+        if (location.pathname === '/chat' || location.pathname === '/profile') return null;
+        return (
+          <div className={`fixed top-4 right-4 md:top-6 md:right-6 z-50 hidden lg:flex items-center transition-all duration-500 ease-in-out ${isHeaderVisible ? 'translate-y-0 opacity-100' : '-translate-y-[150%] opacity-0'}`}>
+            <div className="relative">
+              <div
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                className="flex items-center gap-2 p-1 pr-3 rounded-full border border-white/10 bg-[#D51659] hover:bg-[#b44ddc] cursor-pointer shadow-lg transition-all"
+              >
+                <img
+                  src={
+                    user?.images?.[0] ||
+                    "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=600"
+                  }
+                  alt={user?.name || "User"}
+                  className="w-8 h-8 rounded-full object-cover border border-white"
+                />
+                <span className="text-xs font-black hidden sm:inline-block text-white">
+                  {user?.name || "User"}
+                </span>
+                <ChevronDown className="w-3.5 h-3.5 text-white/80" />
+              </div>
+
+              {/* Profile Menu Dropdown */}
+              <AnimatePresence>
+                {showProfileMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowProfileMenu(false)}
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute right-0 mt-2.5 w-56 rounded-2xl shadow-xl border bg-white border-slate-100 z-50 p-2 text-left"
+                    >
+                      <div className="p-3 border-b border-slate-100 flex flex-col">
+                        <span className="font-bold text-xs flex items-center gap-1 text-slate-800">
+                          {user?.name || "User"}, {user?.age || 26}
+                          <CheckCircle2 className="w-3.5 h-3.5 text-blue-500 fill-current" />
+                        </span>
+                        <span className="text-[9px] text-slate-400 font-bold uppercase mt-1 tracking-wider">
+                          {user?.membership?.plan || (typeof user?.membership === 'string' ? user?.membership : "Free Tier")}
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          navigate("/profile");
+                          setShowProfileMenu(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold rounded-xl text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors cursor-pointer mt-1 border-none bg-transparent"
+                      >
+                        <User className="w-4 h-4 text-slate-400" />
+                        <span>My Profile</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setShowSettingsModal(true);
+                          setShowProfileMenu(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold rounded-xl text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors cursor-pointer border-none bg-transparent"
+                      >
+                        <Settings className="w-4 h-4 text-slate-400" />
+                        <span>Account Settings</span>
+                      </button>
+
+                      <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold rounded-xl text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer mt-1 border-t border-slate-100 pt-3 border-none bg-transparent"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>Log Out</span>
+                      </button>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+        );
+      })()}
+
       {(() => {
         const isChatBg = location.pathname === '/chat';
         if (isChatBg) return null; // Hide header on chat page
 
         return (
-          <header className="fixed top-6 left-0 right-0 z-40 flex items-center justify-center pointer-events-none hidden lg:flex">
+          <header className={`fixed top-6 left-0 right-0 z-40 flex items-center justify-center pointer-events-none hidden lg:flex transition-all duration-500 ease-in-out ${isHeaderVisible ? 'translate-y-0 opacity-100' : '-translate-y-[150%] opacity-0'}`}>
             <nav className="bg-white/10 backdrop-blur-md border-white/10 px-3 py-2 rounded-full shadow-lg border flex items-center gap-2 pointer-events-auto transition-colors">
               {navItems.map((item) => {
                 const isActive = activeTab === item.id || (item.id === 'home' && activeTab === 'home');
