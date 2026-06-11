@@ -541,7 +541,7 @@ const Landing = () => {
                               <CheckCircle2 className="w-3.5 h-3.5 text-blue-500 fill-current" />
                             </span>
                             <span className="text-[9px] text-slate-400 font-bold uppercase mt-1 tracking-wider">
-                              {user?.membership || "Free Tier"}
+                              {user?.membership?.plan || (typeof user?.membership === 'string' ? user?.membership : "Free Tier")}
                             </span>
                           </div>
 

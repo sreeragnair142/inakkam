@@ -217,7 +217,7 @@ const Auth = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className="relative w-full max-w-[260px] sm:max-w-xs h-[40vh] max-h-[380px] min-h-[300px] mb-6 md:mb-8 mt-4 md:mt-6"
+              className="relative w-full max-w-[280px] sm:max-w-[320px] h-[55vh] max-h-[520px] min-h-[420px] mb-6 md:mb-8 mt-4 md:mt-6"
             >
               {/* BACK CARD - glass border */}
               <div className="absolute top-0 right-[-30px] w-[80%] h-[90%] rotate-[15deg] z-0 opacity-80">

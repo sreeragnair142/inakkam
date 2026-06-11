@@ -5,9 +5,9 @@ import { setMatchedModal } from '../redux/slices/uiSlice';
 import { createNewChat } from '../redux/slices/chatSlice';
 import { addNotification } from '../redux/slices/notificationSlice';
 import {
-  X, 
-  Heart, 
-  MapPin, 
+  X,
+  Heart,
+  MapPin,
   MessageSquare,
   Sparkles,
   Flame,
@@ -19,7 +19,97 @@ import confetti from 'canvas-confetti';
 
 const Discover = () => {
   const dispatch = useDispatch();
-  const discoveredUsers = useSelector((state) => state.user.discoveredUsers);
+  const reduxDiscoveredUsers = useSelector((state) => state.user.discoveredUsers);
+
+  const [localUsers, setLocalUsers] = useState([]);
+
+  useEffect(() => {
+    const defaultUsers = reduxDiscoveredUsers?.length > 0 ? reduxDiscoveredUsers : [
+      {
+        id: '1',
+        name: 'Aisha',
+        age: 24,
+        images: ['https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80'],
+        matchPercentage: 92,
+        distance: '2 MILES AWAY',
+        verified: true,
+        interests: ['Photography 📸', 'Travel ✈️', 'Coffee ☕'],
+        relationship: 'Dating 💕'
+      },
+      {
+        id: '2',
+        name: 'Priya',
+        age: 26,
+        images: ['https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&q=80'],
+        matchPercentage: 85,
+        distance: '5 MILES AWAY',
+        verified: true,
+        interests: ['Art 🎨', 'Music 🎵', 'Food 🍣'],
+        relationship: 'Long-term 💍'
+      },
+      {
+        id: '3',
+        name: 'Maya',
+        age: 23,
+        images: ['https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80'],
+        matchPercentage: 78,
+        distance: '8 MILES AWAY',
+        verified: false,
+        interests: ['Yoga 🧘‍♀️', 'Hiking ⛰️', 'Dogs 🐶'],
+        relationship: 'Dating 💕'
+      },
+      {
+        id: '4',
+        name: 'Zara',
+        age: 25,
+        images: ['https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&q=80'],
+        matchPercentage: 88,
+        distance: '3 MILES AWAY',
+        verified: true,
+        interests: ['Fashion 👗', 'Design 🎨', 'Fitness 💪'],
+        relationship: 'Dating 💕'
+      },
+      {
+        id: '5',
+        name: 'Chloe',
+        age: 22,
+        images: ['https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80'],
+        matchPercentage: 81,
+        distance: '6 MILES AWAY',
+        verified: true,
+        interests: ['Reading 📚', 'Coffee ☕', 'Music 🎵'],
+        relationship: 'Long-term 💍'
+      },
+      {
+        id: '6',
+        name: 'Nina',
+        age: 27,
+        images: ['https://images.unsplash.com/photo-1503185912284-5271ff81b9a8?auto=format&fit=crop&q=80'],
+        matchPercentage: 75,
+        distance: '10 MILES AWAY',
+        verified: false,
+        interests: ['Cooking 🍳', 'Travel ✈️', 'Pets 🐱'],
+        relationship: 'Dating 💕'
+      }
+    ];
+    setLocalUsers(defaultUsers);
+  }, [reduxDiscoveredUsers]);
+
+  const handleAction = (e, actionType, profile) => {
+    e.stopPropagation();
+    
+    // Animate removal and update state
+    setLocalUsers(prev => prev.filter(u => u.id !== profile.id));
+    
+    if (actionType === 'like') {
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#D51659', '#FFD700', '#FF69B4']
+      });
+    }
+  };
   const isMatchedOpen = useSelector((state) => state.ui.isMatchedModalOpen);
   const matchedUser = useSelector((state) => state.ui.lastMatchedUser);
   const currentUser = useSelector((state) => state.auth.user);
@@ -27,65 +117,75 @@ const Discover = () => {
 
   return (
     <div className="flex-1 flex items-start justify-center relative min-h-screen pt-28 pb-16 lg:pt-36 lg:pb-20 px-4">
-      
 
 
-      {discoveredUsers && discoveredUsers.length > 0 ? (
+
+      {localUsers && localUsers.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-x-8 md:gap-y-12 w-full max-w-7xl mx-auto px-4 z-10 relative">
-          {discoveredUsers.map((profile) => (
-            <div key={profile.id} className="relative w-full aspect-[3/4] rounded-[2rem] overflow-visible group mt-4">
-              {/* Card Inner */}
-              <div 
-                onClick={() => setSelectedProfile(profile)}
-                className="w-full h-full rounded-[2rem] overflow-hidden relative border border-white/10 shadow-2xl bg-black/40 cursor-pointer"
+          <AnimatePresence>
+            {localUsers.map((profile) => (
+              <motion.div 
+                key={profile.id}
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                transition={{ duration: 0.3 }}
+                className="relative w-full aspect-[3/4] rounded-[2rem] overflow-visible group mt-4"
               >
-                <img src={profile.images[0]} alt={profile.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                {/* Premium clean gradient only at the bottom for text readability */}
-                <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none" />
-                
-                {/* Info Container */}
-                <div className="absolute inset-x-0 bottom-10 px-5 flex justify-between items-end">
-                  {/* Left: Name and Age */}
-                  <h3 className="text-white font-black text-xl drop-shadow-md pb-1 truncate max-w-[60%]">
-                    {profile.name}, {profile.age}
-                  </h3>
-                  
-                  {/* Right: Ring and Location */}
-                  <div className="flex flex-col items-end gap-2 shrink-0">
-                    {/* Ring */}
-                    <div className="w-12 h-12 rounded-full flex items-center justify-center relative bg-black/10 backdrop-blur-sm border border-white/10">
-                      <svg className="absolute inset-0 w-full h-full -rotate-90">
-                        <circle cx="50%" cy="50%" r="42%" stroke="rgba(255,255,255,0.15)" strokeWidth="2.5" fill="none" />
-                        <circle cx="50%" cy="50%" r="42%" stroke="white" strokeWidth="2.5" fill="none" strokeDasharray="100" strokeDashoffset={100 - profile.matchPercentage} strokeLinecap="round" />
-                      </svg>
-                      <span className="text-white text-[11px] font-black">{profile.matchPercentage}%</span>
-                    </div>
-                    {/* Location Pill */}
-                    <div className="bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-1.5 border border-white/20 text-white shadow-lg">
-                      <MapPin className="w-3 h-3 text-white/80" />
-                      <span className="text-[10px] font-bold tracking-wider uppercase">{profile.distance}</span>
+                {/* Card Inner */}
+                <div
+                  onClick={() => setSelectedProfile(profile)}
+                  className="w-full h-full rounded-[2rem] overflow-hidden relative border border-white/10 shadow-2xl bg-black/40 cursor-pointer"
+                >
+                  <img src={profile.images[0]} alt={profile.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                  {/* Premium clean gradient only at the bottom for text readability */}
+                  <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none" />
+
+                  {/* Info Container */}
+                  <div className="absolute inset-x-0 bottom-10 px-5 flex justify-between items-end">
+                    {/* Left: Name and Age */}
+                    <h3 className="text-white font-black text-xl drop-shadow-md pb-1 truncate max-w-[60%]">
+                      {profile.name}, {profile.age}
+                    </h3>
+
+                    {/* Right: Ring and Location */}
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      {/* Ring */}
+                      <div className="w-12 h-12 rounded-full flex items-center justify-center relative bg-black/10 backdrop-blur-sm border border-white/10">
+                        <svg className="absolute inset-0 w-full h-full -rotate-90">
+                          <circle cx="50%" cy="50%" r="42%" stroke="rgba(255,255,255,0.15)" strokeWidth="2.5" fill="none" />
+                          <circle cx="50%" cy="50%" r="42%" stroke="white" strokeWidth="2.5" fill="none" strokeDasharray="100" strokeDashoffset={100 - profile.matchPercentage} strokeLinecap="round" />
+                        </svg>
+                        <span className="text-white text-[11px] font-black">{profile.matchPercentage}%</span>
+                      </div>
+                      {/* Location Pill */}
+                      <div className="bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-1.5 border border-white/20 text-white shadow-lg">
+                        <MapPin className="w-3 h-3 text-white/80" />
+                        <span className="text-[10px] font-bold tracking-wider uppercase">{profile.distance}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Overlapping Action Buttons */}
-              <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2.5 z-20" onClick={(e) => e.stopPropagation()}>
-                <button className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
-                  <X className="w-5 h-5 text-yellow-500" strokeWidth={2.5} />
-                </button>
-                <button className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
-                  <Heart className="w-5 h-5 text-rose-500 fill-current" />
-                </button>
-                <button className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
-                  <MessageSquare className="w-5 h-5 text-purple-500 fill-current" />
-                </button>
-                <button className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
-                  <Gift className="w-5 h-5 text-yellow-400 fill-current" />
-                </button>
-              </div>
-            </div>
-          ))}
+                {/* Overlapping Action Buttons */}
+                <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2.5 z-20">
+                  <button onClick={(e) => handleAction(e, 'pass', profile)} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                    <X className="w-5 h-5 text-yellow-500" strokeWidth={2.5} />
+                  </button>
+                  <button onClick={(e) => handleAction(e, 'like', profile)} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                    <Heart className="w-5 h-5 text-rose-500 fill-current" />
+                  </button>
+                  <button onClick={(e) => handleAction(e, 'message', profile)} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                    <MessageSquare className="w-5 h-5 text-purple-500 fill-current" />
+                  </button>
+                  <button onClick={(e) => handleAction(e, 'gift', profile)} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                    <Gift className="w-5 h-5 text-yellow-400 fill-current" />
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       ) : (
         /* Empty State */
@@ -95,7 +195,7 @@ const Discover = () => {
           </div>
           <h3 className="font-black text-2xl mb-2 text-white">You've Seen Everyone!</h3>
           <p className="text-white/50 text-sm leading-relaxed mb-8">No new profiles in your area right now. Expand your filters or wait for more people to join.</p>
-          <button onClick={() => dispatch({ type: 'user/resetSwipes' })} className="px-8 py-3.5 rounded-full font-black text-xs uppercase tracking-widest bg-white/10 text-white border border-white/10 hover:bg-white/20 transition-colors cursor-pointer">
+          <button onClick={() => window.location.reload()} className="px-8 py-3.5 rounded-full font-black text-xs uppercase tracking-widest bg-white/10 text-white border border-white/10 hover:bg-white/20 transition-colors cursor-pointer">
             Refresh
           </button>
         </div>
@@ -105,7 +205,7 @@ const Discover = () => {
       <AnimatePresence>
         {selectedProfile && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pt-24 pb-6 sm:px-6 bg-black/60 backdrop-blur-md" onClick={() => setSelectedProfile(null)}>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -122,7 +222,7 @@ const Discover = () => {
               <div className="w-full md:w-[400px] shrink-0 relative h-[45vh] md:h-auto">
                 <img src={selectedProfile.images[0]} alt={selectedProfile.name} className="w-full h-full object-cover" />
                 <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none" />
-                
+
                 {/* Action buttons at the bottom of the image */}
                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 z-20">
                   <button className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-lg border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">

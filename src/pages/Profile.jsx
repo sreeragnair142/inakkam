@@ -4,7 +4,7 @@ import { useSelector } from 'react-redux';
 import {
   CheckCircle2, MapPin, Sparkles, Image as ImageIcon, Heart, Award,
   MessageSquare, HelpCircle, Camera, User, Wallet, Briefcase, GraduationCap,
-  Globe, BookHeart, Ruler, Star, Dumbbell, Eye
+  Globe, BookHeart, Ruler, Star, Dumbbell, Eye, Crown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
