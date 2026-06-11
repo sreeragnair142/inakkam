@@ -202,7 +202,7 @@ const Auth = () => {
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
-            className="relative z-10 w-full flex flex-col items-center justify-between py-8 px-4"
+            className="relative z-10 w-full flex flex-col items-center justify-center gap-4 py-4 px-4"
             style={{ height: '100dvh', maxHeight: '100vh' }}
           >
             <motion.div
@@ -212,21 +212,28 @@ const Auth = () => {
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
               className="relative w-full max-w-[260px] sm:max-w-[300px] shrink-0" style={{ height: '52vh', maxHeight: '440px', minHeight: '300px' }}
             >
-              {/* BACK CARD - glass border */}
-              <div className="absolute top-0 right-[-30px] w-[80%] h-[90%] rotate-[15deg] z-0 opacity-80">
-                <div className="w-full h-full rounded-[2rem] sm:rounded-[2.5rem] shadow-xl overflow-hidden relative border border-white/10">
-                  <img src={introSlides[(introStep + 1) % introSlides.length].image} className="w-full h-full object-cover filter brightness-[0.65]" alt="" />
+              {/* LEFT CARD (Card 3) */}
+              <div className="absolute top-[10%] left-[-45%] w-[85%] h-[80%] -rotate-[8deg] z-0 opacity-60">
+                <div className="w-full h-full rounded-[2rem] sm:rounded-[2.5rem] shadow-xl overflow-hidden relative border border-white/5">
+                  <img src={introSlides[(introStep + 2) % introSlides.length].image} className="w-full h-full object-cover filter brightness-[0.45]" alt="" />
                 </div>
               </div>
 
-              {/* FRONT CARD - enhanced shadow and border */}
-              <div className="absolute top-4 left-[-15px] w-[90%] h-[95%] -rotate-[6deg] z-10">
-                <div className="w-full h-full rounded-[2rem] sm:rounded-[2.5rem] shadow-[0_20px_60px_rgba(0,0,0,0.35)] overflow-hidden relative border-2 border-white/15">
+              {/* RIGHT CARD (Card 2) */}
+              <div className="absolute top-[10%] right-[-45%] w-[85%] h-[80%] rotate-[8deg] z-10 opacity-60">
+                <div className="w-full h-full rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden relative border border-white/10">
+                  <img src={introSlides[(introStep + 1) % introSlides.length].image} className="w-full h-full object-cover filter brightness-[0.45]" alt="" />
+                </div>
+              </div>
+
+              {/* CENTER FRONT CARD (Card 1) */}
+              <div className="absolute top-0 left-[2.5%] w-[95%] h-[100%] rotate-0 z-20">
+                <div className="w-full h-full rounded-[2rem] sm:rounded-[2.5rem] shadow-[0_25px_70px_rgba(0,0,0,0.6)] overflow-hidden relative border-2 border-white/15">
                   <img src={introSlides[introStep].image} className="w-full h-full object-cover filter brightness-[0.85]" alt="" />
                   <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/60 via-black/20 to-transparent pointer-events-none" />
 
                   {/* Card info overlay */}
-                  <div className="absolute bottom-4 sm:bottom-5 left-4 sm:left-5 right-4 sm:right-5 z-20">
+                  <div className="absolute bottom-4 sm:bottom-5 left-4 sm:left-5 right-4 sm:right-5 z-30">
                     <div className="flex items-center gap-2 mb-1.5 sm:mb-2">
                       <span className="px-2 sm:px-3 py-1 rounded-full text-[9px] sm:text-[10px] font-bold text-white backdrop-blur-md"
                         style={{ background: "rgba(213,22,89,0.5)" }}>
