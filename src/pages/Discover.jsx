@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { setMatchedModal } from '../redux/slices/uiSlice';
+import { fetchDiscoverUsers, apiSwipe } from '../redux/slices/userSlice';
 import { createNewChat } from '../redux/slices/chatSlice';
 import { addNotification } from '../redux/slices/notificationSlice';
 import {
@@ -24,96 +25,57 @@ const Discover = () => {
   const [localUsers, setLocalUsers] = useState([]);
 
   useEffect(() => {
-    const defaultUsers = reduxDiscoveredUsers?.length > 0 ? reduxDiscoveredUsers : [
-      {
-        id: '1',
-        name: 'Aisha',
-        age: 24,
-        images: ['https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80'],
-        matchPercentage: 92,
-        distance: '2 MILES AWAY',
-        verified: true,
-        interests: ['Photography 📸', 'Travel ✈️', 'Coffee ☕'],
-        relationship: 'Dating 💕'
-      },
-      {
-        id: '2',
-        name: 'Priya',
-        age: 26,
-        images: ['https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&q=80'],
-        matchPercentage: 85,
-        distance: '5 MILES AWAY',
-        verified: true,
-        interests: ['Art 🎨', 'Music 🎵', 'Food 🍣'],
-        relationship: 'Long-term 💍'
-      },
-      {
-        id: '3',
-        name: 'Maya',
-        age: 23,
-        images: ['https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80'],
-        matchPercentage: 78,
-        distance: '8 MILES AWAY',
-        verified: false,
-        interests: ['Yoga 🧘‍♀️', 'Hiking ⛰️', 'Dogs 🐶'],
-        relationship: 'Dating 💕'
-      },
-      {
-        id: '4',
-        name: 'Zara',
-        age: 25,
-        images: ['https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&q=80'],
-        matchPercentage: 88,
-        distance: '3 MILES AWAY',
-        verified: true,
-        interests: ['Fashion 👗', 'Design 🎨', 'Fitness 💪'],
-        relationship: 'Dating 💕'
-      },
-      {
-        id: '5',
-        name: 'Chloe',
-        age: 22,
-        images: ['https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80'],
-        matchPercentage: 81,
-        distance: '6 MILES AWAY',
-        verified: true,
-        interests: ['Reading 📚', 'Coffee ☕', 'Music 🎵'],
-        relationship: 'Long-term 💍'
-      },
-      {
-        id: '6',
-        name: 'Nina',
-        age: 27,
-        images: ['https://images.unsplash.com/photo-1503185912284-5271ff81b9a8?auto=format&fit=crop&q=80'],
-        matchPercentage: 75,
-        distance: '10 MILES AWAY',
-        verified: false,
-        interests: ['Cooking 🍳', 'Travel ✈️', 'Pets 🐱'],
-        relationship: 'Dating 💕'
-      }
-    ];
-    setLocalUsers(defaultUsers);
+    // Fetch users when the discover page mounts
+    dispatch(fetchDiscoverUsers(1));
+  }, [dispatch]);
+
+  useEffect(() => {
+    // Only update local state when redux array changes
+    if (reduxDiscoveredUsers) {
+      setLocalUsers(reduxDiscoveredUsers);
+    }
   }, [reduxDiscoveredUsers]);
 
   const handleAction = (e, actionType, profile) => {
     e.stopPropagation();
     
     // Animate removal and update state
-    setLocalUsers(prev => prev.filter(u => u.id !== profile.id));
+    setLocalUsers(prev => prev.filter(u => (u.id || u._id) !== (profile.id || profile._id)));
     
+    // Hit backend API
+    const swipeAction = actionType === 'like' || actionType === 'gift' ? 'right' : 'left';
+    dispatch(apiSwipe({ userId: profile._id || profile.id, action: swipeAction }));
+
     if (actionType === 'like') {
+      // Add to Explore page (Favourites)
+      dispatch({ type: 'user/addLikedProfile', payload: profile });
+      
+      // Show Match Modal
+      dispatch(setMatchedModal({ isOpen: true, user: profile }));
+      dispatch({ type: 'ui/setLastMatchedUser', payload: profile });
+
       confetti({
         particleCount: 100,
         spread: 70,
         origin: { y: 0.6 },
         colors: ['#D51659', '#FFD700', '#FF69B4']
       });
+    } else if (actionType === 'gift') {
+      // Just add to favorites if they send a gift too
+      dispatch({ type: 'user/addLikedProfile', payload: profile });
     }
   };
   const isMatchedOpen = useSelector((state) => state.ui.isMatchedModalOpen);
   const matchedUser = useSelector((state) => state.ui.lastMatchedUser);
   const currentUser = useSelector((state) => state.auth.user);
   const [selectedProfile, setSelectedProfile] = useState(null);
+
+  const getImageUrl = (u) => {
+    if (!u) return null;
+    if (u.images && typeof u.images[0] === 'string') return u.images[0];
+    if (u.photos && u.photos[0]) return typeof u.photos[0] === 'string' ? u.photos[0] : u.photos[0].url;
+    return null;
+  };
 
   return (
     <div className="flex-1 flex items-start justify-center relative min-h-screen pt-28 pb-16 lg:pt-36 lg:pb-20 px-4">
@@ -309,26 +271,30 @@ const Discover = () => {
       <AnimatePresence>
         {isMatchedOpen && matchedUser && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/60 backdrop-blur-lg flex items-center justify-center p-6">
-            <motion.div initial={{ scale: 0.85, y: 40 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.85, y: 40 }} transition={{ type: 'spring', damping: 25, stiffness: 350 }} className="bg-white max-w-md w-full p-10 rounded-[2.5rem] text-center border border-slate-100 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-[-30%] left-[-30%] w-96 h-96 rounded-full bg-gradient-to-tr from-bumble-yellow/30 to-rose-300/20 opacity-50 blur-[80px] pointer-events-none" />
-              <div className="w-20 h-20 bg-bumble-yellow rounded-[1.5rem] flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-bumble-yellow/30 rotate-12 relative z-10">
-                <Heart className="w-10 h-10 text-bumble-charcoal fill-current animate-pulse" />
+            <motion.div initial={{ scale: 0.85, y: 40 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.85, y: 40 }} transition={{ type: 'spring', damping: 25, stiffness: 350 }} className="bg-[#0f0a10]/90 backdrop-blur-3xl max-w-md w-full p-10 rounded-[2.5rem] text-center border border-white/10 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-[-30%] left-[-30%] w-96 h-96 rounded-full bg-gradient-to-tr from-[#D51659]/30 to-purple-600/20 opacity-50 blur-[80px] pointer-events-none" />
+              
+              <div className="w-20 h-20 bg-[#D51659] rounded-[1.5rem] flex items-center justify-center mx-auto mb-8 shadow-[0_4px_20px_rgba(213,22,89,0.4)] rotate-12 relative z-10">
+                <Heart className="w-10 h-10 text-white fill-current animate-pulse" />
               </div>
-              <h2 className="text-4xl font-black tracking-tight mb-3 text-bumble-charcoal relative z-10 font-serif italic">It's a Spark!</h2>
-              <p className="text-slate-500 text-sm mb-10 relative z-10">You and <span className="text-bumble-charcoal font-bold">{matchedUser.name}</span> liked each other</p>
+              
+              <h2 className="text-4xl font-black tracking-tight mb-3 text-white relative z-10 font-serif italic">It's a Spark!</h2>
+              <p className="text-white/60 text-sm mb-10 relative z-10">You and <span className="text-[#D51659] font-bold">{matchedUser.name}</span> liked each other</p>
+              
               <div className="flex justify-center items-center gap-0 mb-10 relative z-10">
-                <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-2xl relative z-10 -mr-6 ring-4 ring-bumble-yellow/20">
-                  <img src={currentUser?.images[0]} alt={currentUser?.name} className="w-full h-full object-cover" />
+                <div className="w-28 h-28 rounded-full overflow-hidden border-[3px] border-[#D51659] shadow-2xl relative z-10 -mr-6 ring-4 ring-black/40">
+                  <img src={getImageUrl(currentUser) || 'https://images.unsplash.com/photo-1511367461989-f85a21fda167?auto=format&fit=crop&q=80'} alt={currentUser?.name || "You"} className="w-full h-full object-cover" />
                 </div>
-                <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-2xl relative z-10 ring-4 ring-bumble-yellow/20">
-                  <img src={matchedUser.images[0]} alt={matchedUser.name} className="w-full h-full object-cover" />
+                <div className="w-28 h-28 rounded-full overflow-hidden border-[3px] border-[#D51659] shadow-2xl relative z-10 ring-4 ring-black/40">
+                  <img src={getImageUrl(matchedUser) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80'} alt={matchedUser?.name || "Match"} className="w-full h-full object-cover" />
                 </div>
               </div>
+              
               <div className="space-y-3 relative z-10">
-                <button onClick={() => { dispatch(setMatchedModal({ isOpen: false })); dispatch({ type: 'ui/setActiveTab', payload: 'chat' }); }} className="w-full py-4 rounded-2xl text-xs uppercase tracking-widest font-black bg-bumble-charcoal text-white shadow-xl hover:bg-black active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer">
+                <button onClick={() => { dispatch(setMatchedModal({ isOpen: false })); dispatch({ type: 'ui/setActiveTab', payload: 'chat' }); }} className="w-full py-4 rounded-2xl text-xs uppercase tracking-widest font-black bg-[#D51659] text-white shadow-[0_4px_15px_rgba(213,22,89,0.4)] hover:bg-[#b44ddc] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer">
                   <MessageSquare className="w-4 h-4 shrink-0" /> <span>Send Message</span>
                 </button>
-                <button onClick={() => dispatch(setMatchedModal({ isOpen: false }))} className="w-full py-4 rounded-2xl text-xs uppercase tracking-widest font-bold bg-slate-50 text-bumble-charcoal border border-slate-200 hover:bg-slate-100 active:scale-[0.98] transition-all cursor-pointer">
+                <button onClick={() => dispatch(setMatchedModal({ isOpen: false }))} className="w-full py-4 rounded-2xl text-xs uppercase tracking-widest font-bold bg-white/5 text-white/80 border border-white/10 hover:bg-white/10 active:scale-[0.98] transition-all cursor-pointer">
                   Continue Exploring
                 </button>
               </div>

@@ -3,28 +3,61 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, ChevronRight, EyeOff, CheckCircle2, Plus, X, Search, Flame, Loader2 } from "lucide-react";
 import landscapeLogo from "../assets/landscapelogowhite.png";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import api from "../utils/api";
 import { updateProfile } from "../redux/slices/authSlice";
 
 export default function Onboarding() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const user = useSelector((state) => state.auth.user);
+  const fileInputRef = React.useRef(null);
   const [formStep, setFormStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const totalFormSteps = 11;
 
   const [formData, setFormData] = useState({
-    firstName: "Jorge", email: "jorge@gmail.com", password: "", bio: "Lover of adventure, books, and strong coffee.",
-    phone: "", otp: "", birthday: "1994-05-15", gender: "Man", goals: "Dating", distance: 295,
-    interests: ["Cooking", "Yoga", "Books", "Wine"], languages: ["English", "Hindi"],
-    religion: "Hinduism", searchPreference: "Both",
+    firstName: user?.name || "", 
+    email: user?.email || "", 
+    password: "", 
+    bio: "Lover of adventure, books, and strong coffee.",
+    phone: user?.phone || "", 
+    otp: "", 
+    birthday: "1994-05-15", 
+    gender: "Man", 
+    goals: "Dating", 
+    distance: 295,
+    interests: ["Cooking", "Yoga", "Books", "Wine"], 
+    languages: ["English", "Hindi"],
+    religion: "Hinduism", 
+    searchPreference: "Both",
     photos: ["https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=300", "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=300"]
   });
   const [otpSent, setOtpSent] = useState(false);
 
   const handleFormNext = async () => {
-    if (formStep === 2 && !otpSent) { setOtpSent(true); return; }
+    if (formStep === 2 && !otpSent) { 
+      try {
+        await api.post('/auth/send-otp', { phone: formData.phone });
+        setOtpSent(true); 
+      } catch (err) {
+        alert(err);
+      }
+      return; 
+    }
+    
+    if (formStep === 2 && otpSent) {
+      try {
+        await api.post('/auth/verify-otp', { phone: formData.phone, otp: formData.otp });
+        setFormStep(3);
+        setOtpSent(false);
+      } catch (err) {
+        alert(typeof err === 'string' ? err : 'Invalid OTP');
+        return; 
+      }
+      return;
+    }
+
     if (formStep < totalFormSteps) {
       setFormStep(formStep + 1);
       setOtpSent(false);
@@ -59,11 +92,13 @@ export default function Onboarding() {
         languages: formData.languages,
         religion: formData.religion,
         interestedIn: formData.searchPreference === 'Both' ? ['Man', 'Woman'] : [formData.searchPreference],
-        isOnboarded: true,
+        isComplete: true,
         photos: formData.photos,
+        phone: formData.phone,
       };
-      dispatch(updateProfile(mappedData));
-      navigate('/swipe');
+      const res = await api.put('/users/me/onboarding', mappedData);
+      dispatch(updateProfile(res.data.user));
+      navigate('/profile');
     } catch (err) {
       console.error("Onboarding failed:", err);
     } finally {
@@ -80,6 +115,25 @@ export default function Onboarding() {
       const arr = prev[field];
       return arr.includes(item) ? { ...prev, [field]: arr.filter(i => i !== item) } : { ...prev, [field]: [...arr, item] };
     });
+  };
+
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (formData.photos.length >= 6) {
+        alert("Maximum 6 photos allowed");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        updateData('photos', [...formData.photos, reader.result]);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removePhoto = (index) => {
+    updateData('photos', formData.photos.filter((_, i) => i !== index));
   };
 
   const stepTitles = {
@@ -153,11 +207,11 @@ export default function Onboarding() {
                 <h2 className="text-2xl font-black text-white mb-2">Awesome 🎉</h2>
                 <p className="text-sm text-white/50 font-medium mb-8">We sent an OTP to +91 {formData.phone}</p>
                 <div className="flex gap-3 mb-8 justify-center lg:justify-start">
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <input key={i} type="text" maxLength={1} className="w-12 h-14 lg:w-14 lg:h-16 border-2 border-white/10 rounded-2xl text-center text-xl lg:text-2xl font-black focus:border-[#D51659] focus:ring-4 focus:ring-[#D51659]/10 outline-none bg-white/5 text-white" />
+                  {[0, 1, 2, 3, 4].map(i => (
+                    <input key={i} type="text" maxLength={1} value={formData.otp[i] || ""} onChange={e => { const newOtp = (formData.otp || "").split(''); newOtp[i] = e.target.value; updateData('otp', newOtp.join('')); if(e.target.value && e.target.nextElementSibling) e.target.nextElementSibling.focus(); }} className="w-12 h-14 lg:w-14 lg:h-16 border-2 border-white/10 rounded-2xl text-center text-xl lg:text-2xl font-black focus:border-[#D51659] focus:ring-4 focus:ring-[#D51659]/10 outline-none bg-white/5 text-white" />
                   ))}
                 </div>
-                <button onClick={() => setFormStep(3)} className="w-full py-4 bg-[#D51659] text-white rounded-2xl font-black text-base shadow-xl shadow-[#D51659]/20 hover:bg-[#b44ddc] active:scale-[0.98] transition-all cursor-pointer">Verify & Continue</button>
+                <button onClick={handleFormNext} className="w-full py-4 bg-[#D51659] text-white rounded-2xl font-black text-base shadow-xl shadow-[#D51659]/20 hover:bg-[#b44ddc] active:scale-[0.98] transition-all cursor-pointer">Verify & Continue</button>
               </motion.div>
             )}
           </div>
@@ -266,12 +320,20 @@ export default function Onboarding() {
       case 11:
         return (
           <div className="grid grid-cols-3 gap-3 lg:gap-5">
+            <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handlePhotoUpload} />
             {[0, 1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="aspect-[3/4] rounded-2xl border-2 border-dashed border-white/10 bg-white/5 relative overflow-hidden flex items-center justify-center cursor-pointer hover:bg-white/10 hover:border-white/20 transition-all group">
+              <div 
+                key={i} 
+                onClick={() => !formData.photos[i] && fileInputRef.current?.click()}
+                className="aspect-[3/4] rounded-2xl border-2 border-dashed border-white/10 bg-white/5 relative overflow-hidden flex items-center justify-center cursor-pointer hover:bg-white/10 hover:border-white/20 transition-all group"
+              >
                 {formData.photos[i] ? (
                   <>
                     <img src={formData.photos[i]} alt="Upload" className="w-full h-full object-cover" />
-                    <button className="absolute top-2 right-2 w-7 h-7 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md text-white hover:text-rose-500 transition-colors">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); removePhoto(i); }}
+                      className="absolute top-2 right-2 w-7 h-7 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md text-white hover:text-rose-500 transition-colors"
+                    >
                       <X className="w-4 h-4" />
                     </button>
                   </>

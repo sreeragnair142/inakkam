@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Heart, MapPin, X, Flame } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useSelector } from 'react-redux';
 
 const exploreCategories = ['New Match', 'Like Me', 'Favourite', 'Passed'];
 
@@ -63,6 +64,19 @@ const dummyProfiles = [
 
 const Explore = () => {
   const [activeCategory, setActiveCategory] = useState('New Match');
+  const likedProfiles = useSelector((state) => state.user.likedProfiles || []);
+
+  const displayProfiles = activeCategory === 'Favourite' && likedProfiles.length > 0 
+    ? likedProfiles.map((p, i) => ({
+        id: p.id || p._id || i,
+        name: p.name,
+        age: p.age,
+        distance: p.distance || "Nearby",
+        match: (p.matchPercentage || 99) + "% Match",
+        bio: p.bio || "Looking for a connection...",
+        image: p.images?.[0] || p.photos?.[0] || "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80",
+      }))
+    : dummyProfiles;
 
   return (
     <div className="w-full min-h-screen bg-premium-dark-gradient flex flex-col relative pt-16 md:pt-24 pb-24">
@@ -91,7 +105,7 @@ const Explore = () => {
 
       {/* Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-6 md:gap-8 px-1">
-        {dummyProfiles.map((profile, idx) => (
+        {displayProfiles.map((profile, idx) => (
           <motion.div
             key={profile.id}
             initial={{ opacity: 0, y: 20 }}

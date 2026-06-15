@@ -40,6 +40,7 @@ const initialState = {
   matches: [],
   selectedUserId: null,
   swipeHistory: [],
+  likedProfiles: [], // New state for Explore page
   loading: false,
   error: null,
 };
@@ -80,13 +81,17 @@ const userSlice = createSlice({
       const exists = state.matches.some(m => (m.user?._id || m.id) === action.payload._id);
       if (!exists) state.matches.unshift({ user: action.payload, matchedAt: new Date().toISOString() });
     },
+    addLikedProfile: (state, action) => {
+      const exists = state.likedProfiles.some(p => (p.id || p._id) === (action.payload.id || action.payload._id));
+      if (!exists) state.likedProfiles.unshift(action.payload);
+    },
   },
   extraReducers: (builder) => {
     builder
       .addCase(fetchDiscoverUsers.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(fetchDiscoverUsers.fulfilled, (state, action) => {
         state.loading = false;
-        if (action.payload && action.payload.length > 0) {
+        if (action.payload) {
           state.discoveredUsers = mapUsers(action.payload);
           state.currentSwipeIndex = 0;
           state.swipeHistory = [];
@@ -107,5 +112,5 @@ const userSlice = createSlice({
   },
 });
 
-export const { swipeLeft, swipeRight, undoSwipe, selectUser, resetSwipes, addMatch } = userSlice.actions;
+export const { swipeLeft, swipeRight, undoSwipe, selectUser, resetSwipes, addMatch, addLikedProfile } = userSlice.actions;
 export default userSlice.reducer;

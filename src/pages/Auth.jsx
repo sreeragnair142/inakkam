@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { login, guestLogin } from "../redux/slices/authSlice";
+import { loginUser, registerUser, guestLogin } from "../redux/slices/authSlice";
 import { Flame, ArrowRight, Eye, EyeOff, Sparkles } from "lucide-react";
 import loaderLogo from "../assets/loaderinakkam.png";
 import { motion, AnimatePresence } from "framer-motion";
@@ -67,7 +67,7 @@ const Auth = () => {
     }
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!formData.email || !formData.password) {
       setError("Please fill in all fields");
       return;
@@ -77,17 +77,28 @@ const Auth = () => {
       return;
     }
     setError(null);
-    dispatch(login({
-      name: formData.name || formData.email.split('@')[0] || 'User',
-      email: formData.email,
-      age: 25,
-      images: [],
-      isOnboarded: !isSignUp,
-    }));
-    if (isSignUp) {
-      navigate("/onboarding");
+
+    const isPhone = !formData.email.includes('@');
+    const authPayload = { password: formData.password };
+    if (isPhone) {
+      authPayload.phone = formData.email;
     } else {
-      navigate("/swipe");
+      authPayload.email = formData.email;
+    }
+
+    try {
+      if (isSignUp) {
+        await dispatch(registerUser({
+          ...authPayload,
+          name: formData.name || formData.email.split('@')[0] || 'User',
+        })).unwrap();
+        navigate("/onboarding");
+      } else {
+        await dispatch(loginUser(authPayload)).unwrap();
+        navigate("/swipe");
+      }
+    } catch (err) {
+      setError(typeof err === 'string' ? err : err?.message || "An error occurred");
     }
   };
 

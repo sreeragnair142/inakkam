@@ -107,12 +107,11 @@ function AppContent() {
   const token = localStorage.getItem('inakkam_token');
 
   // ─── App Initialization ─────────────────────────────
-  // fetchMe is disabled — using local auth (no backend required)
-  // useEffect(() => {
-  //   if (token && !isAuthenticated) {
-  //     dispatch(fetchMe());
-  //   }
-  // }, [dispatch, token, isAuthenticated]);
+  useEffect(() => {
+    if (token && !isAuthenticated) {
+      dispatch(fetchMe());
+    }
+  }, [dispatch, token, isAuthenticated]);
 
   // ─── Socket Integration ──────────────────────────────
   useEffect(() => {
