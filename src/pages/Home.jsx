@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { mockStories, mockUsers } from '../data/mockData';
 import { setActiveTab } from '../redux/slices/uiSlice';
 import { selectUser } from '../redux/slices/userSlice';
+import { VerificationBadge } from '../components/VerificationStatus';
 import { 
   Flame, 
   MapPin, 
@@ -28,6 +29,7 @@ const Home = () => {
   const navigate = useNavigate();
   const user = useSelector((state) => state.auth.user);
   const themeMode = useSelector((state) => state.theme.mode);
+  const { status: verificationStatus } = useSelector((s) => s.verification);
 
   const getContainerClass = () => {
     return 'bg-white text-bumble-charcoal border border-slate-100 shadow-sm';
@@ -113,7 +115,35 @@ const Home = () => {
       {/* BOXED WRAPPER FOR SCROLL-DOWN SECTIONS */}
       <div className="max-w-7xl mx-auto w-full px-6 md:px-8 space-y-16 pt-0 pb-16">
 
-        {/* 2. "WE EXIST TO BRING PEOPLE CLOSER TO LOVE" — Bumble Website Style Section */}
+        {/* KYC Verification Banner */}
+        {verificationStatus !== 'VERIFIED' && (
+          <section className="w-full">
+            <div className="bg-gradient-to-r from-[#1a0a1e] via-[#200a25] to-[#1a0a1e] border border-purple-500/20 rounded-3xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[0_0_40px_rgba(180,77,220,0.08)]">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#D51659]/20 to-[#b44ddc]/20 border border-purple-500/30 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-6 h-6 text-purple-400" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <p className="text-sm font-black text-white">Become a Verified Customer</p>
+                    <VerificationBadge status={verificationStatus} />
+                  </div>
+                  <p className="text-xs text-white/40">
+                    {verificationStatus === 'NOT_VERIFIED' ? 'Complete KYC to earn money through chat and unlock paid features.' : 'Your verification is being reviewed. We\'ll notify you within 24–48 hours.'}
+                  </p>
+                </div>
+              </div>
+              {verificationStatus === 'NOT_VERIFIED' && (
+                <button onClick={() => navigate('/kyc-verification')}
+                  className="px-6 py-3 rounded-2xl bg-gradient-to-r from-[#D51659] to-[#b44ddc] text-white text-xs font-bold whitespace-nowrap hover:opacity-90 transition-opacity cursor-pointer shadow-[0_4px_20px_rgba(213,22,89,0.3)] flex items-center gap-2 shrink-0">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Get Verified
+                </button>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* 2. WE EXIST TO BRING PEOPLE CLOSER TO LOVE */}
         <section className="w-full flex flex-col lg:flex-row items-center gap-16">
           
           {/* Left text column */}

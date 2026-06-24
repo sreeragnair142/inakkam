@@ -91,7 +91,11 @@ const authSlice = createSlice({
       localStorage.removeItem('inakkam_token');
     },
     updateProfile: (state, action) => {
-      if (state.user) state.user = { ...state.user, ...action.payload };
+      if (state.user) {
+        // Map the payload to ensure fields like 'photos' are correctly transformed into 'images'
+        const mappedUpdate = mapUser(action.payload);
+        state.user = { ...state.user, ...mappedUpdate };
+      }
     },
     clearError: (state) => { state.error = null; },
   },

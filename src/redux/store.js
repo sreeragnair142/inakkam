@@ -5,6 +5,7 @@ import chatReducer from './slices/chatSlice';
 import notificationReducer from './slices/notificationSlice';
 import themeReducer from './slices/themeSlice';
 import uiReducer from './slices/uiSlice';
+import verificationReducer from './slices/verificationSlice';
 
 export const store = configureStore({
   reducer: {
@@ -14,5 +15,6 @@ export const store = configureStore({
     notification: notificationReducer,
     theme: themeReducer,
     ui: uiReducer,
+    verification: verificationReducer,
   },
 });

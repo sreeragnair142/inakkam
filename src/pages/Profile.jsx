@@ -1,20 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import {
   CheckCircle2, MapPin, Sparkles, Image as ImageIcon, Heart, Award,
   MessageSquare, HelpCircle, Camera, User, Wallet, Briefcase, GraduationCap,
-  Globe, BookHeart, Ruler, Star, Dumbbell, Eye, Crown
+  Globe, BookHeart, Ruler, Star, Dumbbell, Eye, Crown, ShieldCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { VerificationCard } from '../components/VerificationStatus';
+import { fetchVerificationStatus } from '../redux/slices/verificationSlice';
 
 const Profile = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const selectedUserId = useSelector((state) => state.user.selectedUserId);
   const discoveredUsers = useSelector((state) => state.user.discoveredUsers);
   const authUser = useSelector((state) => state.auth.user);
+  const { status: verificationStatus } = useSelector((state) => state.verification);
   const [activeTab, setActiveTab] = useState('about');
   const [viewSelf, setViewSelf] = useState(false);
+
+  useEffect(() => {
+    dispatch(fetchVerificationStatus());
+  }, [dispatch]);
 
   const profileUser = viewSelf
     ? authUser
@@ -29,13 +37,20 @@ const Profile = () => {
   }
 
   const displayLocation = typeof profileUser.location === 'string' ? profileUser.location : 'Nearby';
-  const heroImg = profileUser.images?.[0] || 'https://images.unsplash.com/photo-1511367461989-f85a21fda167?auto=format&fit=crop&q=80&w=600';
+  
+  // Fallback to extract photos if the images array isn't mapped properly yet in Redux
+  const userImages = profileUser.images?.length 
+    ? profileUser.images 
+    : (profileUser.photos?.map(p => typeof p === 'string' ? p : p.url) || []);
+    
+  const heroImg = userImages[0] || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=600';
 
   const tabs = [
     { id: 'about', label: 'About', icon: User },
     { id: 'media', label: 'Gallery', icon: ImageIcon },
     { id: 'prompts', label: 'Prompts', icon: MessageSquare },
     { id: 'wallet', label: 'Wallet', icon: Wallet },
+    { id: 'verification', label: 'Verified', icon: ShieldCheck },
   ];
 
   const stats = [
@@ -215,7 +230,7 @@ const Profile = () => {
               <div className="grid lg:grid-cols-3 gap-6">
                 {/* Bio - full width on desktop */}
                 <div className="lg:col-span-2 bg-black/40 backdrop-blur-2xl rounded-[2rem] p-6 lg:p-8 shadow-xl border border-white/10">
-                  <h3 className="font-serif italic font-semibold text-2xl text-white mb-4">About me</h3>
+                  <h3 className="font-black text-2xl text-white mb-4">About me</h3>
                   <p className="text-base lg:text-lg leading-relaxed text-white/80 font-medium">{profileUser.bio}</p>
                   {/* Languages */}
                   {profileUser.languages?.length > 0 && (
@@ -234,7 +249,7 @@ const Profile = () => {
 
                 {/* Work & Education */}
                 <div className="bg-black/40 backdrop-blur-2xl rounded-[2rem] p-6 lg:p-8 shadow-xl border border-white/10 space-y-5">
-                  <h3 className="font-serif italic font-semibold text-xl text-white border-b border-white/10 pb-4">Details</h3>
+                  <h3 className="font-black text-xl text-white border-b border-white/10 pb-4">Details</h3>
                   <div className="space-y-3">
                     <div className="flex items-center gap-3 bg-white/5 p-4 rounded-2xl border border-white/5">
                       <Briefcase className="w-4 h-4 text-white/40 shrink-0" />
@@ -261,7 +276,7 @@ const Profile = () => {
 
                 {/* Interests - full width */}
                 <div className="lg:col-span-3 bg-black/40 backdrop-blur-2xl rounded-[2rem] p-6 lg:p-8 shadow-xl border border-white/10">
-                  <h3 className="font-serif italic font-semibold text-2xl text-white mb-6">Interests</h3>
+                  <h3 className="font-black text-2xl text-white mb-6">Interests</h3>
                   <div className="flex flex-wrap gap-3">
                     {profileUser.interests?.length > 0 ? (
                       profileUser.interests.map((interest, idx) => (
@@ -280,7 +295,7 @@ const Profile = () => {
             {activeTab === 'media' && (
               <div className="bg-black/40 backdrop-blur-2xl rounded-[2rem] p-5 lg:p-8 shadow-xl border border-white/10">
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
-                  {profileUser.images?.map((img, idx) => (
+                  {userImages.map((img, idx) => (
                     <div key={idx} className="aspect-[4/5] rounded-2xl lg:rounded-3xl overflow-hidden shadow-md group relative">
                       <img src={img} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
@@ -288,7 +303,7 @@ const Profile = () => {
                       </div>
                     </div>
                   ))}
-                  {(profileUser.images?.length || 0) < 9 && (
+                  {userImages.length < 9 && (
                     <div className="aspect-[4/5] rounded-2xl lg:rounded-3xl border-2 border-dashed border-white/20 flex flex-col items-center justify-center gap-3 hover:border-[#D51659] hover:bg-[#D51659]/10 transition-colors cursor-pointer text-white/40 hover:text-white">
                       <Camera className="w-8 h-8" />
                       <span className="text-xs font-bold uppercase tracking-wider">Add Photo</span>
@@ -321,7 +336,7 @@ const Profile = () => {
               <div className="space-y-6">
                 <div className="bg-black/40 backdrop-blur-2xl rounded-[2rem] p-6 lg:p-8 shadow-xl border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div>
-                    <h3 className="font-serif italic font-semibold text-2xl text-white mb-2">My Balance</h3>
+                    <h3 className="font-black text-2xl text-white mb-2">My Balance</h3>
                     <p className="text-sm text-white/50 font-medium">Use coins to supercharge your matches.</p>
                   </div>
                   <div className="flex items-center gap-3 bg-white/5 px-6 py-4 rounded-2xl border border-white/5">
@@ -343,6 +358,38 @@ const Profile = () => {
                     <span className="font-bold">Go Premium</span>
                   </button>
                 </div>
+              </div>
+            )}
+
+            {activeTab === 'verification' && (
+              <div className="space-y-6">
+                <VerificationCard status={verificationStatus} />
+
+                {verificationStatus === 'NOT_VERIFIED' && (
+                  <div className="bg-gradient-to-br from-[#D51659]/10 to-[#b44ddc]/10 border border-purple-500/20 rounded-[2rem] p-6 lg:p-8">
+                    <h3 className="font-black text-xl text-white mb-4">Why Get Verified?</h3>
+                    <div className="space-y-3">
+                      {[
+                        { icon: '💬', title: 'Earn Through Chat', desc: 'Get paid for every chat session you participate in.' },
+                        { icon: '📩', title: 'Receive Paid Requests', desc: 'Accept paid chat requests from other users.' },
+                        { icon: '💰', title: 'Withdraw Earnings', desc: 'Transfer your earnings directly to your bank or UPI.' },
+                        { icon: '🛡️', title: 'Verified Badge', desc: 'Display a Verified Customer badge on your profile.' },
+                      ].map((b) => (
+                        <div key={b.title} className="flex items-start gap-4 bg-white/5 p-4 rounded-2xl border border-white/5">
+                          <span className="text-2xl">{b.icon}</span>
+                          <div>
+                            <p className="text-sm font-bold text-white">{b.title}</p>
+                            <p className="text-xs text-white/40 mt-0.5">{b.desc}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <button onClick={() => navigate('/kyc-verification')}
+                      className="mt-6 w-full py-4 rounded-2xl bg-gradient-to-r from-[#D51659] to-[#b44ddc] text-white font-bold text-sm hover:opacity-90 transition-opacity cursor-pointer shadow-[0_4px_20px_rgba(213,22,89,0.3)] flex items-center justify-center gap-2">
+                      <ShieldCheck className="w-4 h-4" /> Become a Verified Customer
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

@@ -11,6 +11,7 @@ import Chat from "../pages/Chat";
 import Membership from "../pages/Membership";
 import Profile from "../pages/Profile";
 import MainLayout from "../layouts/MainLayout";
+import KYCVerification from "../pages/kyc/KYCVerification";
 
 // Wrapper to protect routes based on Redux auth status
 const ProtectedRoute = ({ children }) => {
@@ -96,6 +97,16 @@ const AppRoutes = () => {
             <MainLayout>
               <Profile />
             </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* KYC Verification */}
+      <Route
+        path="/kyc-verification"
+        element={
+          <ProtectedRoute>
+            <KYCVerification />
           </ProtectedRoute>
         }
       />

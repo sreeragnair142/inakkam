@@ -14,6 +14,8 @@ export default function Onboarding() {
   const fileInputRef = React.useRef(null);
   const [formStep, setFormStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [langSearch, setLangSearch] = useState("");
+  const [interestSearch, setInterestSearch] = useState("");
   const totalFormSteps = 11;
 
   const [formData, setFormData] = useState({
@@ -91,7 +93,9 @@ export default function Onboarding() {
         interests: formData.interests,
         languages: formData.languages,
         religion: formData.religion,
-        interestedIn: formData.searchPreference === 'Both' ? ['Man', 'Woman'] : [formData.searchPreference],
+        interestedIn: ['Everyone', 'Both'].includes(formData.searchPreference) 
+          ? ['Man', 'Woman', 'Non-binary', 'Transgender Man', 'Transgender Woman', 'Genderqueer', 'Lesbian', 'Other'] 
+          : [formData.searchPreference],
         isComplete: true,
         photos: formData.photos,
         phone: formData.phone,
@@ -162,7 +166,9 @@ export default function Onboarding() {
   const allInterests = [
     { id: 'Travel', icon: '✈️' }, { id: 'Cooking', icon: '🍳' }, { id: 'Hiking', icon: '⛰️' },
     { id: 'Yoga', icon: '🧘' }, { id: 'Gaming', icon: '🎮' }, { id: 'Movies', icon: '🎬' },
-    { id: 'Books', icon: '📚' }, { id: 'Animals', icon: '🐾' }, { id: 'Wine', icon: '🍷' }
+    { id: 'Books', icon: '📚' }, { id: 'Animals', icon: '🐾' }, { id: 'Wine', icon: '🍷' },
+    { id: 'Music', icon: '🎵' }, { id: 'Photography', icon: '📸' }, { id: 'Art', icon: '🎨' },
+    { id: 'Sports', icon: '⚽' }, { id: 'Fitness', icon: '💪' }, { id: 'Dancing', icon: '💃' }
   ];
   const allGoals = [
     { id: 'Dating', icon: '💑', desc: 'Genuine relationships and love.' },
@@ -171,8 +177,17 @@ export default function Onboarding() {
     { id: 'Serious', icon: '💍', desc: 'Commitment and partnership.' },
     { id: 'Open', icon: '😎', desc: 'Open to various connections.' },
   ];
-  const allLangs = [{ id: 'English', icon: '🇬🇧' }, { id: 'Gujarati', icon: '🇮🇳' }, { id: 'Hindi', icon: '🇮🇳' }, { id: 'Bengali', icon: '🇧🇩' }];
-  const allReligions = ['Islam', 'Hinduism', 'Christianity', 'Buddhism', 'Judaism', 'Sikhism', 'Taoism', 'Jainism', 'Shintoism'];
+  const allLangs = [
+    { id: 'English', icon: '🇬🇧' }, { id: 'Gujarati', icon: '🇮🇳' }, { id: 'Hindi', icon: '🇮🇳' }, { id: 'Bengali', icon: '🇧🇩' },
+    { id: 'Spanish', icon: '🇪🇸' }, { id: 'French', icon: '🇫🇷' }, { id: 'German', icon: '🇩🇪' }, { id: 'Italian', icon: '🇮🇹' },
+    { id: 'Portuguese', icon: '🇵🇹' }, { id: 'Russian', icon: '🇷🇺' }, { id: 'Chinese', icon: '🇨🇳' }, { id: 'Japanese', icon: '🇯🇵' },
+    { id: 'Korean', icon: '🇰🇷' }, { id: 'Arabic', icon: '🇸🇦' }, { id: 'Turkish', icon: '🇹🇷' }, { id: 'Dutch', icon: '🇳🇱' },
+    { id: 'Tamil', icon: '🇮🇳' }, { id: 'Telugu', icon: '🇮🇳' }, { id: 'Marathi', icon: '🇮🇳' }, { id: 'Urdu', icon: '🇵🇰' },
+    { id: 'Punjabi', icon: '🇮🇳' }, { id: 'Malayalam', icon: '🇮🇳' }, { id: 'Kannada', icon: '🇮🇳' }, { id: 'Odia', icon: '🇮🇳' }
+  ];
+  const allReligions = ['Islam', 'Hinduism', 'Christianity', 'Buddhism', 'Judaism', 'Sikhism', 'Taoism', 'Jainism', 'Shintoism', 'Atheist', 'Agnostic', 'Spiritual', 'Other'];
+  const genderOptions = ['Man', 'Woman', 'Non-binary', 'Transgender Man', 'Transgender Woman', 'Genderqueer', 'Lesbian', 'Other'];
+  const searchPreferenceOptions = ['Man', 'Woman', 'Non-binary', 'Transgender', 'Everyone', 'Lesbian', 'Other'];
 
   const renderStep = () => {
     switch (formStep) {
@@ -222,8 +237,8 @@ export default function Onboarding() {
         );
       case 4:
         return (
-          <div className="space-y-3">
-            {['Man', 'Woman', 'Other'].map(g => (
+          <div className="space-y-3 pb-12">
+            {genderOptions.map(g => (
               <div key={g} onClick={() => updateData('gender', g)} className={`p-5 rounded-2xl border-2 flex justify-between items-center cursor-pointer transition-all ${formData.gender === g ? selectedCls : unselectedCls}`}>
                 <span className="font-black text-base text-white">{g}</span>
                 {formData.gender === g && <CheckCircle2 className="w-6 h-6 text-[#D51659]" />}
@@ -254,13 +269,13 @@ export default function Onboarding() {
         );
       case 7:
         return (
-          <div>
+          <div className="pb-12">
             <div className="relative mb-6">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-              <input type="text" placeholder="Search interests…" className={inputCls + " pl-12"} />
+              <input type="text" placeholder="Search interests…" value={interestSearch} onChange={(e) => setInterestSearch(e.target.value)} className={inputCls + " pl-12"} />
             </div>
             <div className="flex flex-wrap gap-3">
-              {allInterests.map(i => {
+              {allInterests.filter(i => i.id.toLowerCase().includes(interestSearch.toLowerCase())).map(i => {
                 const sel = formData.interests.includes(i.id);
                 return (
                   <button key={i.id} onClick={() => toggleArrayItem('interests', i.id)} className={`px-5 py-3 rounded-full border-2 flex items-center gap-2 transition-all text-sm font-black cursor-pointer ${sel ? chipSelectedCls : chipUnselectedCls}`}>
@@ -273,13 +288,13 @@ export default function Onboarding() {
         );
       case 8:
         return (
-          <div>
+          <div className="pb-12">
             <div className="relative mb-6">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-              <input type="text" placeholder="Search languages…" className={inputCls + " pl-12"} />
+              <input type="text" placeholder="Search languages…" value={langSearch} onChange={(e) => setLangSearch(e.target.value)} className={inputCls + " pl-12"} />
             </div>
             <div className="space-y-3">
-              {allLangs.map(l => {
+              {allLangs.filter(l => l.id.toLowerCase().includes(langSearch.toLowerCase())).map(l => {
                 const sel = formData.languages.includes(l.id);
                 return (
                   <div key={l.id} onClick={() => toggleArrayItem('languages', l.id)} className={`p-5 rounded-2xl border-2 flex justify-between items-center cursor-pointer transition-all ${sel ? selectedCls : unselectedCls}`}>
@@ -308,8 +323,8 @@ export default function Onboarding() {
         );
       case 10:
         return (
-          <div className="space-y-3">
-            {['Man', 'Woman', 'Both'].map(p => (
+          <div className="space-y-3 pb-12">
+            {searchPreferenceOptions.map(p => (
               <div key={p} onClick={() => updateData('searchPreference', p)} className={`p-5 rounded-2xl border-2 flex justify-between items-center cursor-pointer transition-all ${formData.searchPreference === p ? selectedCls : unselectedCls}`}>
                 <span className="font-black text-base text-white">{p}</span>
                 {formData.searchPreference === p && <CheckCircle2 className="w-6 h-6 text-[#D51659]" />}
@@ -352,8 +367,8 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="h-[100dvh] w-full flex items-center justify-center lg:p-10" style={{ background: 'linear-gradient(135deg, #0A0A0A 0%, #1a0a15 20%, #15061a 45%, #0d0515 70%, #0A0A0A 100%)' }}>
-      <div className="w-full h-full lg:h-auto lg:max-w-5xl bg-black/30 backdrop-blur-xl border border-white/10 lg:rounded-[2.5rem] lg:shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col lg:flex-row relative">
+    <div className="h-[100dvh] w-full overflow-hidden flex items-center justify-center lg:p-10" style={{ background: 'linear-gradient(135deg, #0A0A0A 0%, #1a0a15 20%, #15061a 45%, #0d0515 70%, #0A0A0A 100%)' }}>
+      <div className="w-full h-full lg:h-[85vh] lg:max-h-[850px] lg:max-w-5xl bg-black/30 backdrop-blur-xl border border-white/10 lg:rounded-[2.5rem] lg:shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col lg:flex-row relative">
 
         {/* DESKTOP SPLIT BANNER */}
         <div className="hidden lg:flex w-5/12 p-16 flex-col justify-between relative overflow-hidden shrink-0" style={{ background: 'linear-gradient(135deg, #6b0a2e 0%, #3d1252 100%)' }}>

@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { setTheme } from '../redux/slices/themeSlice';
+import { fetchVerificationStatus } from '../redux/slices/verificationSlice';
+import { VerificationCard } from '../components/VerificationStatus';
 import { 
   Palette, 
   Bell, 
@@ -9,12 +12,19 @@ import {
   Trash2, 
   Check, 
   Smartphone, 
-  Globe 
+  Globe,
+  ShieldCheck
 } from 'lucide-react';
 
 const Settings = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const themeMode = useSelector((state) => state.theme.mode);
+  const { status: verificationStatus } = useSelector((state) => state.verification);
+
+  useEffect(() => {
+    dispatch(fetchVerificationStatus());
+  }, [dispatch]);
 
   // Local settings toggle states
   const [privacyToggles, setPrivacyToggles] = useState({
@@ -51,7 +61,25 @@ const Settings = () => {
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto pb-12 text-left">
-      
+
+      {/* 0. KYC Verification Card */}
+      <div className="bg-gradient-to-br from-[#1a0a1e] to-[#0d0515] border border-white/10 p-6 rounded-3xl space-y-4 shadow-xl">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="w-5 h-5 text-purple-400" />
+          <h3 className="font-extrabold text-sm uppercase tracking-wider text-white">Identity Verification</h3>
+        </div>
+        <p className="text-white/40 text-xs leading-relaxed">
+          Verify your identity to unlock earning features — earn through chat, receive paid requests, and withdraw earnings.
+        </p>
+        <VerificationCard status={verificationStatus} />
+        {verificationStatus === 'NOT_VERIFIED' && (
+          <button onClick={() => navigate('/kyc-verification')}
+            className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#D51659] to-[#b44ddc] text-white text-sm font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity cursor-pointer shadow-[0_4px_20px_rgba(213,22,89,0.25)]">
+            <ShieldCheck className="w-4 h-4" /> Become a Verified Customer
+          </button>
+        )}
+      </div>
+
       {/* 1. Theme Configuration Panel */}
       <div className={`${getContainerClass()} p-6 rounded-3xl space-y-4`}>
         <div className="flex items-center gap-2">
