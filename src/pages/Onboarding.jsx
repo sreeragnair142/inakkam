@@ -23,6 +23,28 @@ export default function Onboarding() {
   const [dbReligions, setDbReligions] = useState([]);
   const [dbRelationGoals, setDbRelationGoals] = useState([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
+  const [userLocation, setUserLocation] = useState(null);
+
+  // Request geolocation when the user reaches the distance preference step (step 6)
+  React.useEffect(() => {
+    if (formStep === 6) {
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { longitude, latitude } = position.coords;
+            setUserLocation({
+              type: "Point",
+              coordinates: [longitude, latitude]
+            });
+          },
+          (err) => {
+            console.warn("Geolocation permission denied or error occurred:", err);
+          },
+          { enableHighAccuracy: true, timeout: 10000 }
+        );
+      }
+    }
+  }, [formStep]);
 
   React.useEffect(() => {
     const fetchOptions = async () => {
@@ -115,6 +137,7 @@ export default function Onboarding() {
         gender: formData.gender,
         relationship: formData.goals,
         maxDistance: parseInt(formData.distance),
+        location: userLocation || { type: 'Point', coordinates: [76.2673, 9.9312] },
         interests: formData.interests,
         languages: formData.languages,
         religion: formData.religion,
