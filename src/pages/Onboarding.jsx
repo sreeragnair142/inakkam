@@ -18,6 +18,31 @@ export default function Onboarding() {
   const [interestSearch, setInterestSearch] = useState("");
   const totalFormSteps = 11;
 
+  const [dbLanguages, setDbLanguages] = useState([]);
+  const [dbInterests, setDbInterests] = useState([]);
+  const [dbReligions, setDbReligions] = useState([]);
+  const [dbRelationGoals, setDbRelationGoals] = useState([]);
+  const [loadingOptions, setLoadingOptions] = useState(true);
+
+  React.useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        const res = await api.get('/users/onboarding-options');
+        if (res.data) {
+          if (res.data.languages) setDbLanguages(res.data.languages);
+          if (res.data.interests) setDbInterests(res.data.interests);
+          if (res.data.religions) setDbReligions(res.data.religions);
+          if (res.data.relationGoals) setDbRelationGoals(res.data.relationGoals);
+        }
+      } catch (err) {
+        console.error("Failed to fetch onboarding options:", err);
+      } finally {
+        setLoadingOptions(false);
+      }
+    };
+    fetchOptions();
+  }, []);
+
   const [formData, setFormData] = useState({
     firstName: user?.name || "", 
     email: user?.email || "", 
@@ -189,6 +214,34 @@ export default function Onboarding() {
   const genderOptions = ['Man', 'Woman', 'Non-binary', 'Transgender Man', 'Transgender Woman', 'Genderqueer', 'Lesbian', 'Other'];
   const searchPreferenceOptions = ['Man', 'Woman', 'Non-binary', 'Transgender', 'Everyone', 'Lesbian', 'Other'];
 
+  const languagesList = dbLanguages.length > 0
+    ? dbLanguages.map(l => ({
+        id: l.title,
+        icon: l.image || '💬',
+        isCustomImage: !!l.image
+      }))
+    : allLangs;
+
+  const interestsList = dbInterests.length > 0
+    ? dbInterests.map(i => ({
+        id: i.title,
+        icon: i.image || '🥰',
+        isCustomImage: !!i.image
+      }))
+    : allInterests;
+
+  const religionsList = dbReligions.length > 0
+    ? dbReligions.map(r => r.title)
+    : allReligions;
+
+  const goalsList = dbRelationGoals.length > 0
+    ? dbRelationGoals.map(g => ({
+        id: g.title,
+        desc: g.subtitle || '',
+        icon: '💖'
+      }))
+    : allGoals;
+
   const renderStep = () => {
     switch (formStep) {
       case 1:
@@ -249,7 +302,7 @@ export default function Onboarding() {
       case 5:
         return (
           <div className="space-y-3 pb-12">
-            {allGoals.map(g => (
+            {goalsList.map(g => (
               <div key={g.id} onClick={() => updateData('goals', g.id)} className={`p-5 rounded-2xl border-2 cursor-pointer transition-all ${formData.goals === g.id ? selectedCls : unselectedCls}`}>
                 <div className="flex items-center gap-3 mb-1"><span className="text-xl">{g.icon}</span><span className="font-black text-base text-white">{g.id}</span></div>
                 <p className="text-xs text-white/50 font-medium ml-9">{g.desc}</p>
@@ -275,11 +328,12 @@ export default function Onboarding() {
               <input type="text" placeholder="Search interests…" value={interestSearch} onChange={(e) => setInterestSearch(e.target.value)} className={inputCls + " pl-12"} />
             </div>
             <div className="flex flex-wrap gap-3">
-              {allInterests.filter(i => i.id.toLowerCase().includes(interestSearch.toLowerCase())).map(i => {
+              {interestsList.filter(i => i.id.toLowerCase().includes(interestSearch.toLowerCase())).map(i => {
                 const sel = formData.interests.includes(i.id);
                 return (
                   <button key={i.id} onClick={() => toggleArrayItem('interests', i.id)} className={`px-5 py-3 rounded-full border-2 flex items-center gap-2 transition-all text-sm font-black cursor-pointer ${sel ? chipSelectedCls : chipUnselectedCls}`}>
-                    <span>{i.icon}</span><span>{i.id}</span>
+                    {i.isCustomImage ? <img src={i.icon} className="w-5 h-5 rounded-full object-cover" alt="" /> : <span>{i.icon}</span>}
+                    <span>{i.id}</span>
                   </button>
                 );
               })}
@@ -294,11 +348,14 @@ export default function Onboarding() {
               <input type="text" placeholder="Search languages…" value={langSearch} onChange={(e) => setLangSearch(e.target.value)} className={inputCls + " pl-12"} />
             </div>
             <div className="space-y-3">
-              {allLangs.filter(l => l.id.toLowerCase().includes(langSearch.toLowerCase())).map(l => {
+              {languagesList.filter(l => l.id.toLowerCase().includes(langSearch.toLowerCase())).map(l => {
                 const sel = formData.languages.includes(l.id);
                 return (
                   <div key={l.id} onClick={() => toggleArrayItem('languages', l.id)} className={`p-5 rounded-2xl border-2 flex justify-between items-center cursor-pointer transition-all ${sel ? selectedCls : unselectedCls}`}>
-                    <div className="flex items-center gap-4"><span className="text-2xl">{l.icon}</span><span className="font-black text-base text-white">{l.id}</span></div>
+                    <div className="flex items-center gap-4">
+                      {l.isCustomImage ? <img src={l.icon} className="w-8 h-8 rounded-lg object-cover" alt="" /> : <span className="text-2xl">{l.icon}</span>}
+                      <span className="font-black text-base text-white">{l.id}</span>
+                    </div>
                     {sel && <CheckCircle2 className="w-6 h-6 text-[#D51659]" />}
                   </div>
                 );
@@ -314,7 +371,7 @@ export default function Onboarding() {
               <input type="text" placeholder="Search…" className={inputCls + " pl-12"} />
             </div>
             <div className="flex flex-wrap gap-3">
-              {allReligions.map(r => {
+              {religionsList.map(r => {
                 const sel = formData.religion === r;
                 return <button key={r} onClick={() => updateData('religion', r)} className={`px-5 py-3 rounded-full border-2 transition-all text-sm font-black cursor-pointer ${sel ? chipSelectedCls : chipUnselectedCls}`}>{r}</button>;
               })}
