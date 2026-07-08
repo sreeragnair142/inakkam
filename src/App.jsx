@@ -12,6 +12,9 @@ import { addNotification } from "./redux/slices/notificationSlice";
 import AppRoutes from "./routes";
 
 import { Toaster } from "react-hot-toast";
+import { useRegisterSW } from 'virtual:pwa-register/react';
+import PWAUpdatePrompt from "./components/PWAUpdatePrompt";
+import PWAInstallPrompt from "./components/PWAInstallPrompt";
 
 function SplashScreen({ onComplete }) {
   const [progress, setProgress] = useState(0);
@@ -106,6 +109,19 @@ function AppContent() {
   const { isAuthenticated, user, isGuest } = useSelector((state) => state.auth);
   const token = localStorage.getItem('inakkam_token');
 
+  // PWA register and update hook
+  const {
+    needRefresh: [needRefresh, setNeedRefresh],
+    updateServiceWorker,
+  } = useRegisterSW({
+    onRegistered(r) {
+      console.log('SW Registered: ', r);
+    },
+    onRegisterError(error) {
+      console.log('SW registration error: ', error);
+    },
+  });
+
   // ─── App Initialization ─────────────────────────────
   useEffect(() => {
     if (token && !isAuthenticated) {
@@ -144,6 +160,10 @@ function AppContent() {
     <>
       <AppRoutes />
       <Toaster position="top-center" />
+      <PWAInstallPrompt />
+      {needRefresh && (
+        <PWAUpdatePrompt updateSW={updateServiceWorker} />
+      )}
     </>
   );
 }
