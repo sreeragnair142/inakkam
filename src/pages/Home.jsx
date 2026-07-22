@@ -32,11 +32,11 @@ const Home = () => {
   const { status: verificationStatus } = useSelector((s) => s.verification);
 
   const getContainerClass = () => {
-    return 'bg-white text-bumble-charcoal border border-slate-100 shadow-sm';
+    return 'bg-[#FCFAF2] text-[#2D2D2D] border border-slate-200 shadow-sm';
   };
 
   const getCardClass = () => {
-    return 'bg-white border-slate-100 shadow-sm';
+    return 'bg-[#FCFAF2] border-slate-200 shadow-sm';
   };
 
   const handleProfileClick = (userId) => {

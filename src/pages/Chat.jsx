@@ -93,23 +93,23 @@ const Chat = () => {
   };
 
   return (
-    <div className="flex-1 flex overflow-hidden h-screen w-full" style={{ background: 'linear-gradient(135deg, #0A0A0A 0%, #1a0a15 20%, #15061a 45%, #0d0515 70%, #0A0A0A 100%)' }}>
+    <div className="flex-1 flex overflow-hidden h-screen w-full" style={{ background: 'linear-gradient(135deg, #FFF5F6 0%, #FFFDFD 50%, #FFEBEF 100%)' }}>
       
       {/* LEFT PANE: Conversations list */}
       <div className={`w-full md:w-80 border-r shrink-0 flex flex-col justify-between
         ${activeChatId && 'hidden md:flex'}
-        border-white/10 bg-black/50 backdrop-blur-xl`}
+        border-slate-200 bg-[#FCFAF2] backdrop-blur-xl`}
       >
-        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+        <div className="p-4 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button 
               onClick={() => navigate('/landing')}
-              className="p-1.5 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors border border-transparent hover:border-white/10"
+              className="p-1.5 rounded-full hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors border border-transparent hover:border-slate-200"
               title="Return to Home"
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
-            <h3 className="font-extrabold text-sm uppercase tracking-wider text-white/60">Conversations</h3>
+            <h3 className="font-extrabold text-sm uppercase tracking-wider text-slate-500">Conversations</h3>
           </div>
           <span className="text-[10px] bg-[#D51659]/20 text-[#D51659] font-bold px-2 py-0.5 rounded-full border border-[#D51659]/30">
             {chats.length} active
@@ -117,7 +117,7 @@ const Chat = () => {
         </div>
 
         {/* Conversations Thread list */}
-        <div className="flex-1 overflow-y-auto no-scrollbar divide-y divide-white/10">
+        <div className="flex-1 overflow-y-auto no-scrollbar divide-y divide-slate-100">
           {chats.map((chat) => {
             const isSelected = chat.id === activeChat.id;
             const lastMsg = chat.messages[chat.messages.length - 1];
@@ -128,27 +128,27 @@ const Chat = () => {
                 onClick={() => dispatch(setActiveChat(chat.id))}
                 className={`p-4 flex items-center gap-3 cursor-pointer transition-all duration-200
                   ${isSelected 
-                    ? 'bg-[#D51659]/15 border-l-4 border-[#D51659]' 
-                    : 'hover:bg-white/5'
+                    ? 'bg-purple-50 border-l-4 border-[#D51659]' 
+                    : 'hover:bg-slate-100/50'
                   }`}
               >
                 <div className="relative">
                   <img
                     src={chat.userImage}
                     alt={chat.userName}
-                    className="w-11 h-11 rounded-xl object-cover border border-white/20"
+                    className="w-11 h-11 rounded-xl object-cover border border-slate-200"
                   />
                   {chat.lastActive === 'Online' && (
-                    <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-black" />
+                    <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white" />
                   )}
                 </div>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-center">
-                    <span className="font-bold text-sm truncate text-white">{chat.userName}</span>
-                    <span className="text-[10px] text-white/50">{lastMsg?.timestamp || ''}</span>
+                    <span className="font-bold text-sm truncate text-[#2D2D2D]">{chat.userName}</span>
+                    <span className="text-[10px] text-slate-400">{lastMsg?.timestamp || ''}</span>
                   </div>
-                  <p className="text-xs text-white/50 truncate mt-0.5">{lastMsg?.text || ''}</p>
+                  <p className="text-xs text-slate-500 truncate mt-0.5">{lastMsg?.text || ''}</p>
                 </div>
 
                 {chat.unreadCount > 0 && (
@@ -162,27 +162,27 @@ const Chat = () => {
         </div>
 
         {/* Info footer */}
-        <div className="p-3 bg-black/60 border-t border-white/10 flex items-center gap-1.5 justify-center text-[10px] text-white/40 font-semibold uppercase tracking-wider">
+        <div className="p-3 bg-[#FCFAF2] border-t border-slate-200 flex items-center gap-1.5 justify-center text-[10px] text-[#2D2D2D]/60 font-semibold uppercase tracking-wider">
           <Lock className="w-3.5 h-3.5" />
           <span>End-to-End Encrypted</span>
         </div>
       </div>
 
       {/* RIGHT PANE: Message window */}
-      <div className={`flex-1 flex flex-col min-w-0 bg-black/20
+      <div className={`flex-1 flex flex-col min-w-0 bg-[#F1EFFF]
         ${!activeChat && 'hidden md:flex'}`}
       >
         {activeChat ? (
           <>
             {/* Message header */}
             <div className={`h-16 px-6 border-b flex items-center justify-between shrink-0
-              border-white/10 bg-black/40 backdrop-blur-md`}
+              border-slate-200 bg-[#FCFAF2] backdrop-blur-md`}
             >
               <div className="flex items-center gap-3">
                 {/* Back button for mobile */}
                 <button 
                   onClick={() => dispatch(setActiveChat(null))}
-                  className="md:hidden p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 mr-1"
+                  className="md:hidden p-1.5 rounded-lg text-slate-500 hover:text-[#2D2D2D] hover:bg-slate-100 mr-1"
                 >
                   <ChevronRight className="w-5 h-5 rotate-180" />
                 </button>
@@ -191,30 +191,30 @@ const Chat = () => {
                   <img
                     src={activeChat.userImage}
                     alt={activeChat.userName}
-                    className="w-10 h-10 rounded-xl object-cover border border-white/20"
+                    className="w-10 h-10 rounded-xl object-cover border border-slate-200"
                   />
                   {activeChat.lastActive === 'Online' && (
-                    <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-black" />
+                    <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
                   )}
                 </div>
                 <div>
                   <div className="flex items-center gap-1">
-                    <span className="font-extrabold text-sm text-white">{activeChat.userName}</span>
+                    <span className="font-extrabold text-sm text-[#2D2D2D]">{activeChat.userName}</span>
                     <CheckCircle2 className="w-3.5 h-3.5 text-[#D51659] shrink-0" />
                   </div>
-                  <span className="text-[10px] text-white/50">{activeChat.lastActive === 'Online' ? 'Active now' : activeChat.lastActive}</span>
+                  <span className="text-[10px] text-slate-500">{activeChat.lastActive === 'Online' ? 'Active now' : activeChat.lastActive}</span>
                 </div>
               </div>
 
               {/* Call actions */}
-              <div className="flex items-center gap-1.5 text-white/40">
-                <button className="p-2 rounded-xl hover:bg-white/10 hover:text-white transition-colors">
+              <div className="flex items-center gap-1.5 text-slate-400">
+                <button className="p-2 rounded-xl hover:bg-slate-100 hover:text-[#2D2D2D] transition-colors">
                   <Phone className="w-4.5 h-4.5" />
                 </button>
-                <button className="p-2 rounded-xl hover:bg-white/10 hover:text-white transition-colors">
+                <button className="p-2 rounded-xl hover:bg-slate-100 hover:text-[#2D2D2D] transition-colors">
                   <Video className="w-4.5 h-4.5" />
                 </button>
-                <button className="p-2 rounded-xl hover:bg-white/10 hover:text-white transition-colors">
+                <button className="p-2 rounded-xl hover:bg-slate-100 hover:text-[#2D2D2D] transition-colors">
                   <Info className="w-4.5 h-4.5" />
                 </button>
               </div>
@@ -234,7 +234,7 @@ const Chat = () => {
                       <img
                         src={activeChat.userImage}
                         alt={activeChat.userName}
-                        className="w-7 h-7 rounded-lg object-cover border border-white/20 shrink-0"
+                        className="w-7 h-7 rounded-lg object-cover border border-slate-200 shrink-0"
                       />
                     )}
                     
@@ -246,14 +246,14 @@ const Chat = () => {
                         className={`p-3.5 rounded-2xl text-xs sm:text-sm shadow-sm relative group cursor-pointer transition-transform hover:scale-[1.01]
                           ${isMe 
                             ? 'bg-[#D51659] text-white font-semibold rounded-br-none shadow-[0_2px_12px_rgba(213,22,89,0.3)]' 
-                            : 'bg-white/10 text-white/90 rounded-bl-none border border-white/10 backdrop-blur-sm'
+                            : 'bg-white text-[#2D2D2D] rounded-bl-none border border-slate-200 shadow-sm'
                           }`}
                       >
                         <p className="leading-relaxed break-words">{msg.text}</p>
                         
                         {/* Emoji Reactions row */}
                         {msg.reactions && msg.reactions.length > 0 && (
-                          <div className={`absolute bottom-[-10px] flex gap-1 bg-black/80 backdrop-blur border border-white/10 px-1.5 py-0.5 rounded-full text-[9px] shadow-sm
+                          <div className={`absolute bottom-[-10px] flex gap-1 bg-white border border-slate-200 px-1.5 py-0.5 rounded-full text-[9px] shadow-sm
                             ${isMe ? 'right-2' : 'left-2'}`}
                           >
                             {msg.reactions.map((react, i) => (
@@ -264,11 +264,11 @@ const Chat = () => {
                       </div>
 
                       {/* Timestamp & reaction trigger indicators */}
-                      <div className={`flex items-center gap-2 text-[9px] text-white/40 px-1
+                      <div className={`flex items-center gap-2 text-[9px] text-slate-400 px-1
                         ${isMe ? 'justify-end' : 'justify-start'}`}
                       >
                         <span>{msg.timestamp}</span>
-                        <span className="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:text-white font-bold uppercase tracking-wider">
+                        <span className="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:text-[#2D2D2D] font-bold uppercase tracking-wider">
                           React
                         </span>
                       </div>
@@ -282,14 +282,14 @@ const Chat = () => {
                               initial={{ opacity: 0, scale: 0.9, y: -10 }}
                               animate={{ opacity: 1, scale: 1, y: 0 }}
                               exit={{ opacity: 0, scale: 0.9, y: -10 }}
-                              className={`absolute z-20 bg-black/90 backdrop-blur-xl border border-white/10 p-1.5 rounded-xl shadow-xl flex gap-1.5 bottom-12
+                              className={`absolute z-20 bg-white border border-slate-200 p-1.5 rounded-xl shadow-xl flex gap-1.5 bottom-12
                                 ${isMe ? 'right-0' : 'left-0'}`}
                             >
                               {emojiList.map((emoji) => (
                                 <button
                                   key={emoji}
                                   onClick={() => handleAddReaction(msg.id, emoji)}
-                                  className="hover:scale-125 transition-transform text-sm p-1 rounded hover:bg-white/10"
+                                  className="hover:scale-125 transition-transform text-sm p-1 rounded hover:bg-slate-100"
                                 >
                                   {emoji}
                                 </button>
@@ -310,12 +310,12 @@ const Chat = () => {
                   <img
                     src={activeChat.userImage}
                     alt={activeChat.userName}
-                    className="w-7 h-7 rounded-lg object-cover border border-white/20 shrink-0"
+                    className="w-7 h-7 rounded-lg object-cover border border-slate-200 shrink-0"
                   />
-                  <div className={`p-3.5 rounded-2xl rounded-bl-none flex items-center gap-1 bg-white/10 border border-white/10`}>
-                    <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <div className={`p-3.5 rounded-2xl rounded-bl-none flex items-center gap-1 bg-white border border-slate-200`}>
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                   </div>
                 </div>
               )}
@@ -326,7 +326,7 @@ const Chat = () => {
             {/* Input Send Area */}
             <form 
               onSubmit={handleSendMessage}
-              className="p-4 border-t border-white/10 bg-black/40 backdrop-blur-md flex items-center gap-3 shrink-0 relative"
+              className="p-4 border-t border-slate-200 bg-[#FCFAF2] backdrop-blur-md flex items-center gap-3 shrink-0 relative"
             >
               <div className="relative flex-grow flex items-center">
                 
@@ -334,7 +334,7 @@ const Chat = () => {
                 <button
                   type="button"
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  className="absolute left-3.5 text-white/40 hover:text-white transition-colors"
+                  className="absolute left-3.5 text-slate-400 hover:text-[#2D2D2D] transition-colors"
                 >
                   <Smile className="w-5 h-5" />
                 </button>
@@ -344,7 +344,7 @@ const Chat = () => {
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   placeholder={`Write a message to ${activeChat.userName}...`}
-                  className="w-full pl-11 pr-4 py-3 rounded-xl text-xs sm:text-sm bg-white/5 border border-white/10 text-white placeholder-white/30 focus:border-[#D51659] focus:ring-2 focus:ring-[#D51659]/20 outline-none transition-all"
+                  className="w-full pl-11 pr-4 py-3 rounded-xl text-xs sm:text-sm bg-white border border-slate-200 text-[#2D2D2D] placeholder-slate-400 focus:border-[#D51659] focus:ring-2 focus:ring-[#D51659]/20 outline-none transition-all"
                 />
 
                 {/* Emoji selector drawer */}
@@ -356,7 +356,7 @@ const Chat = () => {
                         initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 15 }}
-                        className="absolute bottom-16 left-0 bg-black/90 backdrop-blur-xl border border-white/10 p-2.5 rounded-xl shadow-xl flex gap-2 z-20"
+                        className="absolute bottom-16 left-0 bg-white border border-slate-200 p-2.5 rounded-xl shadow-xl flex gap-2 z-20"
                       >
                         {emojiList.map((emoji) => (
                           <button
@@ -388,7 +388,7 @@ const Chat = () => {
             </form>
           </>
         ) : (
-          <div className="flex-grow flex flex-col items-center justify-center p-8 text-center text-white/40">
+          <div className="flex-grow flex flex-col items-center justify-center p-8 text-center text-[#2D2D2D]/60">
             Select a connection thread to start messaging.
           </div>
         )}
