@@ -12,7 +12,7 @@ export default defineConfig({
       registerType: 'prompt',
       includeAssets: [
         'favicon.png',
-        'favicon.svg',
+        'favicon.png',
         'icons.svg',
         'offline.html',
         'icons/*.png',
@@ -98,12 +98,22 @@ export default defineConfig({
       //   changeOrigin: true,
       //   secure: false,
       // },
+      // '/uploads': {
+      //   target: 'http://127.0.0.1:7000',
+      //   changeOrigin: true,
+      //   secure: false,
+      // },
       // '/socket.io': {
       //   target: 'http://127.0.0.1:7000',
       //   changeOrigin: true,
       //   ws: true,
       // },
       '/api': {
+        target: 'http://82.29.165.57:7000',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/uploads': {
         target: 'http://82.29.165.57:7000',
         changeOrigin: true,
         secure: false,
