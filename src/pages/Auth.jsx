@@ -103,37 +103,37 @@ const Auth = () => {
   };
 
   return (
-    <div style={{ background: 'linear-gradient(135deg, #0A0A0A 0%, #1a0a15 25%, #15061a 50%, #0d0515 75%, #0A0A0A 100%)' }} className="fixed inset-0 w-full h-[100dvh] overflow-hidden flex flex-col items-center justify-center">
+    <div style={{ background: 'linear-gradient(135deg, #FFF5F6 0%, #FFFDFD 50%, #FFEBEF 100%)' }} className="fixed inset-0 w-full h-[100dvh] overflow-hidden flex flex-col items-center justify-center">
 
       {/* Animated glowing orbs matching logo gradient */}
       <motion.div
         className="absolute w-[500px] h-[500px] rounded-full pointer-events-none"
-        style={{ background: "radial-gradient(circle, rgba(213,22,89,0.2) 0%, transparent 60%)", top: "-10%", left: "-10%" }}
+        style={{ background: "radial-gradient(circle, rgba(213,22,89,0.06) 0%, transparent 60%)", top: "-10%", left: "-10%" }}
         animate={{ scale: [1, 1.3, 1], x: [0, 40, 0] }}
         transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
         className="absolute w-[400px] h-[400px] rounded-full pointer-events-none"
-        style={{ background: "radial-gradient(circle, rgba(180,77,220,0.18) 0%, transparent 60%)", bottom: "-10%", right: "-5%" }}
+        style={{ background: "radial-gradient(circle, rgba(180,77,220,0.05) 0%, transparent 60%)", bottom: "-10%", right: "-5%" }}
         animate={{ scale: [1, 1.2, 1], y: [0, -30, 0] }}
         transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 2 }}
       />
       <motion.div
         className="absolute w-[350px] h-[350px] rounded-full pointer-events-none"
-        style={{ background: "radial-gradient(circle, rgba(213,22,89,0.12) 0%, transparent 60%)", top: "50%", right: "20%" }}
+        style={{ background: "radial-gradient(circle, rgba(213,22,89,0.04) 0%, transparent 60%)", top: "50%", right: "20%" }}
         animate={{ scale: [1, 1.25, 1] }}
         transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 4 }}
       />
       <motion.div
         className="absolute w-[250px] h-[250px] rounded-full pointer-events-none"
-        style={{ background: "radial-gradient(circle, rgba(150,40,200,0.1) 0%, transparent 60%)", top: "20%", left: "30%" }}
+        style={{ background: "radial-gradient(circle, rgba(150,40,200,0.03) 0%, transparent 60%)", top: "20%", left: "30%" }}
         animate={{ scale: [1, 1.15, 1], x: [0, -20, 0] }}
         transition={{ duration: 14, repeat: Infinity, ease: "easeInOut", delay: 6 }}
       />
 
       {/* Huge background text label "Inakkam" */}
       <div className="absolute inset-0 flex items-center justify-center select-none pointer-events-none z-0 overflow-hidden">
-        <span className="text-[40vw] md:text-[32vw] lg:text-[24vw] font-black tracking-tighter text-white opacity-[0.04] leading-none whitespace-nowrap">
+        <span className="text-[40vw] md:text-[32vw] lg:text-[24vw] font-black tracking-tighter text-[#D51659] opacity-[0.15] leading-none whitespace-nowrap">
           Inakkam
         </span>
       </div>
@@ -172,16 +172,16 @@ const Auth = () => {
             </div>
 
             <motion.h1
-              className="text-4xl font-black text-white tracking-tight mt-8"
+              className="text-4xl font-black text-[#2D2D2D] tracking-tight mt-8"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              style={{ textShadow: "0 2px 20px rgba(0,0,0,0.2)" }}
+              style={{ textShadow: "0 2px 20px rgba(0,0,0,0.05)" }}
             >
               Inakkam
             </motion.h1>
             <motion.p
-              className="text-sm font-bold text-white/60 mt-1 tracking-[0.25em] uppercase"
+              className="text-sm font-bold text-[#2D2D2D]/60 mt-1 tracking-[0.25em] uppercase"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.6 }}
@@ -264,8 +264,8 @@ const Auth = () => {
               key={`t-${introStep}`}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-xl sm:text-2xl font-black text-white max-w-[280px] text-center leading-tight mt-4 shrink-0"
-              style={{ textShadow: "0 2px 15px rgba(0,0,0,0.15)" }}
+              className="text-xl sm:text-2xl font-black text-[#2D2D2D] max-w-[280px] text-center leading-tight mt-4 shrink-0"
+              style={{ textShadow: "0 2px 15px rgba(0,0,0,0.05)" }}
             >
               {introSlides[introStep].title}
             </motion.h2>
@@ -277,19 +277,19 @@ const Auth = () => {
                   key={i}
                   animate={{ width: i === introStep ? 32 : 8 }}
                   className="h-1.5 rounded-full transition-colors duration-300"
-                  style={{ background: i === introStep ? "white" : "rgba(255,255,255,0.2)" }}
+                  style={{ background: i === introStep ? "#2D2D2D" : "rgba(45,45,45,0.15)" }}
                 />
               ))}
             </div>
 
             <div className="flex items-center gap-4 w-full max-w-[320px] mt-4 shrink-0">
-              <button onClick={() => setPhase("login")} className="flex-1 py-3.5 font-bold text-white/60 hover:text-white hover:bg-white/10 rounded-2xl transition-colors cursor-pointer">
+              <button onClick={() => setPhase("login")} className="flex-1 py-3.5 font-bold text-[#2D2D2D]/60 hover:text-[#2D2D2D] hover:bg-black/5 rounded-2xl transition-colors cursor-pointer">
                 Skip
               </button>
               <button
                 onClick={handleIntroNext}
-                className="flex-1 py-3.5 font-black text-white rounded-2xl shadow-xl shadow-black/20 hover:shadow-black/30 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
-                style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(10px)" }}
+                className="flex-1 py-3.5 font-black text-[#2D2D2D] rounded-2xl shadow-xl shadow-black/5 hover:shadow-black/10 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
+                style={{ background: "rgba(252,250,242,0.95)", border: "1px solid rgba(45,45,45,0.12)", backdropFilter: "blur(10px)" }}
               >
                 {introStep === introSlides.length - 1 ? "Let's Start" : "Next"}
                 <ArrowRight className="w-4 h-4" />
@@ -305,12 +305,12 @@ const Auth = () => {
             initial={{ y: 50, opacity: 0, scale: 0.95 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className={`relative z-10 w-full max-w-sm sm:max-w-[420px] rounded-[2rem] sm:rounded-[2.5rem] border border-white/10 ${isSignUp ? 'p-5' : 'p-5 sm:p-8'} overflow-y-auto mx-4`}
+            className={`relative z-10 w-full max-w-sm sm:max-w-[420px] rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 ${isSignUp ? 'p-5' : 'p-5 sm:p-8'} overflow-y-auto mx-4`}
             style={{
-              background: "rgba(15,8,20,0.85)",
+              background: "rgba(252, 250, 242, 0.9)",
               backdropFilter: "blur(20px)",
               WebkitBackdropFilter: "blur(20px)",
-              boxShadow: "0 25px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05) inset",
+              boxShadow: "0 25px 60px rgba(45,45,45,0.1), 0 0 0 1px rgba(255,255,255,0.05) inset",
               maxHeight: 'calc(100vh - 40px)',
             }}
           >
@@ -329,7 +329,7 @@ const Auth = () => {
                 <img src={loaderLogo} alt="Inakkam" className="w-full h-auto drop-shadow-lg" />
               </motion.div>
 
-              <h3 className={`${isSignUp ? 'text-2xl' : 'text-3xl'} font-black text-white tracking-tight`}>
+              <h3 className={`${isSignUp ? 'text-2xl' : 'text-3xl'} font-black text-[#2D2D2D] tracking-tight`}>
                 {isSignUp ? "Create Account" : "Welcome Back"}
               </h3>
               <p className={`text-sm text-slate-500 font-bold ${isSignUp ? 'mt-1' : 'mt-2'}`}>
@@ -345,7 +345,7 @@ const Auth = () => {
               )}
               {isSignUp && (
                 <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-1.5 ml-1">
+                  <label className="text-[11px] font-black text-[#2D2D2D]/70 uppercase tracking-wider block mb-1.5 ml-1">
                     Your Name
                   </label>
                   <input
@@ -353,12 +353,12 @@ const Auth = () => {
                     placeholder="Full Name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border-2 border-white/10 text-sm font-bold text-white placeholder-white/40 focus:border-[#D51659] focus:bg-white/10 focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
+                    className="w-full px-4 py-3 rounded-xl bg-white border-2 border-slate-200 text-sm font-bold text-[#2D2D2D] placeholder-slate-400 focus:border-[#D51659] focus:bg-white focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
                   />
                 </motion.div>
               )}
               <div>
-                <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-1.5 ml-1">
+                <label className="text-[11px] font-black text-[#2D2D2D]/70 uppercase tracking-wider block mb-1.5 ml-1">
                   Email or Phone Number
                 </label>
                 <input
@@ -366,11 +366,11 @@ const Auth = () => {
                   placeholder="you@example.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className={`w-full ${isSignUp ? 'px-4 py-3 rounded-xl' : 'px-4 py-3 sm:py-4 rounded-xl sm:rounded-2xl'} bg-white/5 border-2 border-white/10 text-sm font-bold text-white placeholder-white/40 focus:border-[#D51659] focus:bg-white/10 focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all`}
+                  className={`w-full ${isSignUp ? 'px-4 py-3 rounded-xl' : 'px-4 py-3 sm:py-4 rounded-xl sm:rounded-2xl'} bg-white border-2 border-slate-200 text-sm font-bold text-[#2D2D2D] placeholder-slate-400 focus:border-[#D51659] focus:bg-white focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all`}
                 />
               </div>
               <div className="relative">
-                <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-1.5 ml-1">
+                <label className="text-[11px] font-black text-[#2D2D2D]/70 uppercase tracking-wider block mb-1.5 ml-1">
                   Password
                 </label>
                 <input
@@ -378,11 +378,11 @@ const Auth = () => {
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className={`w-full ${isSignUp ? 'px-4 py-3 rounded-xl' : 'px-4 py-3 sm:py-4 rounded-xl sm:rounded-2xl'} bg-white/5 border-2 border-white/10 text-sm font-bold text-white placeholder-white/40 focus:border-[#D51659] focus:bg-white/10 focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all pr-12`}
+                  className={`w-full ${isSignUp ? 'px-4 py-3 rounded-xl' : 'px-4 py-3 sm:py-4 rounded-xl sm:rounded-2xl'} bg-white border-2 border-slate-200 text-sm font-bold text-[#2D2D2D] placeholder-slate-400 focus:border-[#D51659] focus:bg-white focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all pr-12`}
                 />
                 <button
                   onClick={() => setShowPw(!showPw)}
-                  className={`absolute right-4 ${isSignUp ? 'top-[34px]' : 'top-[34px] sm:top-[38px]'} text-slate-400 hover:text-white transition-colors cursor-pointer`}
+                  className={`absolute right-4 ${isSignUp ? 'top-[34px]' : 'top-[34px] sm:top-[38px]'} text-slate-400 hover:text-[#2D2D2D] transition-colors cursor-pointer`}
                 >
                   {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -390,7 +390,7 @@ const Auth = () => {
 
               {isSignUp && (
                 <div>
-                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-1.5 ml-1">
+                  <label className="text-[11px] font-black text-[#2D2D2D]/70 uppercase tracking-wider block mb-1.5 ml-1">
                     Confirm Password
                   </label>
                   <input
@@ -398,7 +398,7 @@ const Auth = () => {
                     placeholder="••••••••"
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border-2 border-white/10 text-sm font-bold text-white placeholder-white/40 focus:border-[#D51659] focus:bg-white/10 focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
+                    className="w-full px-4 py-3 rounded-xl bg-white border-2 border-slate-200 text-sm font-bold text-[#2D2D2D] placeholder-slate-400 focus:border-[#D51659] focus:bg-white focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
                   />
                 </div>
               )}
@@ -423,8 +423,8 @@ const Auth = () => {
 
             </div>
 
-            <div className={`${isSignUp ? 'mt-4' : 'mt-5 sm:mt-6'} text-center border-t border-white/10 ${isSignUp ? 'pt-4' : 'pt-4 sm:pt-5'}`}>
-              <span className="text-slate-500 text-xs font-bold">
+            <div className={`${isSignUp ? 'mt-4' : 'mt-5 sm:mt-6'} text-center border-t border-slate-200 ${isSignUp ? 'pt-4' : 'pt-4 sm:pt-5'}`}>
+              <span className="text-[#2D2D2D]/75 text-xs font-bold">
                 {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
                 <button onClick={() => setIsSignUp(!isSignUp)} className="text-[#D51659] font-black hover:text-[#b51350] transition-colors cursor-pointer ml-1">
                   {isSignUp ? "Sign in" : "Sign up"}
@@ -438,7 +438,7 @@ const Auth = () => {
                   dispatch(guestLogin());
                   navigate("/swipe");
                 }}
-                className="text-[11px] font-black uppercase tracking-wider text-white/40 hover:text-white transition-colors px-4 py-2 bg-white/5 hover:bg-white/10 rounded-full cursor-pointer border border-white/10"
+                className="text-[11px] font-black uppercase tracking-wider text-slate-500 hover:text-[#2D2D2D] transition-colors px-4 py-2 bg-[#FCFAF2]/60 hover:bg-[#FCFAF2] rounded-full cursor-pointer border border-slate-200"
               >
                 Skip for now
               </button>

@@ -98,7 +98,7 @@ const Discover = () => {
                 {/* Card Inner */}
                 <div
                   onClick={() => setSelectedProfile(profile)}
-                  className="w-full h-full rounded-[2rem] overflow-hidden relative border border-white/10 shadow-2xl bg-black/40 cursor-pointer"
+                  className="w-full h-full rounded-[2rem] overflow-hidden relative border border-slate-200 shadow-2xl bg-[#FCFAF2] cursor-pointer"
                 >
                   <img src={profile.images[0]} alt={profile.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                   {/* Premium clean gradient only at the bottom for text readability */}
@@ -151,13 +151,13 @@ const Discover = () => {
         </div>
       ) : (
         /* Empty State */
-        <div className="relative z-10 max-w-md w-full p-10 rounded-[2.5rem] text-center bg-black/40 backdrop-blur-2xl border border-white/10 shadow-xl">
-          <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center border-2 border-white/10 mb-6 mx-auto">
-            <Sparkles className="w-10 h-10 text-white/50" />
+        <div className="relative z-10 max-w-md w-full p-10 rounded-[2.5rem] text-center bg-[#FCFAF2] border border-slate-200 shadow-xl">
+          <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center border-2 border-slate-200 mb-6 mx-auto">
+            <Sparkles className="w-10 h-10 text-[#2D2D2D]/50" />
           </div>
-          <h3 className="font-black text-2xl mb-2 text-white">You've Seen Everyone!</h3>
-          <p className="text-white/50 text-sm leading-relaxed mb-8">No new profiles in your area right now. Expand your filters or wait for more people to join.</p>
-          <button onClick={() => window.location.reload()} className="px-8 py-3.5 rounded-full font-black text-xs uppercase tracking-widest bg-white/10 text-white border border-white/10 hover:bg-white/20 transition-colors cursor-pointer">
+          <h3 className="font-black text-2xl mb-2 text-[#2D2D2D]">You've Seen Everyone!</h3>
+          <p className="text-[#2D2D2D]/60 text-sm leading-relaxed mb-8">No new profiles in your area right now. Expand your filters or wait for more people to join.</p>
+          <button onClick={() => window.location.reload()} className="px-8 py-3.5 rounded-full font-black text-xs uppercase tracking-widest bg-white text-[#2D2D2D] border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer">
             Refresh
           </button>
         </div>
@@ -173,10 +173,10 @@ const Discover = () => {
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-4xl bg-black/80 backdrop-blur-3xl border border-white/10 rounded-[2rem] overflow-hidden shadow-2xl flex flex-col md:flex-row max-h-[80vh]"
+              className="relative w-full max-w-4xl bg-[#FCFAF2] border border-slate-200 rounded-[2rem] overflow-hidden shadow-2xl flex flex-col md:flex-row max-h-[80vh]"
             >
               {/* Close Button */}
-              <button onClick={() => setSelectedProfile(null)} className="absolute top-4 right-4 z-30 p-2.5 bg-black/40 hover:bg-black/80 text-white rounded-full transition-colors cursor-pointer backdrop-blur-md border border-white/10">
+              <button onClick={() => setSelectedProfile(null)} className="absolute top-4 right-4 z-30 p-2.5 bg-white/80 hover:bg-white text-[#2D2D2D] rounded-full transition-colors cursor-pointer backdrop-blur-md border border-slate-200">
                 <X className="w-5 h-5" />
               </button>
 
@@ -205,23 +205,23 @@ const Discover = () => {
               {/* Right: Info Scrollable Area */}
               <div className="flex-1 p-6 md:p-8 overflow-y-auto no-scrollbar">
                 {/* Header */}
-                <div className="flex justify-between items-start mb-6 border-b border-white/10 pb-6">
+                <div className="flex justify-between items-start mb-6 border-b border-slate-200 pb-6">
                   <div className="flex items-center gap-3">
-                    <h2 className="text-3xl font-black text-white tracking-tight">{selectedProfile.name} ({selectedProfile.age})</h2>
-                    {selectedProfile.verified && <CheckCircle2 className="w-6 h-6 text-blue-400 fill-blue-400/20 mt-1" />}
+                    <h2 className="text-3xl font-black text-[#2D2D2D] tracking-tight">{selectedProfile.name} ({selectedProfile.age})</h2>
+                    {selectedProfile.verified && <CheckCircle2 className="w-6 h-6 text-blue-500 fill-blue-500/20 mt-1" />}
                   </div>
-                  <div className="flex items-center gap-1.5 text-purple-400 font-bold text-xs bg-purple-500/10 px-3 py-1.5 rounded-full border border-purple-500/20 shrink-0 mt-1">
+                  <div className="flex items-center gap-1.5 text-purple-600 font-bold text-xs bg-purple-100 px-3 py-1.5 rounded-full border border-purple-200 shrink-0 mt-1">
                     <MapPin className="w-3.5 h-3.5" /> {selectedProfile.distance}
                   </div>
                 </div>
 
                 {/* Interests */}
                 {selectedProfile.interests && selectedProfile.interests.length > 0 && (
-                  <div className="mb-6 border-b border-white/10 pb-6">
-                    <h3 className="text-sm font-bold text-white/50 uppercase tracking-widest mb-4">Interests</h3>
+                  <div className="mb-6 border-b border-slate-200 pb-6">
+                    <h3 className="text-sm font-bold text-[#2D2D2D]/60 uppercase tracking-widest mb-4">Interests</h3>
                     <div className="flex flex-wrap gap-2.5">
                       {selectedProfile.interests.map((interest, idx) => (
-                        <span key={idx} className="px-4 py-2 rounded-full text-xs font-bold bg-transparent border border-purple-500/40 text-white hover:bg-purple-500/10 transition-colors">
+                        <span key={idx} className="px-4 py-2 rounded-full text-xs font-bold bg-white border border-purple-200 text-purple-700 hover:bg-purple-50 transition-colors">
                           {interest}
                         </span>
                       ))}
@@ -230,12 +230,12 @@ const Discover = () => {
                 )}
 
                 {/* Languages */}
-                <div className="mb-6 border-b border-white/10 pb-6">
-                  <h3 className="text-sm font-bold text-white/50 uppercase tracking-widest mb-4">Languages</h3>
+                <div className="mb-6 border-b border-slate-200 pb-6">
+                  <h3 className="text-sm font-bold text-[#2D2D2D]/60 uppercase tracking-widest mb-4">Languages</h3>
                   <div className="flex flex-wrap gap-2.5">
                     {/* Mock languages since not all dummy profiles have them */}
                     {['English 🇬🇧', 'Spanish 🇪🇸'].map((lang, idx) => (
-                      <span key={idx} className="px-4 py-2 rounded-full text-xs font-bold bg-transparent border border-purple-500/40 text-white hover:bg-purple-500/10 transition-colors">
+                      <span key={idx} className="px-4 py-2 rounded-full text-xs font-bold bg-white border border-purple-200 text-purple-700 hover:bg-purple-50 transition-colors">
                         {lang}
                       </span>
                     ))}
@@ -243,10 +243,10 @@ const Discover = () => {
                 </div>
 
                 {/* Relationship Goals */}
-                <div className="mb-6 border-b border-white/10 pb-6">
-                  <h3 className="text-sm font-bold text-white/50 uppercase tracking-widest mb-4">Relationship Goals</h3>
+                <div className="mb-6 border-b border-slate-200 pb-6">
+                  <h3 className="text-sm font-bold text-[#2D2D2D]/60 uppercase tracking-widest mb-4">Relationship Goals</h3>
                   <div className="flex flex-wrap gap-2.5">
-                    <span className="px-4 py-2 rounded-full text-xs font-bold bg-transparent border border-purple-500/40 text-white hover:bg-purple-500/10 transition-colors">
+                    <span className="px-4 py-2 rounded-full text-xs font-bold bg-white border border-purple-200 text-purple-700 hover:bg-purple-50 transition-colors">
                       {selectedProfile.relationship || 'Dating 💕'}
                     </span>
                   </div>
@@ -254,9 +254,9 @@ const Discover = () => {
 
                 {/* Religion */}
                 <div className="mb-2">
-                  <h3 className="text-sm font-bold text-white/50 uppercase tracking-widest mb-4">Religion</h3>
+                  <h3 className="text-sm font-bold text-[#2D2D2D]/60 uppercase tracking-widest mb-4">Religion</h3>
                   <div className="flex flex-wrap gap-2.5">
-                    <span className="px-4 py-2 rounded-full text-xs font-bold bg-transparent border border-purple-500/40 text-white hover:bg-purple-500/10 transition-colors">
+                    <span className="px-4 py-2 rounded-full text-xs font-bold bg-white border border-purple-200 text-purple-700 hover:bg-purple-50 transition-colors">
                       Spiritual 🙏
                     </span>
                   </div>

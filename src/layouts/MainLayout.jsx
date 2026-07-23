@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
-import landscapeLogo from '../assets/landscapelogowhite.png';
+import landscapeLogo from '../assets/landscapelogo.png';
 import phoneLogo from '../assets/phoneinakkam.png';
 import toast from 'react-hot-toast';
 import { setActiveTab } from '../redux/slices/uiSlice';
@@ -121,8 +121,8 @@ const MainLayout = ({ children }) => {
     <>
     <div 
       ref={scrollRef}
-      className="h-screen w-full flex flex-col text-white font-sans relative overflow-x-hidden overflow-y-auto scroll-smooth" 
-      style={{ background: 'linear-gradient(135deg, #0A0A0A 0%, #1a0a15 20%, #15061a 45%, #0d0515 70%, #0A0A0A 100%)' }}
+      className="h-screen w-full flex flex-col text-[#2D2D2D] font-sans relative overflow-x-hidden overflow-y-auto scroll-smooth" 
+      style={{ background: 'linear-gradient(135deg, #FFF5F6 0%, #FFFDFD 50%, #FFEBEF 100%)' }}
     >
 
       {/* BRAND LOGO (Top Left for all screens) — hidden on chat */}
@@ -234,7 +234,7 @@ const MainLayout = ({ children }) => {
 
         return (
           <header className={`fixed top-6 left-0 right-0 z-40 flex items-center justify-center pointer-events-none hidden lg:flex transition-all duration-500 ease-in-out ${isHeaderVisible ? 'translate-y-0 opacity-100' : '-translate-y-[150%] opacity-0'}`}>
-            <nav className="bg-white/10 backdrop-blur-md border-white/10 px-3 py-2 rounded-full shadow-lg border flex items-center gap-2 pointer-events-auto transition-colors">
+            <nav className="bg-[#D51659] backdrop-blur-md px-3 py-2 rounded-full shadow-lg shadow-[#D51659]/20 border border-[#D51659]/80 flex items-center gap-2 pointer-events-auto transition-colors">
               {navItems.map((item) => {
                 const isActive = activeTab === item.id || (item.id === 'home' && activeTab === 'home');
                 return (
@@ -243,8 +243,8 @@ const MainLayout = ({ children }) => {
                     onClick={() => handleNavClick(item.path)}
                     className={`px-5 py-2.5 rounded-full text-xs font-black capitalize transition-all cursor-pointer flex items-center gap-1.5
                       ${isActive
-                        ? 'text-white bg-white/20'
-                        : 'text-white/70 hover:bg-white/10 hover:text-white'
+                        ? 'text-[#D51659] bg-white shadow-sm'
+                        : 'text-white/80 hover:bg-white/15 hover:text-white'
                       }`}
                   >
                     <span>{item.label}</span>
@@ -274,14 +274,14 @@ const MainLayout = ({ children }) => {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: "spring", bounce: 0, duration: 0.4 }}
-              className="fixed inset-y-0 left-0 w-[280px] bg-[#8a8a8a] z-[100] flex flex-col shadow-2xl"
-              style={{ backgroundColor: '#898A8E' }} // Closest match to the grey background in screenshot 1
+              className="fixed inset-y-0 left-0 w-[280px] bg-[#FCFAF2] z-[100] flex flex-col shadow-2xl border-r border-slate-200"
+              style={{ backgroundColor: '#FCFAF2' }}
             >
               {/* Profile Header in Sidebar (Optional but good UX) */}
               <div className="p-6 pb-2 pt-8 flex items-center justify-between">
                 <button 
                   onClick={() => setShowSidebar(false)}
-                  className="p-2 -ml-2 rounded-full hover:bg-black/10 text-white/80 transition-colors cursor-pointer"
+                  className="p-2 -ml-2 rounded-full hover:bg-black/10 text-[#2D2D2D]/80 transition-colors cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -302,16 +302,16 @@ const MainLayout = ({ children }) => {
                         }
                       }}
                       className={`flex items-center gap-5 px-4 py-3.5 rounded-2xl transition-all cursor-pointer border-none bg-transparent w-full text-left
-                        ${isActive ? 'bg-black/10' : 'hover:bg-black/5'}
+                        ${isActive ? 'bg-[#D51659]/10' : 'hover:bg-black/5'}
                       `}
                     >
                       <item.icon 
-                        className={`w-[22px] h-[22px] ${isActive ? 'text-[#8423d9]' : 'text-[#2a2c35]'}`} 
+                        className={`w-[22px] h-[22px] ${isActive ? 'text-[#D51659]' : 'text-[#2a2c35]'}`} 
                         strokeWidth={2}
                       />
                       <span 
                         className={`text-[15px] font-semibold tracking-wide
-                          ${isActive ? 'text-[#8423d9]' : 'text-[#2a2c35]'}`}
+                          ${isActive ? 'text-[#D51659]' : 'text-[#2a2c35]'}`}
                       >
                         {item.label}
                       </span>
@@ -467,11 +467,11 @@ const MainLayout = ({ children }) => {
         left: 0,
         right: 0,
         zIndex: 40,
-        backgroundColor: 'rgba(20, 20, 20, 0.85)',
+        backgroundColor: '#D51659',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
-        borderTop: '1px solid rgba(255,255,255,0.08)',
-        boxShadow: '0 -10px 40px -10px rgba(0,0,0,0.2)',
+        borderTop: '1px solid rgba(255,255,255,0.15)',
+        boxShadow: '0 -10px 40px -10px rgba(213,22,89,0.3)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
       className="mobile-bottom-nav lg:hidden"
@@ -488,11 +488,11 @@ const MainLayout = ({ children }) => {
                 className="flex flex-col items-center justify-center flex-1 h-full relative cursor-pointer border-none bg-transparent"
               >
                 <div className={`w-[42px] h-[42px] rounded-full flex items-center justify-center transition-all shadow-md mt-[-10px]
-                  ${isActive ? 'bg-[#D51659] shadow-lg shadow-[#D51659]/30 border border-[#D51659] scale-110' : 'bg-white/5 border border-white/10'}`}
+                  ${isActive ? 'bg-white shadow-lg shadow-white/30 border border-white scale-110' : 'bg-white/15 border border-white/20'}`}
                 >
-                  <item.icon className={`w-[22px] h-[22px] ${isActive ? 'text-white fill-white' : 'text-white/60'}`} strokeWidth={isActive ? 0 : 2} />
+                  <item.icon className={`w-[22px] h-[22px] ${isActive ? 'text-[#D51659] fill-[#D51659]' : 'text-white/70'}`} strokeWidth={isActive ? 0 : 2} />
                 </div>
-                <span className={`text-[9px] font-bold mt-1 ${isActive ? 'text-[#D51659]' : 'text-white/60'}`}>
+                <span className={`text-[9px] font-bold mt-1 ${isActive ? 'text-white' : 'text-white/70'}`}>
                   {item.label}
                 </span>
               </button>
@@ -514,7 +514,7 @@ const MainLayout = ({ children }) => {
                 border: 'none',
                 background: 'none',
                 cursor: 'pointer',
-                color: isActive ? '#D51659' : 'rgba(255,255,255,0.6)',
+                color: isActive ? '#ffffff' : 'rgba(255,255,255,0.7)',
                 transition: 'all 0.2s',
                 padding: 0,
               }}
