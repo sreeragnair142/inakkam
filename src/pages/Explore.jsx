@@ -90,8 +90,8 @@ const Explore = () => {
             className={`whitespace-nowrap px-5 py-2.5 rounded-full text-xs font-black transition-all duration-300 flex items-center gap-1.5 border-2 
               ${
                 activeCategory === cat
-                  ? 'bg-[#FCFAF2] text-[#2D2D2D] border-slate-300 shadow-md scale-105'
-                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  ? 'bg-[#F5F1FD] text-[#2D2D2D] border-[#C4B5E3] shadow-md scale-105'
+                  : 'bg-white text-slate-600 border-[#D8CCF0] hover:bg-[#EDE7F9] hover:border-[#C4B5E3]'
               }`}
           >
             {cat === 'New Match' && <Heart className="w-3.5 h-3.5 fill-current" />}
@@ -111,7 +111,7 @@ const Explore = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.1 }}
-            className="relative w-full aspect-[4/5] rounded-[2rem] overflow-hidden border-[3px] border-slate-200 shadow-xl group bg-[#FCFAF2]"
+            className="relative w-full aspect-[4/5] rounded-[2rem] overflow-hidden border-[3px] border-[#D8CCF0] shadow-xl group bg-[#FCFAF2] hover:border-[#C4B5E3] transition-colors duration-300"
           >
             <img 
               src={profile.image} 

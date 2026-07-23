@@ -15,6 +15,12 @@
   --color-dark-glass: rgba(252, 250, 242, 0.75);
   --color-light-glass: rgba(241, 239, 255, 0.85);
 
+  /* Soft Pastel Lavender palette */
+  --color-pastel-lavender: #C4B5E3;
+  --color-lavender-border: #D8CCF0;
+  --color-lavender-hover: #EDE7F9;
+  --color-lavender-light: #F5F1FD;
+
   --animate-float-slow: float 8s ease-in-out infinite;
   --animate-float-medium: float 6s ease-in-out infinite alternate;
   --animate-float-fast: float 4s ease-in-out infinite;
