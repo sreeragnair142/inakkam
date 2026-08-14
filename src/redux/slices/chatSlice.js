@@ -150,6 +150,19 @@ const chatSlice = createSlice({
         if (state.activeChatId === action.payload.conversationId) {
           state.activeChatMessages = action.payload.messages;
         }
+      })
+      .addCase(sendMessage.fulfilled, (state, action) => {
+        const message = action.payload;
+        // Avoid duplicate additions if socket also pushed it
+        const exists = state.activeChatMessages.some(m => m._id === message._id);
+        if (!exists && state.activeChatId === message.conversation) {
+          state.activeChatMessages.push(message);
+        }
+        // Update the last message in conversations list preview
+        const chat = state.chats.find(c => (c.conversationId || c.id) === message.conversation);
+        if (chat) {
+          chat.lastMessage = message;
+        }
       });
   },
 });
