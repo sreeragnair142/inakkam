@@ -19,14 +19,6 @@ import {
   Info,
   CheckCircle2,
   Lock,
-  Send, 
-  Smile, 
-  MoreVertical, 
-  Phone, 
-  Video, 
-  Info,
-  CheckCircle2,
-  Lock,
   ChevronRight,
   ArrowLeft,
   PhoneOff,
@@ -330,9 +322,8 @@ const Chat = () => {
     dispatch(addReaction({ chatId: activeChat.id, messageId: msgId, emoji }));
     setSelectedMsgForReaction(null);
   };
-
   return (
-    <div className="flex-1 flex overflow-hidden h-screen w-full bg-[#FAF9F6] relative">
+    <div className="fixed inset-0 bottom-[64px] lg:bottom-0 flex overflow-hidden bg-[#FAF9F6] z-30">
       {/* Mesh gradients for premium glow */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-[#D51659]/5 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-[500px] h-[500px] rounded-full bg-[#B44DDC]/5 blur-[120px] pointer-events-none" />
@@ -340,7 +331,7 @@ const Chat = () => {
       {/* LEFT PANE: Conversations list */}
       <div className={`w-full md:w-80 border-r shrink-0 flex flex-col justify-between
         ${activeChatId && 'hidden md:flex'}
-        border-slate-100 bg-[#FCFAF7]/90 backdrop-blur-xl z-5`}
+        border-slate-200/60 bg-white/95 backdrop-blur-xl z-10 shadow-[4px_0_24px_rgba(0,0,0,0.015)]`}
       >
         <div className="p-4 border-b border-slate-100/60 flex flex-col gap-3">
           <div className="flex items-center justify-between">
@@ -382,13 +373,17 @@ const Chat = () => {
             return (
               <div
                 key={chat.id}
-                onClick={() => { dispatch(setActiveChat(chat.id)); getSocket().emit('join_conversation', { conversationId: chat.id }); }}
-                className={`mx-3 p-3 flex items-center gap-3 cursor-pointer rounded-2xl transition-all duration-300 border
+                onClick={() => dispatch(setActiveChat(chat.id))}
+                className={`mx-3 p-3 flex items-center gap-3 cursor-pointer rounded-2xl transition-all duration-300 border relative
                   ${isSelected 
-                    ? 'bg-white border-[#D51659]/30 shadow-md shadow-[#D51659]/5 translate-x-0.5' 
+                    ? 'bg-white border-[#D51659]/30 shadow-md shadow-[#D51659]/5' 
                     : 'bg-transparent border-transparent hover:bg-white/50 hover:border-slate-100/80 hover:shadow-sm'
                   }`}
               >
+                {isSelected && (
+                  <div className="absolute left-0 top-3.5 bottom-3.5 w-1 bg-[#D51659] rounded-r-full" />
+                )}
+
                 <div className="relative">
                   <img
                     src={chat.userImage}
@@ -409,7 +404,7 @@ const Chat = () => {
                 </div>
 
                 {chat.unreadCount > 0 && (
-                  <span className="w-5 h-5 rounded-full bg-[#D51659] text-white font-bold text-[9px] flex items-center justify-center shadow-lg shadow-[#D51659]/20">
+                  <span className="w-5 h-5 rounded-full bg-[#D51659] text-white font-bold text-[9px] flex items-center justify-center shrink-0 shadow-lg shadow-[#D51659]/20">
                     {chat.unreadCount}
                   </span>
                 )}
@@ -426,13 +421,13 @@ const Chat = () => {
       </div>
 
       {/* RIGHT PANE: Message window */}
-      <div className={`flex-1 flex flex-col min-w-0 bg-[#FAF9F5]/70 relative z-5
+      <div className={`flex-1 flex flex-col min-w-0 bg-[#F4F3ED] relative z-10 shadow-inner
         ${!activeChat && 'hidden md:flex'}`}
       >
         {activeChat ? (
           <>
             {/* Pinned Floating Header */}
-            <div className="mx-4 mt-4 px-4 py-3 bg-white/80 border border-slate-100 backdrop-blur-md flex items-center justify-between rounded-2xl shadow-sm z-10">
+            <div className="mx-4 mt-4 px-4 py-3 bg-white/90 border border-slate-100/80 backdrop-blur-md flex items-center justify-between rounded-2xl shadow-sm z-15">
               <div className="flex items-center gap-3">
                 {/* Back button for mobile */}
                 <button 
@@ -484,7 +479,12 @@ const Chat = () => {
             </div>
 
             {/* Message logs section */}
-            <div className="flex-grow overflow-y-auto no-scrollbar px-6 py-4 space-y-4">
+            <div 
+              className="flex-grow overflow-y-auto no-scrollbar px-6 py-6 space-y-4"
+              style={{
+                backgroundImage: 'radial-gradient(circle at 0% 0%, rgba(213,22,89,0.06) 0%, transparent 45%), radial-gradient(circle at 100% 100%, rgba(180,77,220,0.06) 0%, transparent 45%), #F4F3ED'
+              }}
+            >
               {activeChatMessages.map((msg) => {
                 const isMe = (msg.sender?._id || msg.sender) === currentUser?._id;
                 const timestamp = msg.createdAt 
@@ -512,13 +512,13 @@ const Chat = () => {
                       {/* Bubble */}
                       <div 
                         onClick={() => setSelectedMsgForReaction(selectedMsgForReaction === (msg._id || msg.id) ? null : (msg._id || msg.id))}
-                        className={`p-3.5 rounded-[20px] text-xs sm:text-sm shadow-sm relative group cursor-pointer transition-transform hover:scale-[1.01]
+                        className={`px-4 py-2.5 rounded-[20px] text-xs sm:text-sm shadow-sm relative group cursor-pointer transition-transform hover:scale-[1.01]
                           ${isMe 
-                            ? 'bg-gradient-to-tr from-[#D51659] to-[#EC3F7B] text-white font-medium rounded-br-[4px] shadow-[0_4px_16px_rgba(213,22,89,0.2)]' 
-                            : 'bg-white text-slate-800 rounded-bl-[4px] border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)]'
+                            ? 'bg-gradient-to-tr from-[#D51659] to-[#EC3F7B] text-white font-medium rounded-br-[4px] shadow-[0_4px_16px_rgba(213,22,89,0.18)]' 
+                            : 'bg-white text-slate-800 rounded-bl-[4px] border border-slate-150/60 shadow-[0_2px_8px_rgba(0,0,0,0.01)]'
                           }`}
                       >
-                        <p className="leading-relaxed break-words">{msg.text}</p>
+                        <p className="leading-relaxed break-words text-left">{msg.text}</p>
                         
                         {/* Emoji Reactions row */}
                         {msg.reactions && msg.reactions.length > 0 && (
@@ -595,34 +595,32 @@ const Chat = () => {
             {/* Input Floating Glass Bar */}
             <form 
               onSubmit={handleSendMessage}
-              className="mx-4 mb-4 p-2 bg-white/90 border border-slate-200/50 backdrop-blur-lg flex items-center gap-2 rounded-2xl shadow-lg shrink-0 relative z-10"
+              className="mx-4 mb-4 p-2 bg-white/95 border border-slate-100 backdrop-blur-xl flex items-center gap-2 rounded-2xl shadow-xl shrink-0 relative z-10"
             >
-              <div className="relative flex-grow flex items-center">
-                
-                {/* Media Button */}
-                <button
-                  type="button"
-                  className="p-2 text-slate-400 hover:text-slate-700 transition-colors rounded-xl hover:bg-slate-50"
-                >
-                  <Plus className="w-5 h-5" />
-                </button>
+              {/* Media Button */}
+              <button
+                type="button"
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all rounded-xl"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
 
-                {/* Emoji button */}
-                <button
-                  type="button"
-                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  className="p-2 text-slate-400 hover:text-slate-700 transition-colors rounded-xl hover:bg-slate-50"
-                >
-                  <Smile className="w-5 h-5" />
-                </button>
-
+              {/* Inner Input Block */}
+              <div className="flex-grow flex items-center bg-slate-50/60 focus-within:bg-white border border-slate-100 focus-within:border-slate-200/80 rounded-xl px-2.5 transition-all relative">
                 <input
                   type="text"
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder={`Write a message to ${activeChat.userName}...`}
-                  className="w-full pl-3 pr-10 py-3 text-xs sm:text-sm bg-transparent text-slate-800 placeholder-slate-400 outline-none"
+                  placeholder={`Message ${activeChat.userName}...`}
+                  className="flex-grow py-2.5 text-sm bg-transparent text-slate-800 placeholder-slate-400 outline-none"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <Smile className="w-4.5 h-4.5" />
+                </button>
 
                 {/* Emoji selector drawer */}
                 <AnimatePresence>
@@ -630,10 +628,10 @@ const Chat = () => {
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setShowEmojiPicker(false)} />
                       <motion.div
-                        initial={{ opacity: 0, y: 15 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 15 }}
-                        className="absolute bottom-16 left-0 bg-white border border-slate-150 p-2.5 rounded-xl shadow-xl flex gap-2 z-20"
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute bottom-14 right-0 bg-white border border-slate-150 p-2.5 rounded-2xl shadow-xl flex gap-2 z-20"
                       >
                         {emojiList.map((emoji) => (
                           <button
@@ -652,13 +650,12 @@ const Chat = () => {
                     </>
                   )}
                 </AnimatePresence>
-
               </div>
 
               {/* Mic Icon */}
               <button
                 type="button"
-                className="p-2.5 text-slate-400 hover:text-slate-700 transition-colors rounded-xl hover:bg-slate-50"
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all rounded-xl"
               >
                 <Mic className="w-4.5 h-4.5" />
               </button>
@@ -666,7 +663,7 @@ const Chat = () => {
               {/* Send Button */}
               <button
                 type="submit"
-                className="p-3 rounded-xl bg-gradient-to-tr from-[#D51659] to-[#EC3F7B] text-white hover:scale-[1.05] active:scale-[0.95] transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-[0_4px_16px_rgba(213,22,89,0.3)]"
+                className="p-2.5 rounded-xl bg-gradient-to-tr from-[#D51659] to-[#EC3F7B] text-white hover:scale-105 active:scale-95 transition-all cursor-pointer shadow-md shadow-[#D51659]/15"
               >
                 <Send className="w-4.5 h-4.5" />
               </button>
@@ -711,7 +708,7 @@ const Chat = () => {
                   className="w-24 h-24 rounded-full object-cover border-4 border-slate-50 mx-auto animate-pulse"
                 />
               </div>
-              <h3 className="font-extrabold text-lg text-slate-800">{incomingCall.callerName}</h3>
+              <h3 className="font-extrabold text-lg text-[#2D2D2D]">{incomingCall.callerName}</h3>
               <p className="text-xs text-slate-500 uppercase tracking-widest font-semibold mt-1">Incoming {incomingCall.callType} call...</p>
               
               <div className="flex gap-4 mt-6">
@@ -738,5 +735,3 @@ const Chat = () => {
     </div>
   );
 };
-
-export default Chat;
