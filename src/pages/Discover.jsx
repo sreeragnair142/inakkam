@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 
 import { setMatchedModal } from '../redux/slices/uiSlice';
 import { fetchDiscoverUsers, apiSwipe } from '../redux/slices/userSlice';
@@ -20,6 +21,7 @@ import confetti from 'canvas-confetti';
 
 const Discover = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const reduxDiscoveredUsers = useSelector((state) => state.user.discoveredUsers);
 
   const [localUsers, setLocalUsers] = useState([]);
@@ -38,6 +40,12 @@ const Discover = () => {
 
   const handleAction = (e, actionType, profile) => {
     e.stopPropagation();
+
+    if (actionType === 'message') {
+      dispatch(createNewChat(profile));
+      navigate('/chat');
+      return;
+    }
 
     // Animate removal and update state
     setLocalUsers(prev => prev.filter(u => (u.id || u._id) !== (profile.id || profile._id)));
@@ -187,16 +195,16 @@ const Discover = () => {
 
                 {/* Action buttons at the bottom of the image */}
                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 z-20">
-                  <button className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-lg border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                  <button onClick={(e) => { handleAction(e, 'pass', selectedProfile); setSelectedProfile(null); }} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-lg border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
                     <X className="w-5 h-5 text-yellow-500" strokeWidth={2.5} />
                   </button>
-                  <button className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-lg border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                  <button onClick={(e) => { handleAction(e, 'like', selectedProfile); setSelectedProfile(null); }} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-lg border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
                     <Heart className="w-5 h-5 text-rose-500 fill-current" />
                   </button>
-                  <button className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-lg border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                  <button onClick={(e) => { handleAction(e, 'message', selectedProfile); setSelectedProfile(null); }} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-lg border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
                     <MessageSquare className="w-5 h-5 text-purple-500 fill-current" />
                   </button>
-                  <button className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-lg border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                  <button onClick={(e) => { handleAction(e, 'gift', selectedProfile); setSelectedProfile(null); }} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-lg border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
                     <Gift className="w-5 h-5 text-yellow-400 fill-current" />
                   </button>
                 </div>
@@ -291,7 +299,11 @@ const Discover = () => {
               </div>
 
               <div className="space-y-3 relative z-10">
-                <button onClick={() => { dispatch(setMatchedModal({ isOpen: false })); dispatch({ type: 'ui/setActiveTab', payload: 'chat' }); }} className="w-full py-4 rounded-2xl text-xs uppercase tracking-widest font-black bg-[#D51659] text-white shadow-[0_4px_15px_rgba(213,22,89,0.4)] hover:bg-[#b44ddc] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer">
+                <button onClick={() => {
+                  dispatch(createNewChat(matchedUser));
+                  dispatch(setMatchedModal({ isOpen: false }));
+                  navigate('/chat');
+                }} className="w-full py-4 rounded-2xl text-xs uppercase tracking-widest font-black bg-[#D51659] text-white shadow-[0_4px_15px_rgba(213,22,89,0.4)] hover:bg-[#b44ddc] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer">
                   <MessageSquare className="w-4 h-4 shrink-0" /> <span>Send Message</span>
                 </button>
                 <button onClick={() => dispatch(setMatchedModal({ isOpen: false }))} className="w-full py-4 rounded-2xl text-xs uppercase tracking-widest font-bold bg-white/5 text-white/80 border border-white/10 hover:bg-white/10 active:scale-[0.98] transition-all cursor-pointer">

@@ -7,6 +7,7 @@ import {
   receiveMessage,
   setTyping,
   addReaction,
+  addMessage,
   fetchConversations,
   fetchMessages
 } from '../redux/slices/chatSlice';
@@ -29,7 +30,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../utils/api';
-import { getSocket, joinConversation } from '../utils/socket';
+import { getSocket, joinConversation, emitMessage } from '../utils/socket';
 import VideoCall from '../components/VideoCall';
 import toast from 'react-hot-toast';
 
@@ -62,7 +63,7 @@ const Chat = () => {
 
   // Load messages and join room when active chat changes
   useEffect(() => {
-    if (activeChatId && !activeChatId.startsWith('temp_')) {
+    if (activeChatId && !activeChatId.startsWith('temp_') && !activeChatId.startsWith('demo_')) {
       dispatch(fetchMessages(activeChatId));
       joinConversation(activeChatId);
     }
@@ -282,40 +283,37 @@ const Chat = () => {
     scrollToBottom();
   }, [activeChatMessages, isTyping]);
 
-  // Simulate automated chat responses
+  // Real Chat message sending via socket & Redux
   const handleSendMessage = (e) => {
     e.preventDefault();
-    if (!inputMessage.trim()) return;
+    if (!inputMessage.trim() || !activeChat) return;
 
-    const messageText = inputMessage;
+    const messageText = inputMessage.trim();
+    const activeId = activeChat.conversationId || activeChat.id;
 
-    // Dispatch User Message
-    dispatch(sendMessage({ chatId: activeChat.id, text: messageText }));
+    const newMessageObj = {
+      _id: `msg_${Date.now()}`,
+      conversationId: activeId,
+      conversation: activeId,
+      text: messageText,
+      sender: currentUser || { _id: 'me' },
+      createdAt: new Date().toISOString()
+    };
+
+    // 1. Instantly display user's message on the screen (Right side)
+    dispatch(addMessage(newMessageObj));
+
+    // 2. Clear input state
     setInputMessage('');
     setShowEmojiPicker(false);
 
-    // Simulate Reply
-    dispatch(setTyping(true));
+    // 3. Send via real-time Socket.io
+    emitMessage({ conversationId: activeId, text: messageText });
 
-    setTimeout(() => {
-      dispatch(setTyping(false));
-
-      const responses = [
-        `That sounds amazing! Tell me more about it 😊`,
-        `Oh wow, I totally agree! Let's do that next week.`,
-        `Haha, you're hilarious! Honestly, I was thinking the exact same thing.`,
-        `Nice! Let's meet up for coffee or bubble tea soon and talk more? ☕️✨`,
-        `That is really cool. What got you into that?`
-      ];
-
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-
-      dispatch(receiveMessage({
-        chatId: activeChat.id,
-        senderId: activeChat.userId,
-        text: randomResponse
-      }));
-    }, 2500);
+    // 4. Send to Backend API if real database conversation ID
+    if (activeId && !activeId.startsWith('chat_') && !activeId.startsWith('temp_')) {
+      dispatch(sendMessage({ chatId: activeId, text: messageText }));
+    }
   };
 
   const handleAddReaction = (msgId, emoji) => {
@@ -486,7 +484,9 @@ const Chat = () => {
               }}
             >
               {activeChatMessages.map((msg) => {
-                const isMe = (msg.sender?._id || msg.sender) === currentUser?._id;
+                const senderId = typeof msg.sender === 'object' ? (msg.sender?._id || msg.sender?.id) : msg.sender;
+                const myId = currentUser?._id || currentUser?.id;
+                const isMe = senderId === myId || senderId === 'me' || (myId && String(senderId) === String(myId));
                 const timestamp = msg.createdAt
                   ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                   : msg.timestamp || '';

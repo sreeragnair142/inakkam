@@ -63,23 +63,21 @@ const chatSlice = createSlice({
   reducers: {
     setActiveChat: (state, action) => {
       state.activeChatId = action.payload;
-      // Clear unread count for the chat in the list
       const chat = state.chats.find(c => (c.conversationId || c.id) === action.payload);
       if (chat) chat.unreadCount = 0;
     },
     addMessage: (state, action) => {
-      const { conversationId, text, senderId, sender, createdAt, _id } = action.payload;
+      const msg = action.payload;
+      const targetId = msg.conversationId || msg.conversation || msg.chatId;
 
-      // If the message belongs to the active chat, add it to the list
-      if (state.activeChatId === conversationId) {
-        state.activeChatMessages.push(action.payload);
+      if (!state.activeChatId || state.activeChatId === targetId) {
+        state.activeChatMessages.push(msg);
       }
 
-      // Update the chat preview in the list
-      const chat = state.chats.find(c => (c.conversationId || c.id) === conversationId);
+      const chat = state.chats.find(c => (c.conversationId || c.id) === targetId || (c.conversationId || c.id) === state.activeChatId);
       if (chat) {
-        chat.lastMessage = { text, createdAt, sender };
-        if (state.activeChatId !== conversationId) {
+        chat.lastMessage = { text: msg.text, createdAt: msg.createdAt, sender: msg.sender };
+        if (state.activeChatId && state.activeChatId !== targetId) {
           chat.unreadCount = (chat.unreadCount || 0) + 1;
         }
       }
@@ -87,7 +85,6 @@ const chatSlice = createSlice({
     setTyping: (state, action) => {
       state.isTyping = action.payload;
     },
-    // Alias for compatibility with old mock code in Chat.jsx
     receiveMessage: (state, action) => {
       const { chatId, text, senderId } = action.payload;
       const message = {
@@ -119,20 +116,39 @@ const chatSlice = createSlice({
     },
     createNewChat: (state, action) => {
       const user = action.payload;
-      const existingChat = state.chats.find(c => (c.user?._id || c.userId) === (user._id || user.id));
+      if (!user) return;
+
+      const targetId = user._id || user.id || 'user_' + Date.now();
+      const existingChat = state.chats.find(c =>
+        c.userId === targetId ||
+        c.user?._id === targetId ||
+        c.user?.id === targetId ||
+        c.id === `chat_${targetId}` ||
+        c.conversationId === `chat_${targetId}`
+      );
+
       if (existingChat) {
         state.activeChatId = existingChat.conversationId || existingChat.id;
         return;
       }
 
-      // Temporary local chat until a real message is sent
-      const newChatId = `temp_${Date.now()}`;
-      state.chats.unshift({
+      const newChatId = `chat_${targetId}`;
+      const userImg = user.images?.[0] || user.photos?.[0]?.url || user.image || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80';
+      const userName = user.name || 'Match';
+
+      const newChat = {
         id: newChatId,
+        conversationId: newChatId,
+        userName: userName,
+        userImage: userImg,
+        userId: targetId,
         user: user,
-        lastMessage: null,
+        lastActive: 'Online',
+        lastMessage: { text: `Start chatting with ${userName}! 👋`, createdAt: new Date().toISOString() },
         unreadCount: 0,
-      });
+      };
+
+      state.chats.unshift(newChat);
       state.activeChatId = newChatId;
       state.activeChatMessages = [];
     }
@@ -142,7 +158,15 @@ const chatSlice = createSlice({
       .addCase(fetchConversations.pending, (state) => { state.loading = true; })
       .addCase(fetchConversations.fulfilled, (state, action) => {
         state.loading = false;
-        state.chats = action.payload;
+        if (action.payload && action.payload.length > 0) {
+          const newApiChats = action.payload.filter(apiChat =>
+            !state.chats.some(c => (c.conversationId || c.id) === (apiChat.conversationId || apiChat.id))
+          );
+          state.chats = [...state.chats, ...newApiChats];
+        }
+        if (!state.activeChatId && state.chats.length > 0) {
+          state.activeChatId = state.chats[0].id || state.chats[0].conversationId;
+        }
       })
       .addCase(fetchConversations.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
 
@@ -153,12 +177,10 @@ const chatSlice = createSlice({
       })
       .addCase(sendMessage.fulfilled, (state, action) => {
         const message = action.payload;
-        // Avoid duplicate additions if socket also pushed it
         const exists = state.activeChatMessages.some(m => m._id === message._id);
         if (!exists && state.activeChatId === message.conversation) {
           state.activeChatMessages.push(message);
         }
-        // Update the last message in conversations list preview
         const chat = state.chats.find(c => (c.conversationId || c.id) === message.conversation);
         if (chat) {
           chat.lastMessage = message;
