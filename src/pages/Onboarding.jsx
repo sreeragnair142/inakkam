@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ChevronRight, EyeOff, CheckCircle2, Plus, X, Search, Flame, Loader2 } from "lucide-react";
+import { ArrowLeft, ChevronRight, EyeOff, CheckCircle2, Plus, X, Search, Flame, Loader2, Pencil } from "lucide-react";
 import landscapeLogo from "../assets/landscapelogowhite.png";
 import { useDispatch, useSelector } from "react-redux";
 import api from "../utils/api";
@@ -24,6 +24,32 @@ export default function Onboarding() {
   const [dbRelationGoals, setDbRelationGoals] = useState([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [userLocation, setUserLocation] = useState(null);
+
+  // Custom premium states for OTP
+  const [countryCode, setCountryCode] = useState("+91");
+  const [otpCountdown, setOtpCountdown] = useState(0);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [otpError, setOtpError] = useState("");
+  const [otpSuccess, setOtpSuccess] = useState(false);
+  const otpRefs = React.useRef([]);
+
+  const countryCodes = [
+    { code: "+91", name: "India", flag: "🇮🇳" },
+    { code: "+1", name: "US/Canada", flag: "🇺🇸" },
+    { code: "+44", name: "UK", flag: "🇬🇧" },
+    { code: "+971", name: "UAE", flag: "🇦🇪" },
+    { code: "+61", name: "Australia", flag: "🇦🇺" },
+    { code: "+966", name: "Saudi Arabia", flag: "🇸🇦" },
+    { code: "+65", name: "Singapore", flag: "🇸🇬" },
+  ];
+
+  React.useEffect(() => {
+    let timer;
+    if (otpCountdown > 0) {
+      timer = setTimeout(() => setOtpCountdown(prev => prev - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [otpCountdown]);
 
   // Request geolocation when the user reaches the distance preference step (step 6)
   React.useEffect(() => {
@@ -84,26 +110,144 @@ export default function Onboarding() {
   });
   const [otpSent, setOtpSent] = useState(false);
 
+  const handleVerifyOtp = async (codeToVerify) => {
+    const code = codeToVerify || formData.otp;
+    if (!code || code.length !== 6) {
+      setOtpError("Please enter a 6-digit verification code");
+      return;
+    }
+
+    setIsVerifying(true);
+    setOtpError("");
+    const fullPhone = `${countryCode}${formData.phone.replace(/\D/g, '')}`;
+
+    try {
+      await api.post('/auth/verify-otp', { phone: fullPhone, otp: code });
+      
+      setOtpSuccess(true);
+      
+      setTimeout(() => {
+        setFormStep(3);
+        setOtpSent(false);
+        setOtpSuccess(false);
+        setIsVerifying(false);
+        updateData('otp', ''); // Clear OTP input
+      }, 1200);
+
+    } catch (err) {
+      setOtpError(typeof err === 'string' ? err : 'Invalid OTP code');
+      setIsVerifying(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (otpCountdown > 0 || isVerifying) return;
+    
+    setIsVerifying(true);
+    setOtpError("");
+    updateData('otp', ''); // Clear code
+    
+    const fullPhone = `${countryCode}${formData.phone.replace(/\D/g, '')}`;
+    try {
+      await api.post('/auth/send-otp', { phone: fullPhone });
+      setOtpCountdown(60); // Reset timer
+    } catch (err) {
+      setOtpError(typeof err === 'string' ? err : 'Failed to resend OTP');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleOtpChange = (value, index) => {
+    if (value && !/^\d$/.test(value)) return;
+
+    const newOtp = (formData.otp || "").split('');
+    newOtp[index] = value;
+    const combinedOtp = newOtp.join('');
+    updateData('otp', combinedOtp);
+
+    setOtpError(""); // Clear error on typing
+
+    if (value && index < 5) {
+      otpRefs.current[index + 1]?.focus();
+    }
+
+    if (combinedOtp.length === 6) {
+      handleVerifyOtp(combinedOtp);
+    }
+  };
+
+  const handleOtpKeyDown = (e, index) => {
+    if (e.key === "Backspace") {
+      e.preventDefault();
+      
+      const newOtp = (formData.otp || "").split('');
+      
+      if (newOtp[index]) {
+        newOtp[index] = "";
+        updateData('otp', newOtp.join(''));
+      } else if (index > 0) {
+        newOtp[index - 1] = "";
+        updateData('otp', newOtp.join(''));
+        otpRefs.current[index - 1]?.focus();
+      }
+      setOtpError("");
+    } else if (e.key === "ArrowLeft" && index > 0) {
+      e.preventDefault();
+      otpRefs.current[index - 1]?.focus();
+    } else if (e.key === "ArrowRight" && index < 5) {
+      e.preventDefault();
+      otpRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (pastedData) {
+      updateData('otp', pastedData);
+      setOtpError("");
+      
+      const chars = pastedData.split('');
+      chars.forEach((char, idx) => {
+        if (otpRefs.current[idx]) {
+          otpRefs.current[idx].value = char;
+        }
+      });
+
+      const lastIndex = Math.min(chars.length - 1, 5);
+      otpRefs.current[lastIndex]?.focus();
+
+      if (pastedData.length === 6) {
+        handleVerifyOtp(pastedData);
+      }
+    }
+  };
+
   const handleFormNext = async () => {
     if (formStep === 2 && !otpSent) { 
+      const sanitizedPhone = formData.phone.replace(/\D/g, '');
+      if (!sanitizedPhone || sanitizedPhone.length < 7) {
+        alert("Please enter a valid phone number");
+        return;
+      }
+
+      setIsVerifying(true);
+      const fullPhone = `${countryCode}${sanitizedPhone}`;
       try {
-        await api.post('/auth/send-otp', { phone: formData.phone });
+        await api.post('/auth/send-otp', { phone: fullPhone });
         setOtpSent(true); 
+        setOtpCountdown(60); // 60s countdown
       } catch (err) {
         alert(err);
+      } finally {
+        setIsVerifying(false);
       }
       return; 
     }
     
     if (formStep === 2 && otpSent) {
-      try {
-        await api.post('/auth/verify-otp', { phone: formData.phone, otp: formData.otp });
-        setFormStep(3);
-        setOtpSent(false);
-      } catch (err) {
-        alert(typeof err === 'string' ? err : 'Invalid OTP');
-        return; 
-      }
+      await handleVerifyOtp();
       return;
     }
 
@@ -289,20 +433,148 @@ export default function Onboarding() {
         return (
           <div className="space-y-4">
             {!otpSent ? (
-              <div className="flex border-2 border-white/10 rounded-2xl overflow-hidden focus-within:border-[#D51659] focus-within:ring-4 focus-within:ring-[#D51659]/10">
-                <div className="bg-white/10 px-5 py-4 border-r-2 border-white/10 flex items-center text-white font-black text-base">+91</div>
-                <input type="tel" placeholder="Mobile Number" value={formData.phone} onChange={e => updateData('phone', e.target.value)} className="w-full px-5 py-4 text-base font-bold outline-none text-white bg-white/5 placeholder-white/40" />
+              <div className="space-y-4">
+                <div className="flex border-2 border-white/10 rounded-2xl overflow-hidden focus-within:border-[#D51659] focus-within:ring-4 focus-within:ring-[#D51659]/10 bg-white/5 transition-all">
+                  {/* Premium Country Code Picker */}
+                  <div className="relative bg-white/10 border-r-2 border-white/10 flex items-center text-white font-bold text-base min-w-[100px]">
+                    <select
+                      value={countryCode}
+                      onChange={(e) => setCountryCode(e.target.value)}
+                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
+                    >
+                      {countryCodes.map((c) => (
+                        <option key={c.code} value={c.code} className="text-black bg-white">
+                          {c.flag} {c.code} ({c.name})
+                        </option>
+                      ))}
+                    </select>
+                    <div className="px-4 py-4 w-full flex items-center justify-between select-none">
+                      <span>{countryCodes.find((c) => c.code === countryCode)?.flag} {countryCode}</span>
+                      <span className="text-xs opacity-50 ml-1">▼</span>
+                    </div>
+                  </div>
+                  <input
+                    type="tel"
+                    placeholder="Mobile Number"
+                    value={formData.phone}
+                    onChange={(e) => updateData('phone', e.target.value.replace(/\D/g, ''))}
+                    className="w-full px-5 py-4 text-base font-bold outline-none text-white bg-transparent placeholder-white/40"
+                  />
+                </div>
+                
+                <button
+                  onClick={handleFormNext}
+                  disabled={isVerifying || !formData.phone || formData.phone.length < 7}
+                  className="w-full py-4 bg-[#D51659] text-white rounded-2xl font-black text-base shadow-xl shadow-[#D51659]/20 hover:bg-[#b44ddc] disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {isVerifying ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Sending OTP...
+                    </>
+                  ) : (
+                    "Send Verification OTP"
+                  )}
+                </button>
               </div>
             ) : (
-              <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="bg-black/40 backdrop-blur-2xl p-6 lg:p-8 rounded-3xl border-2 border-white/10 shadow-xl">
-                <h2 className="text-2xl font-black text-white mb-2">Awesome 🎉</h2>
-                <p className="text-sm text-white/50 font-medium mb-8">We sent an OTP to +91 {formData.phone}</p>
-                <div className="flex gap-3 mb-8 justify-center lg:justify-start">
-                  {[0, 1, 2, 3, 4].map(i => (
-                    <input key={i} type="text" maxLength={1} value={formData.otp[i] || ""} onChange={e => { const newOtp = (formData.otp || "").split(''); newOtp[i] = e.target.value; updateData('otp', newOtp.join('')); if(e.target.value && e.target.nextElementSibling) e.target.nextElementSibling.focus(); }} className="w-12 h-14 lg:w-14 lg:h-16 border-2 border-white/10 rounded-2xl text-center text-xl lg:text-2xl font-black focus:border-[#D51659] focus:ring-4 focus:ring-[#D51659]/10 outline-none bg-white/5 text-white" />
-                  ))}
-                </div>
-                <button onClick={handleFormNext} className="w-full py-4 bg-[#D51659] text-white rounded-2xl font-black text-base shadow-xl shadow-[#D51659]/20 hover:bg-[#b44ddc] active:scale-[0.98] transition-all cursor-pointer">Verify & Continue</button>
+              <motion.div 
+                initial={{ y: 20, opacity: 0 }} 
+                animate={{ y: 0, opacity: 1 }} 
+                className="bg-black/40 backdrop-blur-2xl p-6 lg:p-8 rounded-3xl border-2 border-white/10 shadow-xl"
+              >
+                {otpSuccess ? (
+                  <motion.div 
+                    initial={{ scale: 0.8, opacity: 0 }} 
+                    animate={{ scale: 1, opacity: 1 }} 
+                    className="flex flex-col items-center justify-center py-6 text-center"
+                  >
+                    <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center border-2 border-emerald-500 mb-4 shadow-lg shadow-emerald-500/10">
+                      <CheckCircle2 className="w-10 h-10 text-emerald-500 animate-pulse" />
+                    </div>
+                    <h3 className="text-2xl font-black text-white mb-1">Verified! 🎉</h3>
+                    <p className="text-sm text-white/60 font-medium">Setting up your profile...</p>
+                  </motion.div>
+                ) : (
+                  <>
+                    <h2 className="text-2xl font-black text-white mb-2">Verify Number 📱</h2>
+                    <div className="flex items-center flex-wrap gap-1 text-sm text-white/50 font-medium mb-8">
+                      <span>We sent a 6-digit code to </span>
+                      <strong className="text-white font-bold">{countryCode} {formData.phone}</strong>
+                      <button 
+                        onClick={() => { setOtpSent(false); updateData('otp', ''); setOtpError(''); }} 
+                        className="inline-flex items-center gap-1 ml-2 text-xs font-black text-[#D51659] hover:text-[#b44ddc] transition-colors cursor-pointer border border-[#D51659]/30 rounded-lg px-2 py-0.5 hover:bg-[#D51659]/10"
+                      >
+                        <Pencil className="w-3 h-3" /> Change
+                      </button>
+                    </div>
+
+                    {/* Code Container with Shake Effect on Error */}
+                    <motion.div 
+                      animate={otpError ? { x: [-10, 10, -10, 10, 0] } : {}}
+                      transition={{ duration: 0.4 }}
+                      className="flex gap-2.5 mb-6 justify-center lg:justify-start"
+                    >
+                      {[0, 1, 2, 3, 4, 5].map(i => (
+                        <input
+                          key={i}
+                          type="text"
+                          maxLength={1}
+                          pattern="\d*"
+                          inputMode="numeric"
+                          ref={el => otpRefs.current[i] = el}
+                          value={formData.otp[i] || ""}
+                          onKeyDown={e => handleOtpKeyDown(e, i)}
+                          onPaste={handleOtpPaste}
+                          onChange={e => handleOtpChange(e.target.value, i)}
+                          className="w-11 h-14 sm:w-12 sm:h-15 lg:w-14 lg:h-16 border-2 border-white/10 rounded-2xl text-center text-xl lg:text-2xl font-black focus:border-[#D51659] focus:ring-4 focus:ring-[#D51659]/10 outline-none bg-white/5 text-white transition-all shadow-md focus:scale-[1.05]"
+                        />
+                      ))}
+                    </motion.div>
+
+                    {/* Inline Error Message */}
+                    {otpError && (
+                      <motion.p 
+                        initial={{ opacity: 0, y: -10 }} 
+                        animate={{ opacity: 1, y: 0 }} 
+                        className="text-sm text-rose-500 font-bold mb-6 text-center lg:text-left"
+                      >
+                        ⚠️ {otpError}
+                      </motion.p>
+                    )}
+
+                    <button 
+                      onClick={() => handleVerifyOtp()} 
+                      disabled={isVerifying || formData.otp.length !== 6}
+                      className="w-full py-4 bg-[#D51659] text-white rounded-2xl font-black text-base shadow-xl shadow-[#D51659]/20 hover:bg-[#b44ddc] disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      {isVerifying ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          Verifying Code...
+                        </>
+                      ) : (
+                        "Verify & Continue"
+                      )}
+                    </button>
+
+                    {/* Countdown and Resend */}
+                    <div className="mt-6 text-center lg:text-left flex items-center justify-between text-xs font-semibold text-white/50">
+                      <span>Didn't get the code?</span>
+                      {otpCountdown > 0 ? (
+                        <span>Resend in <b className="text-[#D51659]">{otpCountdown}s</b></span>
+                      ) : (
+                        <button 
+                          onClick={handleResendOtp} 
+                          disabled={isVerifying}
+                          className="font-bold text-[#D51659] hover:text-[#b44ddc] hover:underline disabled:opacity-40 cursor-pointer transition-colors"
+                        >
+                          Resend Code
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
               </motion.div>
             )}
           </div>
