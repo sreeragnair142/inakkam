@@ -290,9 +290,11 @@ const Chat = () => {
 
     const messageText = inputMessage.trim();
     const activeId = activeChat.conversationId || activeChat.id;
+    const tempId = `temp_${Date.now()}`;
 
     const newMessageObj = {
-      _id: `msg_${Date.now()}`,
+      _id: tempId,
+      tempId: tempId,
       conversationId: activeId,
       conversation: activeId,
       text: messageText,
@@ -307,12 +309,12 @@ const Chat = () => {
     setInputMessage('');
     setShowEmojiPicker(false);
 
-    // 3. Send via real-time Socket.io
-    emitMessage({ conversationId: activeId, text: messageText });
-
-    // 4. Send to Backend API if real database conversation ID
-    if (activeId && !activeId.startsWith('chat_') && !activeId.startsWith('temp_')) {
-      dispatch(sendMessage({ chatId: activeId, text: messageText }));
+    // 3. Send via real-time Socket if connected, otherwise fallback to REST API
+    const socket = getSocket();
+    if (socket && socket.connected) {
+      emitMessage({ conversationId: activeId, text: messageText, tempId });
+    } else {
+      dispatch(sendMessage({ chatId: activeId, text: messageText, tempId }));
     }
   };
 

@@ -68,13 +68,48 @@ const chatSlice = createSlice({
     },
     addMessage: (state, action) => {
       const msg = action.payload;
-      const targetId = msg.conversationId || msg.conversation || msg.chatId;
+      if (!msg) return;
 
-      if (!state.activeChatId || state.activeChatId === targetId) {
-        state.activeChatMessages.push(msg);
+      const targetId = String(msg.conversationId || msg.conversation || msg.chatId || '');
+      const msgId = msg._id || msg.id;
+      const tempId = msg.tempId;
+      const senderId = String(msg.sender?._id || msg.sender?.id || msg.sender || '');
+
+      // Search for existing message to prevent duplicates (by _id, tempId, or identical text+sender within 3 sec)
+      const existingIdx = state.activeChatMessages.findIndex(m => {
+        const mId = m._id || m.id;
+        const mTempId = m.tempId;
+        const mSenderId = String(m.sender?._id || m.sender?.id || m.sender || '');
+
+        if (msgId && mId && String(mId) === String(msgId)) return true;
+        if (tempId && (mTempId === tempId || mId === tempId)) return true;
+        if (m.text === msg.text && mSenderId === senderId) {
+          const t1 = new Date(m.createdAt || 0).getTime();
+          const t2 = new Date(msg.createdAt || 0).getTime();
+          if (Math.abs(t1 - t2) < 3000) return true;
+        }
+        return false;
+      });
+
+      if (existingIdx !== -1) {
+        // Replace existing message (e.g. update temp message with real backend message)
+        state.activeChatMessages[existingIdx] = {
+          ...state.activeChatMessages[existingIdx],
+          ...msg
+        };
+      } else {
+        const activeIdStr = String(state.activeChatId || '');
+        if (!state.activeChatId || activeIdStr === targetId || activeIdStr.endsWith(targetId) || targetId.endsWith(activeIdStr.replace('chat_', ''))) {
+          state.activeChatMessages.push(msg);
+        }
       }
 
-      const chat = state.chats.find(c => (c.conversationId || c.id) === targetId || (c.conversationId || c.id) === state.activeChatId);
+      const chat = state.chats.find(c => {
+        const cConvId = String(c.conversationId || c.id || '');
+        const cUserId = String(c.userId || c.user?._id || '');
+        return cConvId === targetId || cUserId === targetId || cConvId.endsWith(targetId) || targetId.endsWith(cConvId.replace('chat_', ''));
+      });
+
       if (chat) {
         chat.lastMessage = { text: msg.text, createdAt: msg.createdAt, sender: msg.sender };
         if (state.activeChatId && state.activeChatId !== targetId) {
@@ -118,21 +153,21 @@ const chatSlice = createSlice({
       const user = action.payload;
       if (!user) return;
 
-      const targetId = user._id || user.id || 'user_' + Date.now();
-      const existingChat = state.chats.find(c =>
-        c.userId === targetId ||
-        c.user?._id === targetId ||
-        c.user?.id === targetId ||
-        c.id === `chat_${targetId}` ||
-        c.conversationId === `chat_${targetId}`
-      );
+      const targetId = String(user._id || user.id || '');
+      if (!targetId) return;
+
+      const existingChat = state.chats.find(c => {
+        const cUserId = String(c.userId || c.user?._id || c.user?.id || '');
+        const cId = String(c.id || c.conversationId || '');
+        return cUserId === targetId || cId === targetId || cId === `chat_${targetId}`;
+      });
 
       if (existingChat) {
         state.activeChatId = existingChat.conversationId || existingChat.id;
         return;
       }
 
-      const newChatId = `chat_${targetId}`;
+      const newChatId = user.conversationId || `chat_${targetId}`;
       const userImg = user.images?.[0] || user.photos?.[0]?.url || user.image || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80';
       const userName = user.name || 'Match';
 
@@ -158,12 +193,50 @@ const chatSlice = createSlice({
       .addCase(fetchConversations.pending, (state) => { state.loading = true; })
       .addCase(fetchConversations.fulfilled, (state, action) => {
         state.loading = false;
-        if (action.payload && action.payload.length > 0) {
-          const newApiChats = action.payload.filter(apiChat =>
-            !state.chats.some(c => (c.conversationId || c.id) === (apiChat.conversationId || apiChat.id))
-          );
-          state.chats = [...state.chats, ...newApiChats];
+        if (action.payload) {
+          const mergedChats = [...state.chats];
+
+          action.payload.forEach(apiChat => {
+            const apiTargetUserId = String(apiChat.userId || apiChat.user?._id || apiChat.user?.id || '');
+            const apiConvId = String(apiChat.conversationId || apiChat.id || '');
+
+            const existingIdx = mergedChats.findIndex(c => {
+              const cConvId = String(c.conversationId || c.id || '');
+              const cTargetUserId = String(c.userId || c.user?._id || c.user?.id || '');
+              return (cConvId && cConvId === apiConvId) ||
+                (apiTargetUserId && cTargetUserId && cTargetUserId === apiTargetUserId) ||
+                (cConvId === `chat_${apiTargetUserId}`);
+            });
+
+            if (existingIdx !== -1) {
+              const oldId = mergedChats[existingIdx].id || mergedChats[existingIdx].conversationId;
+              mergedChats[existingIdx] = {
+                ...mergedChats[existingIdx],
+                ...apiChat,
+                id: apiChat.conversationId || apiChat.id,
+                conversationId: apiChat.conversationId || apiChat.id,
+              };
+              if (state.activeChatId === oldId) {
+                state.activeChatId = apiChat.conversationId || apiChat.id;
+              }
+            } else {
+              mergedChats.push(apiChat);
+            }
+          });
+
+          // Ensure no duplicate target userIds in state.chats
+          const uniqueChats = [];
+          const seenUserIds = new Set();
+          for (const chat of mergedChats) {
+            const uId = String(chat.userId || chat.user?._id || chat.user?.id || chat.id || '');
+            if (uId && seenUserIds.has(uId)) continue;
+            if (uId) seenUserIds.add(uId);
+            uniqueChats.push(chat);
+          }
+
+          state.chats = uniqueChats;
         }
+
         if (!state.activeChatId && state.chats.length > 0) {
           state.activeChatId = state.chats[0].id || state.chats[0].conversationId;
         }
@@ -171,19 +244,27 @@ const chatSlice = createSlice({
       .addCase(fetchConversations.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
 
       .addCase(fetchMessages.fulfilled, (state, action) => {
-        if (state.activeChatId === action.payload.conversationId) {
+        const convId = action.payload.conversationId;
+        if (state.activeChatId === convId || state.activeChatId?.replace('chat_', '') === convId?.toString()) {
           state.activeChatMessages = action.payload.messages;
         }
       })
       .addCase(sendMessage.fulfilled, (state, action) => {
         const message = action.payload;
+        if (!message) return;
+        const convId = message.conversation;
         const exists = state.activeChatMessages.some(m => m._id === message._id);
-        if (!exists && state.activeChatId === message.conversation) {
+        if (!exists && (state.activeChatId === convId || state.activeChatId?.endsWith(convId))) {
           state.activeChatMessages.push(message);
         }
-        const chat = state.chats.find(c => (c.conversationId || c.id) === message.conversation);
+        const chat = state.chats.find(c =>
+          String(c.conversationId || c.id) === String(convId) ||
+          String(c.id).endsWith(String(convId))
+        );
         if (chat) {
           chat.lastMessage = message;
+          chat.id = convId;
+          chat.conversationId = convId;
         }
       });
   },
