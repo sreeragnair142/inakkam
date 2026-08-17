@@ -1,21 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { 
-  setActiveChat, 
-  sendMessage, 
-  receiveMessage, 
-  setTyping, 
+import {
+  setActiveChat,
+  sendMessage,
+  receiveMessage,
+  setTyping,
   addReaction,
   fetchConversations,
   fetchMessages
 } from '../redux/slices/chatSlice';
-import { 
-  Send, 
-  Smile, 
-  MoreVertical, 
-  Phone, 
-  Video, 
+import {
+  Send,
+  Smile,
+  MoreVertical,
+  Phone,
+  Video,
   Info,
   CheckCircle2,
   Lock,
@@ -37,7 +37,7 @@ const Chat = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const themeMode = useSelector((state) => state.theme.mode);
-  
+
   // Redux chat slices
   const chats = useSelector((state) => state.chat.chats);
   const activeChatId = useSelector((state) => state.chat.activeChatId);
@@ -137,7 +137,7 @@ const Chat = () => {
 
     try {
       toast.loading('Initializing call...', { id: 'call_init' });
-      
+
       // 1. Create Room on EnableX
       const roomRes = await api.post('/enablex/create-room', {
         name: `Call with ${activeChat.userName}`
@@ -288,7 +288,7 @@ const Chat = () => {
     if (!inputMessage.trim()) return;
 
     const messageText = inputMessage;
-    
+
     // Dispatch User Message
     dispatch(sendMessage({ chatId: activeChat.id, text: messageText }));
     setInputMessage('');
@@ -296,10 +296,10 @@ const Chat = () => {
 
     // Simulate Reply
     dispatch(setTyping(true));
-    
+
     setTimeout(() => {
       dispatch(setTyping(false));
-      
+
       const responses = [
         `That sounds amazing! Tell me more about it 😊`,
         `Oh wow, I totally agree! Let's do that next week.`,
@@ -307,9 +307,9 @@ const Chat = () => {
         `Nice! Let's meet up for coffee or bubble tea soon and talk more? ☕️✨`,
         `That is really cool. What got you into that?`
       ];
-      
+
       const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-      
+
       dispatch(receiveMessage({
         chatId: activeChat.id,
         senderId: activeChat.userId,
@@ -336,8 +336,8 @@ const Chat = () => {
         <div className="p-4 border-b border-slate-100/60 flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <button 
-                onClick={() => navigate('/landing')}
+              <button
+                onClick={() => navigate('/swipe')}
                 className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors border border-transparent hover:border-slate-200/50"
                 title="Return to Home"
               >
@@ -353,9 +353,9 @@ const Chat = () => {
           {/* Clean Search Input */}
           <div className="relative flex items-center">
             <Search className="absolute left-3 w-4 h-4 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Search conversations..." 
+            <input
+              type="text"
+              placeholder="Search conversations..."
               className="w-full pl-9 pr-4 py-2 bg-slate-100/60 focus:bg-white text-xs border border-transparent focus:border-slate-200 rounded-xl outline-none transition-all placeholder-slate-400 text-slate-700"
             />
           </div>
@@ -366,17 +366,17 @@ const Chat = () => {
           {chats.map((chat) => {
             const isSelected = activeChat && chat.id === activeChat.id;
             const lastMsgText = chat.lastMessage?.text || '';
-            const lastMsgTime = chat.lastMessage?.createdAt 
-              ? new Date(chat.lastMessage.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+            const lastMsgTime = chat.lastMessage?.createdAt
+              ? new Date(chat.lastMessage.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
               : '';
-            
+
             return (
               <div
                 key={chat.id}
                 onClick={() => dispatch(setActiveChat(chat.id))}
                 className={`mx-3 p-3 flex items-center gap-3 cursor-pointer rounded-2xl transition-all duration-300 border relative
-                  ${isSelected 
-                    ? 'bg-white border-[#D51659]/30 shadow-md shadow-[#D51659]/5' 
+                  ${isSelected
+                    ? 'bg-white border-[#D51659]/30 shadow-md shadow-[#D51659]/5'
                     : 'bg-transparent border-transparent hover:bg-white/50 hover:border-slate-100/80 hover:shadow-sm'
                   }`}
               >
@@ -430,7 +430,7 @@ const Chat = () => {
             <div className="mx-4 mt-4 px-4 py-3 bg-white/90 border border-slate-100/80 backdrop-blur-md flex items-center justify-between rounded-2xl shadow-sm z-15">
               <div className="flex items-center gap-3">
                 {/* Back button for mobile */}
-                <button 
+                <button
                   onClick={() => dispatch(setActiveChat(null))}
                   className="md:hidden p-1.5 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 mr-1"
                 >
@@ -458,14 +458,14 @@ const Chat = () => {
 
               {/* Call actions */}
               <div className="flex items-center gap-2 text-slate-400">
-                <button 
+                <button
                   onClick={() => handleStartCall('audio')}
                   className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-[#D51659]/5 hover:text-[#D51659] hover:border-[#D51659]/20 transition-all duration-300 cursor-pointer"
                   title="Voice Call"
                 >
                   <Phone className="w-4.5 h-4.5" />
                 </button>
-                <button 
+                <button
                   onClick={() => handleStartCall('video')}
                   className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-[#D51659]/5 hover:text-[#D51659] hover:border-[#D51659]/20 transition-all duration-300 cursor-pointer"
                   title="Video Call"
@@ -479,7 +479,7 @@ const Chat = () => {
             </div>
 
             {/* Message logs section */}
-            <div 
+            <div
               className="flex-grow overflow-y-auto no-scrollbar px-6 py-6 space-y-4"
               style={{
                 backgroundImage: 'radial-gradient(circle at 0% 0%, rgba(213,22,89,0.06) 0%, transparent 45%), radial-gradient(circle at 100% 100%, rgba(180,77,220,0.06) 0%, transparent 45%), #F4F3ED'
@@ -487,16 +487,16 @@ const Chat = () => {
             >
               {activeChatMessages.map((msg) => {
                 const isMe = (msg.sender?._id || msg.sender) === currentUser?._id;
-                const timestamp = msg.createdAt 
+                const timestamp = msg.createdAt
                   ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                   : msg.timestamp || '';
-                
+
                 return (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, type: 'spring', damping: 25 }}
-                    key={msg._id || msg.id} 
+                    key={msg._id || msg.id}
                     className={`flex items-end gap-2.5 group ${isMe ? 'justify-end' : 'justify-start'}`}
                   >
                     {!isMe && (
@@ -506,20 +506,20 @@ const Chat = () => {
                         className="w-7 h-7 rounded-lg object-cover border border-slate-100 shrink-0 shadow-sm"
                       />
                     )}
-                    
+
                     <div className="max-w-[70%] space-y-1 relative">
-                      
+
                       {/* Bubble */}
-                      <div 
+                      <div
                         onClick={() => setSelectedMsgForReaction(selectedMsgForReaction === (msg._id || msg.id) ? null : (msg._id || msg.id))}
                         className={`px-4 py-2.5 rounded-[20px] text-xs sm:text-sm shadow-sm relative group cursor-pointer transition-transform hover:scale-[1.01]
-                          ${isMe 
-                            ? 'bg-gradient-to-tr from-[#D51659] to-[#EC3F7B] text-white font-medium rounded-br-[4px] shadow-[0_4px_16px_rgba(213,22,89,0.18)]' 
+                          ${isMe
+                            ? 'bg-gradient-to-tr from-[#D51659] to-[#EC3F7B] text-white font-medium rounded-br-[4px] shadow-[0_4px_16px_rgba(213,22,89,0.18)]'
                             : 'bg-white text-slate-800 rounded-bl-[4px] border border-slate-150/60 shadow-[0_2px_8px_rgba(0,0,0,0.01)]'
                           }`}
                       >
                         <p className="leading-relaxed break-words text-left">{msg.text}</p>
-                        
+
                         {/* Emoji Reactions row */}
                         {msg.reactions && msg.reactions.length > 0 && (
                           <div className={`absolute bottom-[-10px] flex gap-1 bg-white border border-slate-150 px-1.5 py-0.5 rounded-full text-[9px] shadow-sm
@@ -593,7 +593,7 @@ const Chat = () => {
             </div>
 
             {/* Input Floating Glass Bar */}
-            <form 
+            <form
               onSubmit={handleSendMessage}
               className="mx-4 mb-4 p-2 bg-white/95 border border-slate-100 backdrop-blur-xl flex items-center gap-2 rounded-2xl shadow-xl shrink-0 relative z-10"
             >
@@ -694,7 +694,7 @@ const Chat = () => {
       <AnimatePresence>
         {incomingCall && (
           <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -702,24 +702,24 @@ const Chat = () => {
             >
               <div className="relative inline-block mb-4">
                 <span className="absolute inset-[-10px] rounded-full border-2 border-[#D51659]/30 animate-ping" />
-                <img 
-                  src={incomingCall.callerPhoto || "https://via.placeholder.com/150"} 
-                  alt={incomingCall.callerName} 
+                <img
+                  src={incomingCall.callerPhoto || "https://via.placeholder.com/150"}
+                  alt={incomingCall.callerName}
                   className="w-24 h-24 rounded-full object-cover border-4 border-slate-50 mx-auto animate-pulse"
                 />
               </div>
               <h3 className="font-extrabold text-lg text-[#2D2D2D]">{incomingCall.callerName}</h3>
               <p className="text-xs text-slate-500 uppercase tracking-widest font-semibold mt-1">Incoming {incomingCall.callType} call...</p>
-              
+
               <div className="flex gap-4 mt-6">
-                <button 
+                <button
                   onClick={handleDeclineCall}
                   className="flex-1 py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all text-sm flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <PhoneOff className="w-4 h-4 text-red-500" />
                   Decline
                 </button>
-                <button 
+                <button
                   onClick={handleAcceptCall}
                   className="flex-1 py-3 px-4 rounded-xl bg-[#D51659] hover:bg-[#D51659]/90 text-white font-bold transition-all text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#D51659]/20 cursor-pointer"
                 >

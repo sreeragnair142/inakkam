@@ -34,6 +34,26 @@ export const fetchMe = createAsyncThunk('auth/fetchMe', async (_, { rejectWithVa
   }
 });
 
+export const uploadUserPhoto = createAsyncThunk('auth/uploadPhoto', async (formData, { rejectWithValue }) => {
+  try {
+    const res = await api.post('/users/me/photos', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  } catch (err) {
+    return rejectWithValue(err);
+  }
+});
+
+export const updateUserProfile = createAsyncThunk('auth/updateProfile', async (data, { rejectWithValue }) => {
+  try {
+    const res = await api.put('/users/me', data);
+    return res.data;
+  } catch (err) {
+    return rejectWithValue(err?.response?.data?.message || err?.message || 'Failed to update profile');
+  }
+});
+
 export const logoutUser = createAsyncThunk('auth/logout', async () => {
   try {
     await api.post('/auth/logout');
@@ -139,7 +159,23 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.isGuest = false;
         state.user = null;
-      });
+      })
+
+      .addCase(uploadUserPhoto.fulfilled, (state, action) => {
+        if (state.user && action.payload.photos) {
+          state.user.images = action.payload.photos.map(p => p.url);
+          state.user.photos = action.payload.photos;
+        }
+      })
+
+      .addCase(updateUserProfile.pending, handlePending)
+      .addCase(updateUserProfile.fulfilled, (state, action) => {
+        state.loading = false;
+        if (action.payload.user) {
+          state.user = mapUser(action.payload.user);
+        }
+      })
+      .addCase(updateUserProfile.rejected, handleRejected);
   },
 });
 

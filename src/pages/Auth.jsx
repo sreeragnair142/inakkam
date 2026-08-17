@@ -133,7 +133,18 @@ const Auth = () => {
 
       {/* Huge background text label "Inakkam" */}
       <div className="absolute inset-0 flex items-center justify-center select-none pointer-events-none z-0 overflow-hidden">
-        <span className="text-[40vw] md:text-[32vw] lg:text-[24vw] font-black tracking-tighter text-[#D51659] opacity-[0.15] leading-none whitespace-nowrap">
+        <span
+          className="text-[40vw] md:text-[32vw] lg:text-[24vw] font-black tracking-tighter leading-none whitespace-nowrap"
+          style={{
+            background: 'linear-gradient(135deg, #D51659 0%, #b44ddc 50%, #D51659 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            opacity: 0.15,
+            filter: 'none',
+            WebkitTextStroke: '2px rgba(213,22,89,0.08)',
+          }}
+        >
           Inakkam
         </span>
       </div>
@@ -143,65 +154,226 @@ const Auth = () => {
         {phase === "splash" && (
           <motion.div
             key="splash"
-            initial={{ opacity: 0, scale: 0.85 }}
+            initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.08, filter: "blur(8px)" }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            className="relative z-10 flex flex-col items-center justify-center"
+            exit={{ opacity: 0, scale: 1.1, filter: "blur(12px)" }}
+            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            className="relative z-10 flex flex-col items-center justify-center w-full h-full"
           >
-            {/* Spinning ring behind logo */}
-            <div className="relative flex items-center justify-center">
+            {/* Logo and premium circular loaders */}
+            <div className="relative flex items-center justify-center" style={{ width: 280, height: 280 }}>
+
+              {/* Morphing glow backdrop */}
               <motion.div
-                className="absolute w-32 h-32 rounded-full border-2 border-dashed border-white/15"
+                className="absolute rounded-full pointer-events-none"
+                style={{
+                  width: 200, height: 200,
+                  background: 'radial-gradient(circle, rgba(213,22,89,0.25) 0%, rgba(180,77,220,0.12) 40%, transparent 70%)',
+                  filter: 'blur(30px)',
+                }}
+                animate={{
+                  scale: [1, 1.4, 1.1, 1.5, 1],
+                  opacity: [0.6, 1, 0.7, 1, 0.6],
+                }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+              />
+
+              {/* Outer orbit ring — gradient arc */}
+              <motion.div
+                className="absolute"
+                style={{ width: 260, height: 260 }}
                 animate={{ rotate: 360 }}
-                transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
-              />
-              <motion.div
-                className="absolute w-[140px] h-[140px] rounded-full border border-white/5"
-                animate={{ rotate: -360 }}
-                transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-              />
-              <motion.div
-                initial={{ scale: 0, rotate: -45 }}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                className="w-28 h-auto relative z-10"
+                transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
               >
-                <img src={loaderLogo} alt="Inakkam" className="w-full h-auto drop-shadow-xl" />
+                <svg width="260" height="260" viewBox="0 0 260 260">
+                  <defs>
+                    <linearGradient id="ring1" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#D51659" stopOpacity="0.8" />
+                      <stop offset="50%" stopColor="#b44ddc" stopOpacity="0.4" />
+                      <stop offset="100%" stopColor="#D51659" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <circle cx="130" cy="130" r="125" fill="none" stroke="url(#ring1)" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="200 590" />
+                </svg>
+              </motion.div>
+
+              {/* Middle orbit ring — counter rotation */}
+              <motion.div
+                className="absolute"
+                style={{ width: 220, height: 220 }}
+                animate={{ rotate: -360 }}
+                transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
+              >
+                <svg width="220" height="220" viewBox="0 0 220 220">
+                  <defs>
+                    <linearGradient id="ring2" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#b44ddc" stopOpacity="0.6" />
+                      <stop offset="50%" stopColor="#D51659" stopOpacity="0.3" />
+                      <stop offset="100%" stopColor="#b44ddc" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <circle cx="110" cy="110" r="105" fill="none" stroke="url(#ring2)" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="160 500" />
+                </svg>
+              </motion.div>
+
+              {/* Inner dotted orbit */}
+              <motion.div
+                className="absolute"
+                style={{ width: 180, height: 180 }}
+                animate={{ rotate: 360 }}
+                transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+              >
+                <svg width="180" height="180" viewBox="0 0 180 180">
+                  <circle cx="90" cy="90" r="85" fill="none" stroke="rgba(213,22,89,0.12)" strokeWidth="1" strokeDasharray="4 12" />
+                </svg>
+              </motion.div>
+
+              {/* Floating particles */}
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <motion.div
+                  key={`particle-${i}`}
+                  className="absolute rounded-full"
+                  style={{
+                    width: i % 2 === 0 ? 6 : 4,
+                    height: i % 2 === 0 ? 6 : 4,
+                    background: i % 3 === 0
+                      ? 'linear-gradient(135deg, #D51659, #ff6b8a)'
+                      : i % 3 === 1
+                        ? 'linear-gradient(135deg, #b44ddc, #d48ef5)'
+                        : 'linear-gradient(135deg, #ff6b8a, #ffb3c6)',
+                    boxShadow: '0 0 8px rgba(213,22,89,0.4)',
+                  }}
+                  animate={{
+                    x: [0, Math.cos((i * Math.PI) / 3) * 120, Math.cos((i * Math.PI) / 3 + Math.PI) * 100, 0],
+                    y: [0, Math.sin((i * Math.PI) / 3) * 120, Math.sin((i * Math.PI) / 3 + Math.PI) * 100, 0],
+                    opacity: [0, 1, 0.6, 0],
+                    scale: [0, 1.2, 0.8, 0],
+                  }}
+                  transition={{
+                    duration: 3 + i * 0.5,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                    delay: i * 0.4,
+                  }}
+                />
+              ))}
+
+              {/* Orbiting dot */}
+              <motion.div
+                className="absolute"
+                style={{ width: 260, height: 260 }}
+                animate={{ rotate: 360 }}
+                transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+              >
+                <div
+                  className="absolute"
+                  style={{
+                    top: 0, left: '50%', transform: 'translateX(-50%)',
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #D51659, #b44ddc)',
+                    boxShadow: '0 0 12px rgba(213,22,89,0.6), 0 0 24px rgba(213,22,89,0.3)',
+                  }}
+                />
+              </motion.div>
+
+              {/* Premium Icon Reveal — Heartbeat pulse */}
+              <motion.div
+                initial={{ scale: 0.5, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                transition={{ duration: 1, type: 'spring', bounce: 0.5 }}
+                className="relative z-10"
+              >
+                <motion.div
+                  className="absolute inset-0 rounded-full pointer-events-none"
+                  style={{
+                    background: 'radial-gradient(circle, rgba(213,22,89,0.3) 0%, transparent 60%)',
+                    scale: 1.8,
+                  }}
+                  animate={{
+                    scale: [1.6, 2.2, 1.6],
+                    opacity: [0.4, 0.15, 0.4],
+                  }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                />
+                <motion.img
+                  src={loaderLogo}
+                  alt="Inakkam"
+                  className="w-24 md:w-36 h-auto relative z-10"
+                  style={{
+                    filter: 'drop-shadow(0 8px 32px rgba(213,22,89,0.4)) drop-shadow(0 2px 8px rgba(180,77,220,0.3))',
+                  }}
+                  animate={{
+                    scale: [1, 1.06, 1, 1.08, 1],
+                  }}
+                  transition={{
+                    duration: 1.5,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                  }}
+                />
               </motion.div>
             </div>
 
-            <motion.h1
-              className="text-4xl font-black text-[#2D2D2D] tracking-tight mt-8"
+            {/* Typography */}
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              style={{ textShadow: "0 2px 20px rgba(0,0,0,0.05)" }}
+              transition={{ delay: 0.5, duration: 0.8 }}
+              className="flex flex-col items-center text-center mt-10"
             >
-              Inakkam
-            </motion.h1>
-            <motion.p
-              className="text-sm font-bold text-[#2D2D2D]/60 mt-1 tracking-[0.25em] uppercase"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
-            >
-              Infinite Match
-            </motion.p>
+              <h1
+                className="text-3xl md:text-5xl font-black tracking-tight uppercase"
+                style={{
+                  background: 'linear-gradient(135deg, #2D2D2D 0%, #4a4a4a 50%, #2D2D2D 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  textShadow: 'none',
+                }}
+              >
+                Inakkam
+              </h1>
+              <motion.p
+                className="text-[9px] md:text-xs font-black mt-3 tracking-[0.5em] uppercase"
+                style={{
+                  background: 'linear-gradient(90deg, #D51659, #b44ddc, #D51659)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  backgroundSize: '200% 100%',
+                }}
+                animate={{ backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+              >
+                Infinite Match
+              </motion.p>
+            </motion.div>
 
-            {/* Shimmer loading bar */}
+            {/* Stylish progress bar */}
             <motion.div
-              className="mt-8 w-28 h-1 rounded-full overflow-hidden bg-black/10"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.8 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7, duration: 0.6 }}
+              className="mt-8 w-48 sm:w-56"
             >
-              <motion.div
-                className="h-full rounded-full bg-white/70"
-                initial={{ x: "-100%" }}
-                animate={{ x: "200%" }}
-                transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
-              />
+              <div className="w-full h-[3px] rounded-full overflow-hidden" style={{ background: 'rgba(213,22,89,0.08)' }}>
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{
+                    background: 'linear-gradient(90deg, #D51659, #b44ddc, #ff6b8a, #D51659)',
+                    backgroundSize: '300% 100%',
+                  }}
+                  initial={{ width: '0%' }}
+                  animate={{
+                    width: '100%',
+                    backgroundPosition: ['0% 50%', '100% 50%'],
+                  }}
+                  transition={{
+                    width: { duration: 1.8, ease: [0.22, 1, 0.36, 1] },
+                    backgroundPosition: { duration: 1.5, repeat: Infinity, ease: 'linear' },
+                  }}
+                />
+              </div>
             </motion.div>
           </motion.div>
         )}

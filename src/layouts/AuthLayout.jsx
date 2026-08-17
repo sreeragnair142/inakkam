@@ -5,7 +5,7 @@ import landscapeLogo from '../assets/landscapelogowhite.png';
 const AuthLayout = ({ children }) => {
   return (
     <div className="min-h-screen w-full flex flex-col md:flex-row bg-bumble-cream text-bumble-charcoal overflow-hidden relative">
-      
+
       {/* Decorative Shifting Background Blobs */}
       <div className="absolute top-[-20%] left-[-10%] w-[55rem] h-[55rem] rounded-full bg-bumble-yellow/15 blur-[130px] pointer-events-none animate-float-slow" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50rem] h-[50rem] rounded-full bg-bumble-red/8 blur-[120px] pointer-events-none animate-float-medium" />
@@ -13,13 +13,13 @@ const AuthLayout = ({ children }) => {
 
       {/* Left Pane - Premium Branding Showcase */}
       <div className="hidden md:flex md:w-1/2 p-12 flex-col justify-between relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #D51659 0%, #b44ddc 100%)' }}>
-        
+
         {/* Shifting radial glow */}
         <div className="absolute -inset-px bg-gradient-to-tr from-white/10 via-transparent to-black/5 opacity-50 pointer-events-none" />
 
         {/* Logo */}
         <div className="flex items-center gap-3 relative z-10">
-          <img src={landscapeLogowhite} alt="Inakkam" className="h-16 w-auto" />
+          <img src={landscapeLogo} alt="Inakkam" className="h-16 w-auto" />
         </div>
 
         {/* Core Slogan & Features */}

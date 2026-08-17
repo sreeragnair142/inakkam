@@ -377,7 +377,7 @@ const Landing = () => {
         {/* Header (Matching Navigation in Screenshots) */}
         <header className="max-w-7xl mx-auto w-full py-6 flex items-center justify-between relative z-20">
           <div className="flex items-center gap-3">
-            <img src={landscapeLogowhite} alt="Inakkam" className="h-14 w-auto" />
+            <img src={landscapeLogo} alt="Inakkam" className="h-14 w-auto" />
           </div>
 
           {/* Desktop Middle Pills */}
@@ -406,11 +406,10 @@ const Landing = () => {
                     key={idx}
                     onClick={() => navigate("/auth")}
                     className={`px-6 py-2 rounded-full text-xs font-bold transition-colors cursor-pointer
-                    ${
-                      idx === 0
+                    ${idx === 0
                         ? "bg-[#D51659]/20 text-white"
                         : "text-white/70 hover:bg-white/10"
-                    }`}
+                      }`}
                   >
                     {pill}
                   </button>
@@ -474,10 +473,9 @@ const Landing = () => {
                                     dispatch(markAsRead(notif.id));
                                   }}
                                   className={`p-3.5 transition-colors cursor-pointer flex gap-3 text-xs
-                                    ${
-                                      !notif.read
-                                        ? "bg-bumble-yellow/5 hover:bg-bumble-yellow/10"
-                                        : "hover:bg-slate-50"
+                                    ${!notif.read
+                                      ? "bg-bumble-yellow/5 hover:bg-bumble-yellow/10"
+                                      : "hover:bg-slate-50"
                                     }`}
                                 >
                                   <div className="flex-1 text-left">
@@ -609,7 +607,15 @@ const Landing = () => {
         <div className="max-w-7xl mx-auto w-full flex-grow flex flex-col justify-center items-center relative z-10 pt-8 pb-12">
           {/* Huge background text label "Bumble" (Matching Screenshot 2) */}
           <div className="absolute inset-0 flex items-center justify-center select-none pointer-events-none z-0">
-            <span className="text-[40vw] md:text-[32vw] lg:text-[24vw] font-black tracking-tighter text-white opacity-[0.06] leading-none whitespace-nowrap">
+            <span
+              className="text-[40vw] md:text-[32vw] lg:text-[24vw] font-black tracking-tighter leading-none whitespace-nowrap"
+              style={{
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(213,22,89,0.08) 50%, rgba(255,255,255,0.12) 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
               Inakkam
             </span>
           </div>
@@ -727,7 +733,7 @@ const Landing = () => {
           </motion.div>
         </div>
       </section>
-    
+
 
 
 
@@ -739,263 +745,263 @@ const Landing = () => {
             className="relative py-32 px-6 overflow-hidden bg-[#f5f5f3]"
           >
             <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-bumble-yellow/30 blur-[120px] rounded-full" />
-        <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-orange-200/30 blur-[120px] rounded-full" />
+            <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-orange-200/30 blur-[120px] rounded-full" />
 
-        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center relative z-10">
-          <div className="space-y-8">
-            <div className="inline-flex items-center gap-2 bg-white shadow-md border border-black/5 px-5 py-2 rounded-full">
-              <div className="w-2 h-2 rounded-full bg-[#FF6B6B] animate-pulse" />
-              <span className="text-xs font-black uppercase tracking-[0.2em] text-bumble-charcoal">
-                Genuine Connections
-              </span>
-            </div>
-
-            <div className="space-y-5">
-              <h2 className="text-5xl sm:text-7xl leading-[0.95] tracking-tight font-serif italic font-normal text-bumble-charcoal">
-                Dating that
-                <br />
-                feels more
-                <span className="ml-4">human.</span>
-              </h2>
-
-              <p className="text-lg leading-relaxed text-slate-500 max-w-xl font-medium">
-                Meet people who match your energy, lifestyle, and vibe. Inakkam
-                helps meaningful conversations happen naturally â€” without the
-                awkwardness.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-4">
-              <div className="bg-white px-6 py-4 rounded-3xl shadow-lg border border-black/5">
-                <h4 className="text-3xl font-black text-bumble-charcoal">
-                  50M+
-                </h4>
-                <p className="text-xs text-slate-500 font-semibold mt-1">
-                  Active Matches
-                </p>
-              </div>
-
-              <div className="bg-white px-6 py-4 rounded-3xl shadow-lg border border-black/5">
-                <h4 className="text-3xl font-black text-bumble-charcoal">
-                  190+
-                </h4>
-                <p className="text-xs text-slate-500 font-semibold mt-1">
-                  Countries
-                </p>
-              </div>
-
-              <div className="bg-white px-6 py-4 rounded-3xl shadow-lg border border-black/5">
-                <h4 className="text-3xl font-black text-bumble-charcoal">
-                  24/7
-                </h4>
-                <p className="text-xs text-slate-500 font-semibold mt-1">
-                  Real Conversations
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-4 pt-4">
-              <button
-                onClick={() => handleActionClick("/swipe")}
-                className="px-9 py-4 rounded-full bg-bumble-charcoal text-white font-bold text-sm hover:scale-105 transition-all shadow-2xl"
-              >
-                Start Matching
-              </button>
-
-              <button className="px-9 py-4 rounded-full bg-white text-bumble-charcoal font-bold text-sm border border-black/10 hover:bg-black hover:text-white transition-all">
-                Explore Features
-              </button>
-            </div>
-          </div>
-
-          <div className="relative flex justify-center items-center min-h-[720px]">
-            {/* BACK CARD */}
-            <div className="absolute right-12 top-16 rotate-[10deg] w-[250px] h-[520px] rounded-[3rem] overflow-hidden shadow-[0_40px_80px_rgba(0,0,0,0.2)]">
-              <img
-                src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=800"
-                className="w-full h-full object-cover"
-              />
-            </div>
-
-            <div className="absolute left-10 top-10 -rotate-[8deg] w-[260px] h-[540px] rounded-[3rem] overflow-hidden shadow-[0_40px_80px_rgba(0,0,0,0.22)]">
-              <img
-                src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=800"
-                className="w-full h-full object-cover"
-              />
-            </div>
-
-            <div className="relative z-20 w-[320px] h-[620px] rounded-[3.5rem] bg-white p-3 shadow-[0_50px_120px_rgba(0,0,0,0.25)] border border-black/5">
-              <div className="relative w-full h-full rounded-[3rem] overflow-hidden">
-                <img
-                  src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=900"
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
-
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
-
-                <div className="absolute top-6 left-6 flex flex-col gap-3">
-                  <span className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-full text-xs font-black text-bumble-charcoal shadow">
-                    âœ¨ Verified Profile
-                  </span>
-
-                  <span className="bg-[#FF6B6B] px-4 py-2 rounded-full text-xs font-black text-bumble-charcoal shadow-lg">
-                    98% Match
+            <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center relative z-10">
+              <div className="space-y-8">
+                <div className="inline-flex items-center gap-2 bg-white shadow-md border border-black/5 px-5 py-2 rounded-full">
+                  <div className="w-2 h-2 rounded-full bg-[#FF6B6B] animate-pulse" />
+                  <span className="text-xs font-black uppercase tracking-[0.2em] text-bumble-charcoal">
+                    Genuine Connections
                   </span>
                 </div>
 
-                <div className="absolute bottom-7 left-7 right-7 text-white">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-4xl font-black">Maya, 25</h3>
+                <div className="space-y-5">
+                  <h2 className="text-5xl sm:text-7xl leading-[0.95] tracking-tight font-serif italic font-normal text-bumble-charcoal">
+                    Dating that
+                    <br />
+                    feels more
+                    <span className="ml-4">human.</span>
+                  </h2>
 
-                    <div className="w-4 h-4 rounded-full bg-green-400 border-2 border-white" />
-                  </div>
-
-                  <p className="mt-2 text-sm text-white/80 font-medium leading-relaxed">
-                    Designer â€¢ Traveler â€¢ Coffee lover â˜•
+                  <p className="text-lg leading-relaxed text-slate-500 max-w-xl font-medium">
+                    Meet people who match your energy, lifestyle, and vibe. Inakkam
+                    helps meaningful conversations happen naturally â€” without the
+                    awkwardness.
                   </p>
+                </div>
 
-                  <div className="flex flex-wrap gap-2 mt-5">
-                    {["Outdoors", "Running", "Dog Mom"].map((tag) => (
-                      <span
-                        key={tag}
-                        className="px-4 py-2 rounded-full bg-white/15 backdrop-blur-md border border-white/10 text-xs font-bold"
-                      >
-                        {tag}
+                <div className="flex flex-wrap gap-4">
+                  <div className="bg-white px-6 py-4 rounded-3xl shadow-lg border border-black/5">
+                    <h4 className="text-3xl font-black text-bumble-charcoal">
+                      50M+
+                    </h4>
+                    <p className="text-xs text-slate-500 font-semibold mt-1">
+                      Active Matches
+                    </p>
+                  </div>
+
+                  <div className="bg-white px-6 py-4 rounded-3xl shadow-lg border border-black/5">
+                    <h4 className="text-3xl font-black text-bumble-charcoal">
+                      190+
+                    </h4>
+                    <p className="text-xs text-slate-500 font-semibold mt-1">
+                      Countries
+                    </p>
+                  </div>
+
+                  <div className="bg-white px-6 py-4 rounded-3xl shadow-lg border border-black/5">
+                    <h4 className="text-3xl font-black text-bumble-charcoal">
+                      24/7
+                    </h4>
+                    <p className="text-xs text-slate-500 font-semibold mt-1">
+                      Real Conversations
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-4 pt-4">
+                  <button
+                    onClick={() => handleActionClick("/swipe")}
+                    className="px-9 py-4 rounded-full bg-bumble-charcoal text-white font-bold text-sm hover:scale-105 transition-all shadow-2xl"
+                  >
+                    Start Matching
+                  </button>
+
+                  <button className="px-9 py-4 rounded-full bg-white text-bumble-charcoal font-bold text-sm border border-black/10 hover:bg-black hover:text-white transition-all">
+                    Explore Features
+                  </button>
+                </div>
+              </div>
+
+              <div className="relative flex justify-center items-center min-h-[720px]">
+                {/* BACK CARD */}
+                <div className="absolute right-12 top-16 rotate-[10deg] w-[250px] h-[520px] rounded-[3rem] overflow-hidden shadow-[0_40px_80px_rgba(0,0,0,0.2)]">
+                  <img
+                    src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=800"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+
+                <div className="absolute left-10 top-10 -rotate-[8deg] w-[260px] h-[540px] rounded-[3rem] overflow-hidden shadow-[0_40px_80px_rgba(0,0,0,0.22)]">
+                  <img
+                    src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=800"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+
+                <div className="relative z-20 w-[320px] h-[620px] rounded-[3.5rem] bg-white p-3 shadow-[0_50px_120px_rgba(0,0,0,0.25)] border border-black/5">
+                  <div className="relative w-full h-full rounded-[3rem] overflow-hidden">
+                    <img
+                      src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=900"
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+
+                    <div className="absolute top-6 left-6 flex flex-col gap-3">
+                      <span className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-full text-xs font-black text-bumble-charcoal shadow">
+                        âœ¨ Verified Profile
                       </span>
-                    ))}
+
+                      <span className="bg-[#FF6B6B] px-4 py-2 rounded-full text-xs font-black text-bumble-charcoal shadow-lg">
+                        98% Match
+                      </span>
+                    </div>
+
+                    <div className="absolute bottom-7 left-7 right-7 text-white">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-4xl font-black">Maya, 25</h3>
+
+                        <div className="w-4 h-4 rounded-full bg-green-400 border-2 border-white" />
+                      </div>
+
+                      <p className="mt-2 text-sm text-white/80 font-medium leading-relaxed">
+                        Designer â€¢ Traveler â€¢ Coffee lover â˜•
+                      </p>
+
+                      <div className="flex flex-wrap gap-2 mt-5">
+                        {["Outdoors", "Running", "Dog Mom"].map((tag) => (
+                          <span
+                            key={tag}
+                            className="px-4 py-2 rounded-full bg-white/15 backdrop-blur-md border border-white/10 text-xs font-bold"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
+          </section>
 
 
-      
-      {/* SECTION 3: Member Circle Redesign */}
-      <section className="py-32 bg-white relative overflow-hidden">
-        {/* Decorative background shapes */}
-        <div className="absolute right-0 top-0 w-1/2 h-full bg-bumble-light-gray rounded-l-[4rem] md:rounded-l-[8rem] -z-10" />
-        <div className="absolute -left-32 -bottom-32 w-96 h-96 bg-bumble-yellow/20 blur-[100px] rounded-full pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-16 lg:gap-24 items-center text-left">
-          {/* Image composition side */}
-          <div className="relative">
-            {/* Main Image */}
-            <div className="relative z-10 w-full max-w-[400px] mx-auto md:mr-auto rounded-[3rem] overflow-hidden shadow-2xl border-4 border-white">
-              <img
-                src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=800"
-                alt="Community Member"
-                className="w-full aspect-[4/5] object-cover hover:scale-105 transition-transform duration-700"
-              />
-            </div>
+          {/* SECTION 3: Member Circle Redesign */}
+          <section className="py-32 bg-white relative overflow-hidden">
+            {/* Decorative background shapes */}
+            <div className="absolute right-0 top-0 w-1/2 h-full bg-bumble-light-gray rounded-l-[4rem] md:rounded-l-[8rem] -z-10" />
+            <div className="absolute -left-32 -bottom-32 w-96 h-96 bg-bumble-yellow/20 blur-[100px] rounded-full pointer-events-none" />
 
-            {/* Floating element 1: Stats */}
-            <motion.div
-              animate={{ y: 0 }}
-              transition={{ duration: 0 }}
-              className="absolute -right-4 md:-right-12 top-16 bg-white p-4 rounded-3xl shadow-xl border border-slate-100 z-20 hidden sm:flex items-center gap-4"
-            >
-              <div className="w-12 h-12 bg-[#FF6B6B] rounded-full flex items-center justify-center">
-                <Star className="w-6 h-6 text-bumble-charcoal fill-current" />
+            <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-16 lg:gap-24 items-center text-left">
+              {/* Image composition side */}
+              <div className="relative">
+                {/* Main Image */}
+                <div className="relative z-10 w-full max-w-[400px] mx-auto md:mr-auto rounded-[3rem] overflow-hidden shadow-2xl border-4 border-white">
+                  <img
+                    src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=800"
+                    alt="Community Member"
+                    className="w-full aspect-[4/5] object-cover hover:scale-105 transition-transform duration-700"
+                  />
+                </div>
+
+                {/* Floating element 1: Stats */}
+                <motion.div
+                  animate={{ y: 0 }}
+                  transition={{ duration: 0 }}
+                  className="absolute -right-4 md:-right-12 top-16 bg-white p-4 rounded-3xl shadow-xl border border-slate-100 z-20 hidden sm:flex items-center gap-4"
+                >
+                  <div className="w-12 h-12 bg-[#FF6B6B] rounded-full flex items-center justify-center">
+                    <Star className="w-6 h-6 text-bumble-charcoal fill-current" />
+                  </div>
+                  <div>
+                    <span className="block font-black text-xl text-bumble-charcoal">
+                      1M+
+                    </span>
+                    <span className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                      Active Members
+                    </span>
+                  </div>
+                </motion.div>
+
+                {/* Floating element 2: Member Seal */}
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ repeat: Infinity, duration: 25, ease: "linear" }}
+                  className="absolute -left-6 -bottom-8 w-32 h-32 rounded-full bg-bumble-charcoal text-white shadow-2xl flex items-center justify-center z-20 border-4 border-white"
+                >
+                  <div className="w-[85%] h-[85%] border border-dashed border-white/40 rounded-full flex flex-col items-center justify-center">
+                    <Flame className="w-6 h-6 text-bumble-yellow mb-1" />
+                    <span className="text-[8px] font-black uppercase tracking-widest text-center leading-tight">
+                      Inakkam
+                      <br />
+                      Circle
+                    </span>
+                  </div>
+                </motion.div>
               </div>
-              <div>
-                <span className="block font-black text-xl text-bumble-charcoal">
-                  1M+
-                </span>
-                <span className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                  Active Members
-                </span>
+
+              {/* Text Content side */}
+              <div className="space-y-8 z-10">
+                <div className="inline-flex items-center gap-2 bg-white/60 backdrop-blur-sm shadow-sm border border-slate-200 px-4 py-2 rounded-full">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FF6B6B] opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#FF6B6B]"></span>
+                  </span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-bumble-charcoal">
+                    Community Driven
+                  </span>
+                </div>
+
+                <h2 className="text-4xl sm:text-6xl font-serif italic font-normal text-bumble-charcoal tracking-tight leading-[1.1]">
+                  Help shape the <br />
+                  <span className="mt-2 block">future of dating</span>
+                </h2>
+
+                <p className="text-slate-500 text-lg leading-relaxed max-w-lg font-medium">
+                  Join the elite Inakkam Member Circle. Share ideas directly with
+                  our product team through exclusive chats, discussions, and beta
+                  tests to create a space you truly love.
+                </p>
+
+                <div className="flex flex-wrap items-center gap-4 pt-4">
+                  <button
+                    onClick={() => handleActionClick("/swipe")}
+                    className="px-8 py-4 bg-bumble-charcoal text-white hover:bg-black rounded-full font-bold text-xs uppercase tracking-widest cursor-pointer transition-all hover:scale-105 shadow-xl flex items-center gap-2"
+                  >
+                    <span>Join the Circle</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                  <button className="px-8 py-4 bg-white text-bumble-charcoal border border-slate-200 hover:bg-slate-50 rounded-full font-bold text-xs uppercase tracking-widest cursor-pointer transition-colors">
+                    Learn More
+                  </button>
+                </div>
               </div>
-            </motion.div>
-
-            {/* Floating element 2: Member Seal */}
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 25, ease: "linear" }}
-              className="absolute -left-6 -bottom-8 w-32 h-32 rounded-full bg-bumble-charcoal text-white shadow-2xl flex items-center justify-center z-20 border-4 border-white"
-            >
-              <div className="w-[85%] h-[85%] border border-dashed border-white/40 rounded-full flex flex-col items-center justify-center">
-                <Flame className="w-6 h-6 text-bumble-yellow mb-1" />
-                <span className="text-[8px] font-black uppercase tracking-widest text-center leading-tight">
-                  Inakkam
-                  <br />
-                  Circle
-                </span>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Text Content side */}
-          <div className="space-y-8 z-10">
-            <div className="inline-flex items-center gap-2 bg-white/60 backdrop-blur-sm shadow-sm border border-slate-200 px-4 py-2 rounded-full">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FF6B6B] opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#FF6B6B]"></span>
-              </span>
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-bumble-charcoal">
-                Community Driven
-              </span>
             </div>
-
-            <h2 className="text-4xl sm:text-6xl font-serif italic font-normal text-bumble-charcoal tracking-tight leading-[1.1]">
-              Help shape the <br />
-              <span className="mt-2 block">future of dating</span>
-            </h2>
-
-            <p className="text-slate-500 text-lg leading-relaxed max-w-lg font-medium">
-              Join the elite Inakkam Member Circle. Share ideas directly with
-              our product team through exclusive chats, discussions, and beta
-              tests to create a space you truly love.
-            </p>
-
-            <div className="flex flex-wrap items-center gap-4 pt-4">
-              <button
-                onClick={() => handleActionClick("/swipe")}
-                className="px-8 py-4 bg-bumble-charcoal text-white hover:bg-black rounded-full font-bold text-xs uppercase tracking-widest cursor-pointer transition-all hover:scale-105 shadow-xl flex items-center gap-2"
-              >
-                <span>Join the Circle</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-              <button className="px-8 py-4 bg-white text-bumble-charcoal border border-slate-200 hover:bg-slate-50 rounded-full font-bold text-xs uppercase tracking-widest cursor-pointer transition-colors">
-                Learn More
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-      </>
+          </section>
+        </>
       )}
 
       <section className="relative overflow-hidden py-24 md:py-36" style={{ background: 'linear-gradient(135deg, #0A0A0A 0%, #1a0a15 25%, #15061a 50%, #0d0515 75%, #0A0A0A 100%)' }}>
 
-  {/* soft background glow */}
-  <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-white/10 blur-[120px] rounded-full" />
+        {/* soft background glow */}
+        <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-white/10 blur-[120px] rounded-full" />
 
-  <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-orange-200/20 blur-[120px] rounded-full" />
+        <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-orange-200/20 blur-[120px] rounded-full" />
 
-  {/* giant background text */}
-  <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
-    <h1
-      className="
+        {/* giant background text */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+          <h1
+            className="
         text-[24vw]
         md:text-[18vw]
         font-black
         tracking-[-0.08em]
         text-white/[0.06]
       "
-    >
-      Inakkam
-    </h1>
-  </div>
+          >
+            Inakkam
+          </h1>
+        </div>
 
-  <div className="relative max-w-7xl mx-auto h-[950px] md:h-[900px]">
+        <div className="relative max-w-7xl mx-auto h-[950px] md:h-[900px]">
 
-    {/* LEFT CARD */}
-    <div
-      className="
+          {/* LEFT CARD */}
+          <div
+            className="
         absolute
         left-[10px]
         top-[120px]
@@ -1008,22 +1014,22 @@ const Landing = () => {
         transition-all duration-700
         z-10 hover:z-40
       "
-    >
-      <div className="relative group cursor-pointer">
-        {/* image card */}
-        <div
-          className="
+          >
+            <div className="relative group cursor-pointer">
+              {/* image card */}
+              <div
+                className="
             relative
             overflow-hidden
             rounded-[2.8rem]
             shadow-[0_40px_120px_rgba(0,0,0,0.18)]
             border-[6px] border-white/10
           "
-        >
-          <img
-            src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=1200"
-            alt=""
-            className="
+              >
+                <img
+                  src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=1200"
+                  alt=""
+                  className="
               w-[240px]
               h-[360px]
 
@@ -1034,29 +1040,29 @@ const Landing = () => {
               group-hover:scale-110
               transition-transform duration-700
             "
-          />
+                />
 
-          {/* overlay */}
-          <div className="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-black/90 via-black/30 to-transparent pointer-events-none" />
+                {/* overlay */}
+                <div className="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-black/90 via-black/30 to-transparent pointer-events-none" />
 
-          {/* text */}
-          <div className="absolute bottom-7 left-7 text-white z-20">
-            <h3 className="font-black text-2xl md:text-3xl tracking-tight">
-              Moriya Hos, 24
-            </h3>
+                {/* text */}
+                <div className="absolute bottom-7 left-7 text-white z-20">
+                  <h3 className="font-black text-2xl md:text-3xl tracking-tight">
+                    Moriya Hos, 24
+                  </h3>
 
-            <p className="text-sm font-bold text-white/90 mt-2 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.8)]"></span>
-              10 km away
-            </p>
+                  <p className="text-sm font-bold text-white/90 mt-2 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.8)]"></span>
+                    10 km away
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-    </div>
 
-    {/* CENTER CARD */}
-    <div
-      className="
+          {/* CENTER CARD */}
+          <div
+            className="
         absolute
         left-1/2
         top-[390px]
@@ -1071,22 +1077,22 @@ const Landing = () => {
         transition-all duration-700
         z-30 hover:z-50
       "
-    >
-      <div className="relative group cursor-pointer">
-        {/* image */}
-        <div
-          className="
+          >
+            <div className="relative group cursor-pointer">
+              {/* image */}
+              <div
+                className="
             relative
             overflow-hidden
             rounded-[3rem]
             shadow-[0_50px_140px_rgba(0,0,0,0.22)]
             border-[8px] border-white/20
           "
-        >
-          <img
-            src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=1200"
-            alt=""
-            className="
+              >
+                <img
+                  src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=1200"
+                  alt=""
+                  className="
               w-[260px]
               h-[380px]
 
@@ -1097,29 +1103,29 @@ const Landing = () => {
               group-hover:scale-105
               transition-transform duration-700
             "
-          />
+                />
 
-          {/* overlay */}
-          <div className="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-black/90 via-black/30 to-transparent pointer-events-none" />
+                {/* overlay */}
+                <div className="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-black/90 via-black/30 to-transparent pointer-events-none" />
 
-          {/* text */}
-          <div className="absolute bottom-8 left-8 text-white z-20">
-            <h3 className="font-black text-3xl md:text-5xl leading-none tracking-tight">
-              Lissa Moni, 22
-            </h3>
+                {/* text */}
+                <div className="absolute bottom-8 left-8 text-white z-20">
+                  <h3 className="font-black text-3xl md:text-5xl leading-none tracking-tight">
+                    Lissa Moni, 22
+                  </h3>
 
-            <p className="text-sm md:text-base font-bold text-white/90 mt-3 flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.8)]"></span>
-              10 km away
-            </p>
+                  <p className="text-sm md:text-base font-bold text-white/90 mt-3 flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.8)]"></span>
+                    10 km away
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-    </div>
 
-    {/* RIGHT CARD */}
-    <div
-      className="
+          {/* RIGHT CARD */}
+          <div
+            className="
         absolute
 
         right-[0px]
@@ -1133,22 +1139,22 @@ const Landing = () => {
         transition-all duration-700
         z-20 hover:z-40
       "
-    >
-      <div className="relative group cursor-pointer">
-        {/* image */}
-        <div
-          className="
+          >
+            <div className="relative group cursor-pointer">
+              {/* image */}
+              <div
+                className="
             relative
             overflow-hidden
             rounded-[2.8rem]
             shadow-[0_40px_120px_rgba(0,0,0,0.18)]
             border-[6px] border-white/10
           "
-        >
-          <img
-            src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=1200"
-            alt=""
-            className="
+              >
+                <img
+                  src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=1200"
+                  alt=""
+                  className="
               w-[220px]
               h-[320px]
 
@@ -1159,28 +1165,28 @@ const Landing = () => {
               group-hover:scale-110
               transition-transform duration-700
             "
-          />
+                />
 
-          {/* overlay */}
-          <div className="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-black/90 via-black/30 to-transparent pointer-events-none" />
+                {/* overlay */}
+                <div className="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-black/90 via-black/30 to-transparent pointer-events-none" />
 
-          {/* text */}
-          <div className="absolute bottom-7 left-7 text-white z-20">
-            <h3 className="font-black text-2xl md:text-3xl tracking-tight">
-              Ashife, 23
-            </h3>
+                {/* text */}
+                <div className="absolute bottom-7 left-7 text-white z-20">
+                  <h3 className="font-black text-2xl md:text-3xl tracking-tight">
+                    Ashife, 23
+                  </h3>
 
-            <p className="text-sm font-bold text-white/90 mt-2 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.8)]"></span>
-              3 km away
-            </p>
+                  <p className="text-sm font-bold text-white/90 mt-2 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.8)]"></span>
+                    3 km away
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-    </div>
 
-  </div>
-</section>
+        </div>
+      </section>
 
       {/* SECTION 4: Dual Modes Redesign */}
       <section className="py-24 px-6 max-w-7xl mx-auto">
@@ -1338,11 +1344,10 @@ const Landing = () => {
             <button
               key={idx}
               onClick={() => setTestIndex(idx)}
-              className={`w-2.5 h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
-                testIndex === idx
-                  ? "bg-[#D51659] w-8"
-                  : "bg-white/20 hover:bg-white/40"
-              }`}
+              className={`w-2.5 h-2.5 rounded-full transition-all duration-300 cursor-pointer ${testIndex === idx
+                ? "bg-[#D51659] w-8"
+                : "bg-white/20 hover:bg-white/40"
+                }`}
               aria-label={`Go to slide ${idx + 1}`}
             />
           ))}
@@ -1353,7 +1358,7 @@ const Landing = () => {
       <footer className="border-t border-white/10 py-16">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="flex items-center gap-3 drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]">
-            <img src={landscapeLogowhite} alt="Inakkam" className="h-7 w-auto" />
+            <img src={landscapeLogo} alt="Inakkam" className="h-7 w-auto" />
           </div>
           <div className="flex gap-6 text-sm text-white/50 font-semibold">
             <span className="hover:text-white cursor-pointer transition-colors">Support</span>
@@ -1430,10 +1435,9 @@ const Landing = () => {
                           key={mode}
                           onClick={() => dispatch(setTheme(mode))}
                           className={`py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-widest border transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer
-                            ${
-                              isSelected
-                                ? "bg-bumble-charcoal text-white border-transparent shadow-md"
-                                : "bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700"
+                            ${isSelected
+                              ? "bg-bumble-charcoal text-white border-transparent shadow-md"
+                              : "bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700"
                             }`}
                         >
                           <span>{mode.replace("-", " ")}</span>

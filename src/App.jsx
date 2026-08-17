@@ -50,55 +50,60 @@ function SplashScreen({ onComplete }) {
       className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden"
       style={{ background: "linear-gradient(135deg, #0A0A0A 0%, #1a0a15 30%, #15061a 60%, #0d0515 80%, #0A0A0A 100%)" }}
     >
-      {/* Subtle radial glow behind logo */}
       <div
-        className="absolute w-[600px] h-[600px] rounded-full pointer-events-none"
+        className="absolute w-[600px] h-[600px] rounded-full pointer-events-none animate-pulse"
         style={{
-          background:
-            "radial-gradient(circle, rgba(213,22,89,0.25) 0%, rgba(180,77,220,0.1) 40%, rgba(10,10,10,0) 70%)",
+          background: "radial-gradient(circle, rgba(213,22,89,0.15) 0%, rgba(180,77,220,0.08) 40%, rgba(10,10,10,0) 70%)",
         }}
       />
 
-      {/* Logo image with scale animation */}
-      <motion.div
-        initial={{ scale: 0.6, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.8, type: "spring", bounce: 0.5 }}
-        className="relative z-10"
-      >
-        <img
-          src={loaderLogo}
-          alt="Inakkam Loader"
-          className="w-48 md:w-64 h-auto drop-shadow-[0_0_15px_rgba(213,22,89,0.3)] animate-pulse"
-        />
-      </motion.div>
-
-      {/* Tagline */}
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.7, duration: 0.5 }}
-        className="text-sm font-semibold text-white/50 mt-2 tracking-wide"
-      >
-        Infinite Match
-      </motion.p>
-
-      {/* Progress bar */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.9, duration: 0.4 }}
-        className="mt-10 w-48 h-1.5 bg-white/10 rounded-full overflow-hidden"
-      >
+      <div className="relative z-10 flex flex-col items-center">
         <motion.div
-          className="h-full rounded-full"
-          style={{
-            width: `${progress}%`,
-            background: "linear-gradient(90deg, #D51659 0%, #b44ddc 100%)",
-          }}
-          transition={{ duration: 0.1 }}
-        />
-      </motion.div>
+          initial={{ scale: 0.8, opacity: 0, y: 15 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, type: "spring", bounce: 0.5 }}
+          className="relative"
+        >
+          <div className="absolute inset-0 bg-[#D51659] blur-3xl opacity-20 rounded-full scale-150 animate-pulse" />
+          <img
+            src={loaderLogo}
+            alt="Inakkam"
+            className="w-40 md:w-56 h-auto drop-shadow-[0_10px_30px_rgba(213,22,89,0.4)] relative z-10 hover:scale-105 transition-transform duration-700"
+          />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5, duration: 0.5 }}
+          className="mt-8 flex flex-col items-center text-center"
+        >
+          <h2 className="text-xl md:text-2xl font-black text-white tracking-wide drop-shadow-md">
+            Welcome to Inakkam
+          </h2>
+          <p className="text-[10px] md:text-xs font-bold text-[#D51659] mt-2 tracking-[0.3em] uppercase drop-shadow-sm">
+            Infinite Match
+          </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7, duration: 0.4 }}
+          className="mt-12 w-48 md:w-64 h-1.5 bg-white/10 rounded-full overflow-hidden border border-white/5 backdrop-blur-sm shadow-inner relative"
+        >
+          <motion.div
+            className="h-full rounded-full shadow-[0_0_12px_rgba(213,22,89,0.8)] relative"
+            style={{
+              width: `${progress}%`,
+              background: "linear-gradient(90deg, #D51659 0%, #b44ddc 100%)",
+            }}
+            transition={{ duration: 0.15 }}
+          >
+            <div className="absolute top-0 right-0 bottom-0 w-8 bg-gradient-to-r from-transparent to-white/40 blur-[1px]" />
+          </motion.div>
+        </motion.div>
+      </div>
     </motion.div>
   );
 }

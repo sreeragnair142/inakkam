@@ -5,14 +5,14 @@ import { mockStories, mockUsers } from '../data/mockData';
 import { setActiveTab } from '../redux/slices/uiSlice';
 import { selectUser } from '../redux/slices/userSlice';
 import { VerificationBadge } from '../components/VerificationStatus';
-import { 
-  Flame, 
-  MapPin, 
-  CheckCircle2, 
-  TrendingUp, 
-  Heart, 
-  Sparkles, 
-  Compass, 
+import {
+  Flame,
+  MapPin,
+  CheckCircle2,
+  TrendingUp,
+  Heart,
+  Sparkles,
+  Compass,
   CheckSquare,
   ArrowRight,
   ShieldCheck,
@@ -47,13 +47,13 @@ const Home = () => {
 
   return (
     <div className="w-full text-left min-h-screen flex flex-col">
-      
+
       {/* 1. 100% FULL-WIDTH HERO SECTION */}
       <section className="relative w-full h-[550px] md:h-[620px] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <img 
-            src={coupleImg} 
-            alt="Awesome Dating Couple" 
+          <img
+            src={coupleImg}
+            alt="Awesome Dating Couple"
             className="w-full h-full object-cover"
           />
           {/* Subtle dark overlay for text readability */}
@@ -70,7 +70,7 @@ const Home = () => {
             transition={{ delay: 0.15 }}
             className="text-4xl sm:text-6.5xl font-black tracking-tight leading-none text-white drop-shadow-md"
           >
-            Hello, <span className="text-bumble-yellow">Alex</span>!<br className="hidden sm:block"/>
+            Hello, <span className="text-bumble-yellow">Alex</span>!<br className="hidden sm:block" />
             Ready for your next spark?
           </motion.h1>
 
@@ -145,9 +145,9 @@ const Home = () => {
 
         {/* 2. WE EXIST TO BRING PEOPLE CLOSER TO LOVE */}
         <section className="w-full flex flex-col lg:flex-row items-center gap-16">
-          
+
           {/* Left text column */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: -40 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
@@ -160,7 +160,7 @@ const Home = () => {
             <p className="text-slate-500 text-sm leading-relaxed max-w-lg font-medium">
               We want our members to find meaningful and authentic relationships that ignite confidence and joy. Meet local singles with premium discovery tags suited to your lifestyle.
             </p>
-            <button 
+            <button
               onClick={() => {
                 dispatch(setActiveTab('swipe'));
                 navigate('/swipe');
@@ -172,7 +172,7 @@ const Home = () => {
           </motion.div>
 
           {/* Right card with vertical interest labels (Bumble Website Style) */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: 40 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
@@ -233,17 +233,17 @@ const Home = () => {
         {/* 4. SHARE YOUR IDEAS — MEMBER CIRCLE SECTION */}
         <section className="w-full bg-bumble-light-gray rounded-[2.5rem] p-10 md:p-14">
           <div className="flex flex-col md:flex-row items-center gap-16 text-left">
-            
+
             {/* Square Picture with Member Circle Seal */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
               className="flex-1 relative max-w-sm w-full select-none"
             >
-              <img 
-                src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=600" 
+              <img
+                src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=600"
                 alt="Circle Couple"
                 className="w-full aspect-[4/3.8] object-cover rounded-[2.5rem] border border-black/5 shadow-xl"
               />
@@ -258,7 +258,7 @@ const Home = () => {
             </motion.div>
 
             {/* Slogan Details */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -271,7 +271,7 @@ const Home = () => {
               <p className="text-slate-500 text-sm leading-relaxed max-w-md font-medium">
                 Help shape the future of Bumble by joining our Member Circle. This select community of members shares ideas directly with our team through chats, discussions, and product tests.
               </p>
-              <button 
+              <button
                 onClick={() => {
                   dispatch(setActiveTab('membership'));
                   navigate('/membership');
@@ -288,9 +288,9 @@ const Home = () => {
         {/* 5. DUAL DATE/BFF CARDS */}
         <section className="w-full">
           <div className="grid md:grid-cols-2 gap-8">
-            
+
             {/* Card 1: HoneyGlow Date */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -315,7 +315,7 @@ const Home = () => {
                 <p className="text-bumble-charcoal/80 text-xs leading-relaxed max-w-sm mb-5 font-semibold">
                   Whether you're new to dating or ready to try again, Bumble Date is built to bring you closer to love safely and meaningfully.
                 </p>
-                <button 
+                <button
                   onClick={() => {
                     dispatch(setActiveTab('swipe'));
                     navigate('/swipe');
@@ -329,7 +329,7 @@ const Home = () => {
             </motion.div>
 
             {/* Card 2: HoneyGlow BFF */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -354,7 +354,7 @@ const Home = () => {
                 <p className="text-bumble-charcoal/80 text-xs leading-relaxed max-w-sm mb-5 font-semibold">
                   Whether you've moved to a new city or just want to expand your circle, BFF makes it easy to meet like-minded friends who match your vibe.
                 </p>
-                <button 
+                <button
                   onClick={() => navigate('/auth')}
                   className="text-xs text-bumble-charcoal font-black underline cursor-pointer flex items-center gap-1.5"
                 >
@@ -369,9 +369,9 @@ const Home = () => {
 
         {/* 6. SUCCESS STORY QUOTE */}
         <section className="w-full bg-bumble-light-gray rounded-[2.5rem] p-10 md:p-14 flex flex-col md:flex-row items-center gap-16 text-left relative overflow-hidden border border-black/5">
-          
+
           {/* Quote details */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
@@ -386,7 +386,7 @@ const Home = () => {
               <h4 className="font-extrabold text-base text-bumble-charcoal">Leslie & Thomas</h4>
               <span className="text-xs text-slate-500 font-semibold block mt-0.5">Married in 2025</span>
             </div>
-            <button 
+            <button
               onClick={() => navigate('/auth')}
               className="px-8 py-3.5 bg-bumble-charcoal hover:bg-black text-white rounded-full font-bold text-xs uppercase tracking-wider cursor-pointer transition-colors shadow-sm"
             >
@@ -395,7 +395,7 @@ const Home = () => {
           </motion.div>
 
           {/* Grayscale Visual Couple Card */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
@@ -416,7 +416,7 @@ const Home = () => {
           <div className="bg-[#FFEBA2] rounded-[2.5rem] p-10 flex flex-col md:flex-row items-center justify-between gap-8 border border-black/5 shadow-lg relative overflow-hidden text-left">
             {/* Glow backdrop blob */}
             <div className="absolute top-[-30%] right-[-10%] w-80 h-80 rounded-full bg-white/20 blur-[60px] pointer-events-none" />
-            
+
             <div className="space-y-4 max-w-xl relative z-10">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-bumble-charcoal text-white text-[10px] font-bold uppercase tracking-widest">
                 <Star className="w-3.5 h-3.5 text-bumble-yellow fill-current" />
@@ -448,11 +448,11 @@ const Home = () => {
       <footer className="w-full bg-white border-t border-slate-100 relative z-10 text-left mt-auto">
         <div className="w-full px-8 md:px-16 lg:px-24 pt-16 pb-12">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
-            
+
             {/* Logo & Slogan Column */}
             <div className="col-span-2 space-y-4 text-left">
               <div className="flex items-center gap-3">
-                <img src={landscapeLogowhite} alt="Inakkam" className="h-10 w-auto filter invert" />
+                <img src={landscapeLogo} alt="Inakkam" className="h-10 w-auto filter invert" />
               </div>
               <p className="text-slate-400 text-xs leading-relaxed max-w-sm font-semibold">
                 Find authentic, meaningful connections that spark confidence and joy. Built with premium light details, editable matchmaking profiles, and real-time chat.

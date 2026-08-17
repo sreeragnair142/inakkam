@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import {
   CheckCircle2, MapPin, Sparkles, Image as ImageIcon, Heart, Award,
   MessageSquare, HelpCircle, Camera, User, Wallet, Briefcase, GraduationCap,
-  Globe, BookHeart, Ruler, Star, Dumbbell, Eye, Crown, ShieldCheck
+  Globe, BookHeart, Ruler, Star, Dumbbell, Eye, Crown, ShieldCheck, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { VerificationCard } from '../components/VerificationStatus';
 import { fetchVerificationStatus } from '../redux/slices/verificationSlice';
+import { uploadUserPhoto, updateUserProfile } from '../redux/slices/authSlice';
+import toast from 'react-hot-toast';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -19,6 +21,87 @@ const Profile = () => {
   const { status: verificationStatus } = useSelector((state) => state.verification);
   const [activeTab, setActiveTab] = useState('about');
   const [viewSelf, setViewSelf] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({});
+  const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const openEditModal = () => {
+    setEditForm({
+      name: authUser?.name || '',
+      age: authUser?.age || '',
+      bio: authUser?.bio || '',
+      work: authUser?.work || '',
+      education: authUser?.education || '',
+      height: authUser?.height || '',
+      zodiac: authUser?.zodiac || '',
+      exercise: authUser?.exercise || '',
+      relationship: authUser?.relationship || '',
+      religion: authUser?.religion || '',
+      gender: authUser?.gender || '',
+      interests: (authUser?.interests || []).join(', '),
+      languages: (authUser?.languages || []).join(', '),
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveProfile = async () => {
+    setSaving(true);
+    try {
+      const payload = {
+        name: editForm.name,
+        age: editForm.age ? Number(editForm.age) : undefined,
+        bio: editForm.bio,
+        work: editForm.work,
+        education: editForm.education,
+        height: editForm.height,
+        zodiac: editForm.zodiac,
+        exercise: editForm.exercise,
+        relationship: editForm.relationship,
+        religion: editForm.religion,
+        gender: editForm.gender,
+        interests: editForm.interests ? editForm.interests.split(',').map(s => s.trim()).filter(Boolean) : [],
+        languages: editForm.languages ? editForm.languages.split(',').map(s => s.trim()).filter(Boolean) : [],
+      };
+      // Remove undefined values
+      Object.keys(payload).forEach(k => { if (payload[k] === undefined || payload[k] === '') delete payload[k]; });
+      await dispatch(updateUserProfile(payload)).unwrap();
+      toast.success('Profile updated successfully!');
+      setShowEditModal(false);
+    } catch (err) {
+      toast.error(typeof err === 'string' ? err : 'Failed to update profile');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Only image files are allowed');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size must be less than 10MB');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('photo', file);
+
+    const toastId = toast.loading('Uploading photo...');
+    try {
+      await dispatch(uploadUserPhoto(formData)).unwrap();
+      toast.success('Photo uploaded successfully!', { id: toastId });
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err?.message || 'Failed to upload photo', { id: toastId });
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   useEffect(() => {
     dispatch(fetchVerificationStatus());
@@ -37,12 +120,12 @@ const Profile = () => {
   }
 
   const displayLocation = typeof profileUser.location === 'string' ? profileUser.location : 'Nearby';
-  
+
   // Fallback to extract photos if the images array isn't mapped properly yet in Redux
-  const userImages = profileUser.images?.length 
-    ? profileUser.images 
+  const userImages = profileUser.images?.length
+    ? profileUser.images
     : (profileUser.photos?.map(p => typeof p === 'string' ? p : p.url) || []);
-    
+
   const heroImg = userImages[0] || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=600';
 
   const tabs = [
@@ -70,6 +153,7 @@ const Profile = () => {
 
   return (
     <div className="w-full min-h-screen text-left pb-28 lg:pb-12 font-sans overflow-x-hidden">
+      <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handlePhotoUpload} />
 
       {/* BANNER */}
       <div className="relative w-full h-[22vh] lg:h-[32vh] min-h-[160px] lg:min-h-[280px] overflow-hidden">
@@ -104,7 +188,10 @@ const Profile = () => {
               </div>
             )}
             {viewSelf && (
-              <button className="absolute bottom-5 right-5 w-11 h-11 bg-[#D51659] rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform cursor-pointer shadow-[#D51659]/40">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute bottom-5 right-5 w-11 h-11 bg-[#D51659] rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform cursor-pointer shadow-[#D51659]/40"
+              >
                 <Camera className="w-5 h-5 text-white" />
               </button>
             )}
@@ -140,7 +227,10 @@ const Profile = () => {
             <div className="flex items-end justify-between mt-8 pt-6 border-t border-slate-200">
               <div className="flex gap-3">
                 {viewSelf ? (
-                  <button className="px-8 py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest bg-white hover:bg-slate-50 text-[#2D2D2D] transition-colors cursor-pointer border border-slate-200">
+                  <button
+                    onClick={openEditModal}
+                    className="px-8 py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest bg-white hover:bg-slate-50 text-[#2D2D2D] transition-colors cursor-pointer border border-slate-200"
+                  >
                     Edit Profile
                   </button>
                 ) : (
@@ -189,7 +279,7 @@ const Profile = () => {
             </div>
             <div className="mt-5">
               {viewSelf ? (
-                <button className="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-white hover:bg-slate-50 text-[#2D2D2D] cursor-pointer border border-slate-200">Edit Profile Info</button>
+                <button onClick={openEditModal} className="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-white hover:bg-slate-50 text-[#2D2D2D] cursor-pointer border border-slate-200">Edit Profile Info</button>
               ) : (
                 <button className="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-[#D51659] text-white hover:bg-[#b44ddc] cursor-pointer shadow-[0_2px_12px_rgba(213,22,89,0.4)] flex items-center justify-center gap-2">
                   <Sparkles className="w-4 h-4 fill-current" /> Send Spark
@@ -303,8 +393,10 @@ const Profile = () => {
                       </div>
                     </div>
                   ))}
-                  {userImages.length < 9 && (
-                    <div className="aspect-[4/5] rounded-2xl lg:rounded-3xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center gap-3 hover:border-[#D51659] hover:bg-[#D51659]/5 transition-colors cursor-pointer text-slate-400 hover:text-[#2D2D2D]">
+                  {userImages.length < 9 && viewSelf && (
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="aspect-[4/5] rounded-2xl lg:rounded-3xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center gap-3 hover:border-[#D51659] hover:bg-[#D51659]/5 transition-colors cursor-pointer text-slate-400 hover:text-[#2D2D2D]">
                       <Camera className="w-8 h-8" />
                       <span className="text-xs font-bold uppercase tracking-wider">Add Photo</span>
                     </div>
@@ -396,6 +488,175 @@ const Profile = () => {
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {/* ═══ EDIT PROFILE MODAL ═══ */}
+      <AnimatePresence>
+        {showEditModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}
+            onClick={() => setShowEditModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 30, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.9, y: 30, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-[#FCFAF2] rounded-[2rem] w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl border border-slate-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="sticky top-0 bg-[#FCFAF2] z-10 px-6 pt-6 pb-4 border-b border-slate-200 flex items-center justify-between">
+                <h2 className="text-xl font-black text-[#2D2D2D]">Edit Profile</h2>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4 text-[#2D2D2D]" />
+                </button>
+              </div>
+
+              {/* Form Fields */}
+              <div className="p-6 space-y-4">
+                {[
+                  { key: 'name', label: 'Name', type: 'text', placeholder: 'Your name' },
+                  { key: 'age', label: 'Age', type: 'number', placeholder: '25' },
+                  { key: 'bio', label: 'Bio', type: 'textarea', placeholder: 'Tell people about yourself...' },
+                  { key: 'work', label: 'Work', type: 'text', placeholder: 'Your job title or company' },
+                  { key: 'education', label: 'Education', type: 'text', placeholder: 'Your school or university' },
+                  { key: 'height', label: 'Height', type: 'text', placeholder: "5'9\"" },
+                  { key: 'gender', label: 'Gender', type: 'text', placeholder: 'Male, Female, Non-binary...' },
+                ].map((field) => (
+                  <div key={field.key}>
+                    <label className="text-[10px] font-black text-[#2D2D2D]/60 uppercase tracking-widest block mb-1.5 ml-1">
+                      {field.label}
+                    </label>
+                    {field.type === 'textarea' ? (
+                      <textarea
+                        value={editForm[field.key] || ''}
+                        onChange={(e) => setEditForm({ ...editForm, [field.key]: e.target.value })}
+                        placeholder={field.placeholder}
+                        rows={3}
+                        className="w-full px-4 py-3 rounded-xl bg-white border-2 border-slate-200 text-sm font-medium text-[#2D2D2D] placeholder-slate-400 focus:border-[#D51659] focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all resize-none"
+                      />
+                    ) : (
+                      <input
+                        type={field.type}
+                        value={editForm[field.key] || ''}
+                        onChange={(e) => setEditForm({ ...editForm, [field.key]: e.target.value })}
+                        placeholder={field.placeholder}
+                        className="w-full px-4 py-3 rounded-xl bg-white border-2 border-slate-200 text-sm font-medium text-[#2D2D2D] placeholder-slate-400 focus:border-[#D51659] focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
+                      />
+                    )}
+                  </div>
+                ))}
+
+                {/* Select fields */}
+                <div>
+                  <label className="text-[10px] font-black text-[#2D2D2D]/60 uppercase tracking-widest block mb-1.5 ml-1">Zodiac</label>
+                  <select
+                    value={editForm.zodiac || ''}
+                    onChange={(e) => setEditForm({ ...editForm, zodiac: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl bg-white border-2 border-slate-200 text-sm font-medium text-[#2D2D2D] focus:border-[#D51659] focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all cursor-pointer"
+                  >
+                    <option value="">Select zodiac</option>
+                    {['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'].map(z => (
+                      <option key={z} value={z}>{z}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black text-[#2D2D2D]/60 uppercase tracking-widest block mb-1.5 ml-1">Exercise</label>
+                  <select
+                    value={editForm.exercise || ''}
+                    onChange={(e) => setEditForm({ ...editForm, exercise: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl bg-white border-2 border-slate-200 text-sm font-medium text-[#2D2D2D] focus:border-[#D51659] focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all cursor-pointer"
+                  >
+                    <option value="">Select activity level</option>
+                    {['Never', 'Sometimes', 'Often', 'Active', 'Very Active', 'Daily'].map(e => (
+                      <option key={e} value={e}>{e}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black text-[#2D2D2D]/60 uppercase tracking-widest block mb-1.5 ml-1">Relationship Goal</label>
+                  <input
+                    type="text"
+                    value={editForm.relationship || ''}
+                    onChange={(e) => setEditForm({ ...editForm, relationship: e.target.value })}
+                    placeholder="Dating, Friendship, Long-term..."
+                    className="w-full px-4 py-3 rounded-xl bg-white border-2 border-slate-200 text-sm font-medium text-[#2D2D2D] placeholder-slate-400 focus:border-[#D51659] focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black text-[#2D2D2D]/60 uppercase tracking-widest block mb-1.5 ml-1">Religion</label>
+                  <input
+                    type="text"
+                    value={editForm.religion || ''}
+                    onChange={(e) => setEditForm({ ...editForm, religion: e.target.value })}
+                    placeholder="Your faith or spiritual belief"
+                    className="w-full px-4 py-3 rounded-xl bg-white border-2 border-slate-200 text-sm font-medium text-[#2D2D2D] placeholder-slate-400 focus:border-[#D51659] focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black text-[#2D2D2D]/60 uppercase tracking-widest block mb-1.5 ml-1">Interests (comma separated)</label>
+                  <input
+                    type="text"
+                    value={editForm.interests || ''}
+                    onChange={(e) => setEditForm({ ...editForm, interests: e.target.value })}
+                    placeholder="Travel, Reading, Music, Fitness..."
+                    className="w-full px-4 py-3 rounded-xl bg-white border-2 border-slate-200 text-sm font-medium text-[#2D2D2D] placeholder-slate-400 focus:border-[#D51659] focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black text-[#2D2D2D]/60 uppercase tracking-widest block mb-1.5 ml-1">Languages (comma separated)</label>
+                  <input
+                    type="text"
+                    value={editForm.languages || ''}
+                    onChange={(e) => setEditForm({ ...editForm, languages: e.target.value })}
+                    placeholder="English, Tamil, Hindi..."
+                    className="w-full px-4 py-3 rounded-xl bg-white border-2 border-slate-200 text-sm font-medium text-[#2D2D2D] placeholder-slate-400 focus:border-[#D51659] focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="sticky bottom-0 bg-[#FCFAF2] z-10 px-6 py-4 border-t border-slate-200 flex gap-3">
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 py-3.5 rounded-xl text-sm font-bold text-[#2D2D2D] bg-white border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveProfile}
+                  disabled={saving}
+                  className="flex-1 py-3.5 rounded-xl text-sm font-black text-white cursor-pointer hover:opacity-90 transition-all shadow-lg shadow-[#D51659]/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                  style={{ background: 'linear-gradient(135deg, #D51659 0%, #b44ddc 100%)' }}
+                >
+                  {saving ? (
+                    <motion.div
+                      className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+                    />
+                  ) : (
+                    <><CheckCircle2 className="w-4 h-4" /> Save Changes</>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -38,10 +38,10 @@ const Discover = () => {
 
   const handleAction = (e, actionType, profile) => {
     e.stopPropagation();
-    
+
     // Animate removal and update state
     setLocalUsers(prev => prev.filter(u => (u.id || u._id) !== (profile.id || profile._id)));
-    
+
     // Hit backend API
     const swipeAction = actionType === 'like' || actionType === 'gift' ? 'right' : 'left';
     dispatch(apiSwipe({ userId: profile._id || profile.id, action: swipeAction }));
@@ -49,7 +49,7 @@ const Discover = () => {
     if (actionType === 'like') {
       // Add to Explore page (Favourites)
       dispatch({ type: 'user/addLikedProfile', payload: profile });
-      
+
       // Show Match Modal
       dispatch(setMatchedModal({ isOpen: true, user: profile }));
       dispatch({ type: 'ui/setLastMatchedUser', payload: profile });
@@ -86,7 +86,7 @@ const Discover = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-x-8 md:gap-y-12 w-full max-w-7xl mx-auto px-4 z-10 relative">
           <AnimatePresence>
             {localUsers.map((profile) => (
-              <motion.div 
+              <motion.div
                 key={profile.id}
                 layout
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -273,14 +273,14 @@ const Discover = () => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/60 backdrop-blur-lg flex items-center justify-center p-6">
             <motion.div initial={{ scale: 0.85, y: 40 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.85, y: 40 }} transition={{ type: 'spring', damping: 25, stiffness: 350 }} className="bg-[#0f0a10]/90 backdrop-blur-3xl max-w-md w-full p-10 rounded-[2.5rem] text-center border border-white/10 shadow-2xl relative overflow-hidden">
               <div className="absolute top-[-30%] left-[-30%] w-96 h-96 rounded-full bg-gradient-to-tr from-[#D51659]/30 to-purple-600/20 opacity-50 blur-[80px] pointer-events-none" />
-              
+
               <div className="w-20 h-20 bg-[#D51659] rounded-[1.5rem] flex items-center justify-center mx-auto mb-8 shadow-[0_4px_20px_rgba(213,22,89,0.4)] rotate-12 relative z-10">
                 <Heart className="w-10 h-10 text-white fill-current animate-pulse" />
               </div>
-              
+
               <h2 className="text-4xl font-black tracking-tight mb-3 text-white relative z-10 font-serif italic">It's a Spark!</h2>
               <p className="text-white/60 text-sm mb-10 relative z-10">You and <span className="text-[#D51659] font-bold">{matchedUser.name}</span> liked each other</p>
-              
+
               <div className="flex justify-center items-center gap-0 mb-10 relative z-10">
                 <div className="w-28 h-28 rounded-full overflow-hidden border-[3px] border-[#D51659] shadow-2xl relative z-10 -mr-6 ring-4 ring-black/40">
                   <img src={getImageUrl(currentUser) || 'https://images.unsplash.com/photo-1511367461989-f85a21fda167?auto=format&fit=crop&q=80'} alt={currentUser?.name || "You"} className="w-full h-full object-cover" />
@@ -289,7 +289,7 @@ const Discover = () => {
                   <img src={getImageUrl(matchedUser) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80'} alt={matchedUser?.name || "Match"} className="w-full h-full object-cover" />
                 </div>
               </div>
-              
+
               <div className="space-y-3 relative z-10">
                 <button onClick={() => { dispatch(setMatchedModal({ isOpen: false })); dispatch({ type: 'ui/setActiveTab', payload: 'chat' }); }} className="w-full py-4 rounded-2xl text-xs uppercase tracking-widest font-black bg-[#D51659] text-white shadow-[0_4px_15px_rgba(213,22,89,0.4)] hover:bg-[#b44ddc] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer">
                   <MessageSquare className="w-4 h-4 shrink-0" /> <span>Send Message</span>
