@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: '/api', // Proxy handles the rest
+    baseURL: import.meta.env.VITE_API_URL || '/api', // Use env variable in prod, fallback to local proxy in dev
     withCredentials: true, // Send cookies if any
     headers: {
         'Content-Type': 'application/json',
