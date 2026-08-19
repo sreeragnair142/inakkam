@@ -109,17 +109,17 @@ export default defineConfig({
       //   ws: true,
       // },
       '/api': {
-        target: 'http://82.29.165.57:7001',
+        target: 'http://82.29.165.57:7000',
         changeOrigin: true,
         secure: false,
       },
       '/uploads': {
-        target: 'http://82.29.165.57:7001',
+        target: 'http://82.29.165.57:7000',
         changeOrigin: true,
         secure: false,
       },
       '/socket.io': {
-        target: 'http://82.29.165.57:7001',
+        target: 'http://82.29.165.57:7000',
         changeOrigin: true,
         ws: true,
       },
