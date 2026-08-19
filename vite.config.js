@@ -83,7 +83,7 @@ export default defineConfig({
         ],
         // Offline fallback
         navigateFallback: null,
-        navigationPreload: true,
+        navigationPreload: false,
       },
       devOptions: {
         enabled: false, // Set to true for testing SW in dev
