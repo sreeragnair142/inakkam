@@ -120,6 +120,9 @@ function AppContent() {
     updateServiceWorker,
   } = useRegisterSW({
     onRegistered(r) {
+      if (r?.navigationPreload) {
+        r.navigationPreload.disable().catch(() => {});
+      }
       console.log('SW Registered: ', r);
     },
     onRegisterError(error) {
