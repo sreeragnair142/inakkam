@@ -47,6 +47,15 @@ export const sendMessage = createAsyncThunk('chat/sendMessage', async ({ chatId,
   }
 });
 
+export const deleteMessage = createAsyncThunk('chat/deleteMessage', async ({ chatId, messageId }, { rejectWithValue }) => {
+  try {
+    await api.delete(`/conversations/${chatId}/messages/${messageId}`);
+    return { chatId, messageId };
+  } catch (err) {
+    return rejectWithValue(err.response?.data?.message || err.message || 'Failed to delete message');
+  }
+});
+
 // ─── Slice ───────────────────────────────────────────
 const initialState = {
   chats: [],
@@ -186,6 +195,22 @@ const chatSlice = createSlice({
       state.chats.unshift(newChat);
       state.activeChatId = newChatId;
       state.activeChatMessages = [];
+    },
+    removeMessage: (state, action) => {
+      const { chatId, messageId } = action.payload;
+      state.activeChatMessages = state.activeChatMessages.filter(m => (m._id || m.id) !== messageId);
+
+      const chat = state.chats.find(c =>
+        String(c.conversationId || c.id) === String(chatId) ||
+        String(c.id).endsWith(String(chatId))
+      );
+      if (chat && chat.lastMessage && (chat.lastMessage._id === messageId || chat.lastMessage.id === messageId)) {
+        if (state.activeChatMessages.length > 0) {
+          chat.lastMessage = state.activeChatMessages[state.activeChatMessages.length - 1];
+        } else {
+          chat.lastMessage = null;
+        }
+      }
     }
   },
   extraReducers: (builder) => {
@@ -266,9 +291,25 @@ const chatSlice = createSlice({
           chat.id = convId;
           chat.conversationId = convId;
         }
+      })
+      .addCase(deleteMessage.fulfilled, (state, action) => {
+        const { chatId, messageId } = action.payload;
+        state.activeChatMessages = state.activeChatMessages.filter(m => (m._id || m.id) !== messageId);
+
+        const chat = state.chats.find(c =>
+          String(c.conversationId || c.id) === String(chatId) ||
+          String(c.id).endsWith(String(chatId))
+        );
+        if (chat && chat.lastMessage && (chat.lastMessage._id === messageId || chat.lastMessage.id === messageId)) {
+          if (state.activeChatMessages.length > 0) {
+            chat.lastMessage = state.activeChatMessages[state.activeChatMessages.length - 1];
+          } else {
+            chat.lastMessage = null;
+          }
+        }
       });
   },
 });
 
-export const { setActiveChat, addMessage, setTyping, createNewChat, receiveMessage, addReaction } = chatSlice.actions;
+export const { setActiveChat, addMessage, setTyping, createNewChat, receiveMessage, addReaction, removeMessage } = chatSlice.actions;
 export default chatSlice.reducer;

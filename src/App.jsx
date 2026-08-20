@@ -7,7 +7,7 @@ import { BrowserRouter, useNavigate, useLocation } from "react-router-dom";
 import { store } from "./redux/store";
 import { fetchMe } from "./redux/slices/authSlice";
 import { initiateSocketConnection, disconnectSocket } from "./utils/socket";
-import { addMessage, setTyping } from "./redux/slices/chatSlice";
+import { addMessage, setTyping, removeMessage } from "./redux/slices/chatSlice";
 import { addNotification } from "./redux/slices/notificationSlice";
 import AppRoutes from "./routes";
 
@@ -142,6 +142,10 @@ function AppContent() {
 
       socket.on('new_message', (message) => {
         dispatch(addMessage(message));
+      });
+
+      socket.on('message_deleted', ({ conversationId, messageId }) => {
+        dispatch(removeMessage({ chatId: conversationId, messageId }));
       });
 
       socket.on('user_typing', ({ userId, conversationId }) => {

@@ -9,7 +9,8 @@ import {
   addReaction,
   addMessage,
   fetchConversations,
-  fetchMessages
+  fetchMessages,
+  deleteMessage
 } from '../redux/slices/chatSlice';
 import {
   Send,
@@ -26,7 +27,8 @@ import {
   Search,
   Plus,
   Mic,
-  MessageSquare
+  MessageSquare,
+  Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../utils/api';
@@ -336,6 +338,23 @@ const Chat = () => {
     dispatch(addReaction({ chatId: activeChat.id, messageId: msgId, emoji }));
     setSelectedMsgForReaction(null);
   };
+
+  const handleDeleteMessage = (messageId) => {
+    if (!activeChat) return;
+    const chatId = activeChat.conversationId || activeChat.id;
+    if (window.confirm('Are you sure you want to delete this message?')) {
+      dispatch(deleteMessage({ chatId, messageId }))
+        .unwrap()
+        .then(() => {
+          toast.success('Message deleted');
+        })
+        .catch((err) => {
+          toast.error(err || 'Failed to delete message');
+        });
+    }
+    setSelectedMsgForReaction(null);
+  };
+
   return (
     <div className="fixed inset-0 bottom-[64px] lg:bottom-0 flex overflow-hidden bg-[#FAF9F6] z-30">
       {/* Mesh gradients for premium glow */}
@@ -524,6 +543,18 @@ const Chat = () => {
                         className="w-7 h-7 rounded-lg object-cover border border-slate-100 shrink-0 shadow-sm"
                       />
                     )}
+                    {isMe && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteMessage(msg._id || msg.id);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-slate-100 transition-all cursor-pointer self-center shrink-0"
+                        title="Delete Message"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
 
                     <div className="max-w-[70%] space-y-1 relative">
 
@@ -560,9 +591,26 @@ const Chat = () => {
                             {(msg.readBy && msg.readBy.length > 1) ? '✓✓' : '✓'}
                           </span>
                         )}
-                        <span className="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:text-slate-800 font-bold uppercase tracking-wider ml-1">
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedMsgForReaction(selectedMsgForReaction === (msg._id || msg.id) ? null : (msg._id || msg.id));
+                          }}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:text-slate-800 font-bold uppercase tracking-wider ml-1"
+                        >
                           React
                         </span>
+                        {isMe && (
+                          <span
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteMessage(msg._id || msg.id);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:text-red-500 font-bold uppercase tracking-wider ml-2"
+                          >
+                            Delete
+                          </span>
+                        )}
                       </div>
 
                       {/* Emoji overlays dropdown popup */}
@@ -586,6 +634,18 @@ const Chat = () => {
                                   {emoji}
                                 </button>
                               ))}
+                              {isMe && (
+                                <>
+                                  <div className="w-[1px] bg-slate-200 self-stretch my-0.5 mx-1" />
+                                  <button
+                                    onClick={() => handleDeleteMessage(msg._id || msg.id)}
+                                    className="p-1 rounded text-red-500 hover:bg-red-50 hover:text-red-650 transition-colors flex items-center justify-center cursor-pointer"
+                                    title="Delete Message"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              )}
                             </motion.div>
                           </>
                         )}
