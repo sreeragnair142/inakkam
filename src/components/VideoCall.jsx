@@ -99,6 +99,23 @@ const VideoCall = ({
       const localStream = window.EnxRtc.joinRoom(token, publishOptions, (success, error) => {
         if (error) {
           console.error('[EnableX Join Room Failed]', error);
+          
+          // Handle media access denied or device not found errors gracefully
+          if (error.type === 'media-access-denied' || error.result === 1144 || error.result === 1143) {
+            console.warn('⚠️ Camera/Microphone access denied or device not available. Switching to demo simulation call mode.');
+            setIsSimulation(true);
+            setCallStatus('connected');
+            setChatMessages([
+              {
+                id: 'system_perm_notice',
+                sender: 'system',
+                text: 'Camera/Mic permission was denied or not available. Running in Demo Call Mode.',
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }
+            ]);
+            return;
+          }
+
           setCallStatus('disconnected');
           onEndCall();
           return;
