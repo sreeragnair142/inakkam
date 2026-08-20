@@ -325,87 +325,125 @@ const VideoCall = ({
       {callStatus === 'connected' && (
         <div className="flex-1 flex relative">
           
-          {/* Main viewport (Remote user) */}
-          <div className="flex-1 h-full bg-[#121212] relative overflow-hidden flex items-center justify-center">
-            {isSimulation ? (
-              // Simulated Remote Screen
-              videoActive ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-tr from-[#1A0C16] to-[#0F0F1A]">
-                  <img 
-                    src={remoteUserPhoto || "https://via.placeholder.com/150"} 
-                    alt={remoteUserName} 
-                    className="w-24 h-24 rounded-full object-cover border border-white/20 shadow-xl opacity-80 filter brightness-90 scale-[1.05]"
+          {/* Main viewport */}
+          {callType === 'audio' ? (
+            <div className="flex-1 h-full relative overflow-hidden flex flex-col items-center justify-center bg-gradient-to-b from-[#150A1A] via-[#0A0A0A] to-[#1A0A15]">
+              {/* Pulsing Glowing Aura */}
+              <div className="relative mb-8 flex items-center justify-center">
+                <span className="absolute w-52 h-52 rounded-full bg-[#D51659]/20 blur-2xl animate-pulse" />
+                <span className="absolute w-40 h-40 rounded-full border border-[#D51659]/40 animate-ping" style={{ animationDuration: '3s' }} />
+                <img 
+                  src={remoteUserPhoto || "https://via.placeholder.com/150"} 
+                  alt={remoteUserName} 
+                  className="w-32 h-32 rounded-full object-cover border-4 border-white/10 shadow-[0_0_50px_rgba(213,22,89,0.4)] relative z-10"
+                />
+              </div>
+
+              <h2 className="text-2xl font-black text-white tracking-wide drop-shadow-md">{remoteUserName}</h2>
+              <p className="text-xs font-bold text-[#D51659] uppercase tracking-widest mt-2 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                Voice Call Connected ({formatTime(duration)})
+              </p>
+
+              {/* Animated Soundwave Equalizer */}
+              <div className="flex items-center gap-1.5 mt-8 h-10">
+                {[40, 75, 30, 90, 50, 85, 45, 65, 100, 55, 80, 35, 70, 45].map((h, i) => (
+                  <span
+                    key={i}
+                    className="w-1.5 bg-gradient-to-t from-[#D51659] to-[#B44DDC] rounded-full animate-pulse"
+                    style={{
+                      height: micActive ? `${h}%` : '20%',
+                      animationDelay: `${(i * 120) % 600}ms`,
+                      animationDuration: '1.2s'
+                    }}
                   />
-                  <div className="absolute bottom-6 left-6 text-sm font-semibold bg-black/45 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-[#D51659] animate-pulse" />
-                    <span>{remoteUserName} (Camera Active)</span>
-                  </div>
-                  {/* Subtle vector grid/waves simulating active streaming */}
-                  <div className="absolute inset-0 bg-[radial-gradient(#ffffff04_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center gap-4">
-                  <div className="w-28 h-28 rounded-full bg-slate-800/40 border border-slate-700 flex items-center justify-center shadow-inner relative">
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 h-full bg-[#121212] relative overflow-hidden flex items-center justify-center">
+              {isSimulation ? (
+                // Simulated Remote Screen
+                videoActive ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-tr from-[#1A0C16] to-[#0F0F1A]">
                     <img 
                       src={remoteUserPhoto || "https://via.placeholder.com/150"} 
                       alt={remoteUserName} 
-                      className="w-24 h-24 rounded-full object-cover grayscale"
+                      className="w-24 h-24 rounded-full object-cover border border-white/20 shadow-xl opacity-80 filter brightness-90 scale-[1.05]"
                     />
-                    <VideoOff className="absolute bottom-1 right-1 w-6 h-6 text-slate-400 bg-black/60 p-1.5 rounded-full border border-slate-700" />
+                    <div className="absolute bottom-6 left-6 text-sm font-semibold bg-black/45 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-[#D51659] animate-pulse" />
+                      <span>{remoteUserName} (Camera Active)</span>
+                    </div>
+                    {/* Subtle vector grid/waves simulating active streaming */}
+                    <div className="absolute inset-0 bg-[radial-gradient(#ffffff04_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
                   </div>
-                  <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">{remoteUserName} turned video off</p>
-                </div>
-              )
-            ) : (
-              // Real EnableX Remote Div
-              <div 
-                id="remote-video-container" 
-                ref={remoteVideoRef} 
-                className="w-full h-full object-cover" 
-              />
-            )}
-
-            {/* Custom simulation mode watermark */}
-            {isSimulation && (
-              <div className="absolute top-4 left-4 bg-purple-500/20 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] uppercase font-bold tracking-widest text-purple-300 border border-purple-500/30">
-                Demo Simulation Mode
-              </div>
-            )}
-          </div>
-
-          {/* Floating Local Window (PiP) */}
-          <div className="absolute top-6 right-6 w-28 h-40 md:w-36 md:h-52 rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-slate-900 z-20 transition-all hover:scale-102">
-            {isSimulation ? (
-              videoActive ? (
-                <div className="w-full h-full bg-slate-800 relative flex items-center justify-center">
-                  <img 
-                    src={currentUser?.photos?.[0]?.url || "https://via.placeholder.com/150"} 
-                    alt="Me" 
-                    className="w-14 h-14 rounded-full object-cover border border-white/20 shadow-md"
-                  />
-                  <div className="absolute bottom-2 left-2 text-[9px] font-semibold bg-black/65 px-1.5 py-0.5 rounded text-slate-300">
-                    Local Camera
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-4">
+                    <div className="w-28 h-28 rounded-full bg-slate-800/40 border border-slate-700 flex items-center justify-center shadow-inner relative">
+                      <img 
+                        src={remoteUserPhoto || "https://via.placeholder.com/150"} 
+                        alt={remoteUserName} 
+                        className="w-24 h-24 rounded-full object-cover grayscale"
+                      />
+                      <VideoOff className="absolute bottom-1 right-1 w-6 h-6 text-slate-400 bg-black/60 p-1.5 rounded-full border border-slate-700" />
+                    </div>
+                    <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">{remoteUserName} turned video off</p>
                   </div>
-                </div>
+                )
               ) : (
-                <div className="w-full h-full bg-slate-950 flex flex-col items-center justify-center gap-2">
-                  <img 
-                    src={currentUser?.photos?.[0]?.url || "https://via.placeholder.com/150"} 
-                    alt="Me" 
-                    className="w-10 h-10 rounded-full object-cover grayscale"
-                  />
-                  <VideoOff className="w-3.5 h-3.5 text-slate-500" />
+                // Real EnableX Remote Div
+                <div 
+                  id="remote-video-container" 
+                  ref={remoteVideoRef} 
+                  className="w-full h-full object-cover" 
+                />
+              )}
+
+              {/* Custom simulation mode watermark */}
+              {isSimulation && (
+                <div className="absolute top-4 left-4 bg-purple-500/20 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] uppercase font-bold tracking-widest text-purple-300 border border-purple-500/30">
+                  Demo Simulation Mode
                 </div>
-              )
-            ) : (
-              // Real EnableX Local Div
-              <div 
-                id="local-video-container" 
-                ref={localVideoRef} 
-                className="w-full h-full object-cover bg-slate-800" 
-              />
-            )}
-          </div>
+              )}
+            </div>
+          )}
+
+          {/* Floating Local Window (PiP) - Rendered for Video Call */}
+          {callType === 'video' && (
+            <div className="absolute top-6 right-6 w-28 h-40 md:w-36 md:h-52 rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-slate-900 z-20 transition-all hover:scale-102">
+              {isSimulation ? (
+                videoActive ? (
+                  <div className="w-full h-full bg-slate-800 relative flex items-center justify-center">
+                    <img 
+                      src={currentUser?.photos?.[0]?.url || "https://via.placeholder.com/150"} 
+                      alt="Me" 
+                      className="w-14 h-14 rounded-full object-cover border border-white/20 shadow-md"
+                    />
+                    <div className="absolute bottom-2 left-2 text-[9px] font-semibold bg-black/65 px-1.5 py-0.5 rounded text-slate-300">
+                      Local Camera
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-full h-full bg-slate-950 flex flex-col items-center justify-center gap-2">
+                    <img 
+                      src={currentUser?.photos?.[0]?.url || "https://via.placeholder.com/150"} 
+                      alt="Me" 
+                      className="w-10 h-10 rounded-full object-cover grayscale"
+                    />
+                    <VideoOff className="w-3.5 h-3.5 text-slate-500" />
+                  </div>
+                )
+              ) : (
+                // Real EnableX Local Div
+                <div 
+                  id="local-video-container" 
+                  ref={localVideoRef} 
+                  className="w-full h-full object-cover bg-slate-800" 
+                />
+              )}
+            </div>
+          )}
 
           {/* Top Panel (Overlay Details) */}
           <div className="absolute top-0 left-0 right-0 p-6 bg-gradient-to-b from-black/60 to-transparent flex items-center justify-between pointer-events-none">

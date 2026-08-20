@@ -70,6 +70,7 @@ const Chat = () => {
   }, [dispatch, activeChatId]);
 
   const [inputMessage, setInputMessage] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [selectedMsgForReaction, setSelectedMsgForReaction] = useState(null);
 
@@ -79,7 +80,14 @@ const Chat = () => {
 
   const emojiList = ['❤️', '😂', '🔥', '🧗‍♂️', '👍', '✨'];
 
-  // Socket signaling listener for calls
+  // Filter conversations based on user search input
+  const filteredChats = chats.filter((chat) => {
+    const nameMatch = chat.userName?.toLowerCase().includes(searchQuery.toLowerCase());
+    const msgMatch = chat.lastMessage?.text?.toLowerCase().includes(searchQuery.toLowerCase());
+    return nameMatch || msgMatch;
+  });
+
+  // Socket signaling listener for calls and errors
   useEffect(() => {
     const socket = getSocket();
     if (!socket) return;
@@ -112,11 +120,16 @@ const Chat = () => {
       setActiveCall(null);
     };
 
+    const handleMessageError = (data) => {
+      toast.error(data.message || 'Messaging error');
+    };
+
     socket.on('incoming_call', handleIncomingCall);
     socket.on('call_accepted', handleCallAccepted);
     socket.on('call_rejected', handleCallRejected);
     socket.on('call_ended', handleCallEnded);
     socket.on('call_error', handleCallError);
+    socket.on('message_error', handleMessageError);
 
     return () => {
       socket.off('incoming_call', handleIncomingCall);
@@ -124,6 +137,7 @@ const Chat = () => {
       socket.off('call_rejected', handleCallRejected);
       socket.off('call_ended', handleCallEnded);
       socket.off('call_error', handleCallError);
+      socket.off('message_error', handleMessageError);
     };
   }, [activeChat, currentUser]);
 
@@ -170,7 +184,7 @@ const Chat = () => {
           targetUserId,
           roomId,
           callerName: currentUser?.name || 'Inakkam User',
-          callerPhoto: currentUser?.photos?.[0]?.url || '',
+          callerPhoto: currentUser?.photos?.[0]?.url || currentUser?.images?.[0] || '',
           callType: type
         });
       }
@@ -346,7 +360,7 @@ const Chat = () => {
               <h3 className="font-extrabold text-sm uppercase tracking-wider text-slate-600">Messages</h3>
             </div>
             <span className="text-[10px] bg-[#D51659]/10 text-[#D51659] font-bold px-2 py-0.5 rounded-full border border-[#D51659]/20">
-              {chats.length} active
+              {filteredChats.length} active
             </span>
           </div>
 
@@ -355,6 +369,8 @@ const Chat = () => {
             <Search className="absolute left-3 w-4 h-4 text-slate-400" />
             <input
               type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search conversations..."
               className="w-full pl-9 pr-4 py-2 bg-slate-100/60 focus:bg-white text-xs border border-transparent focus:border-slate-200 rounded-xl outline-none transition-all placeholder-slate-400 text-slate-700"
             />
@@ -363,7 +379,7 @@ const Chat = () => {
 
         {/* Conversations Thread list */}
         <div className="flex-1 overflow-y-auto no-scrollbar py-2 space-y-1">
-          {chats.map((chat) => {
+          {filteredChats.map((chat) => {
             const isSelected = activeChat && chat.id === activeChat.id;
             const lastMsgText = chat.lastMessage?.text || '';
             const lastMsgTime = chat.lastMessage?.createdAt
@@ -488,7 +504,7 @@ const Chat = () => {
               {activeChatMessages.map((msg) => {
                 const senderId = typeof msg.sender === 'object' ? (msg.sender?._id || msg.sender?.id) : msg.sender;
                 const myId = currentUser?._id || currentUser?.id;
-                const isMe = senderId === myId || senderId === 'me' || (myId && String(senderId) === String(myId));
+                const isMe = Boolean(myId && senderId && String(senderId) === String(myId)) || senderId === 'me' || (msg.sender && msg.sender._id === 'me');
                 const timestamp = msg.createdAt
                   ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                   : msg.timestamp || '';
@@ -516,8 +532,8 @@ const Chat = () => {
                         onClick={() => setSelectedMsgForReaction(selectedMsgForReaction === (msg._id || msg.id) ? null : (msg._id || msg.id))}
                         className={`px-4 py-2.5 rounded-[20px] text-xs sm:text-sm shadow-sm relative group cursor-pointer transition-transform hover:scale-[1.01]
                           ${isMe
-                            ? 'bg-gradient-to-tr from-[#D51659] to-[#EC3F7B] text-white font-medium rounded-br-[4px] shadow-[0_4px_16px_rgba(213,22,89,0.18)]'
-                            : 'bg-white text-slate-800 rounded-bl-[4px] border border-slate-150/60 shadow-[0_2px_8px_rgba(0,0,0,0.01)]'
+                            ? 'bg-gradient-to-tr from-[#D51659] via-[#E11D48] to-[#EC3F7B] text-white font-medium rounded-br-[4px] shadow-[0_4px_16px_rgba(213,22,89,0.18)]'
+                            : 'bg-white text-slate-800 rounded-bl-[4px] border border-slate-200/80 shadow-[0_2px_8px_rgba(0,0,0,0.01)]'
                           }`}
                       >
                         <p className="leading-relaxed break-words text-left">{msg.text}</p>
@@ -535,11 +551,16 @@ const Chat = () => {
                       </div>
 
                       {/* Timestamp & reaction trigger indicators */}
-                      <div className={`flex items-center gap-2 text-[9px] text-slate-400 px-1
+                      <div className={`flex items-center gap-1.5 text-[9px] text-slate-400 px-1
                         ${isMe ? 'justify-end' : 'justify-start'}`}
                       >
                         <span>{timestamp}</span>
-                        <span className="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:text-slate-800 font-bold uppercase tracking-wider">
+                        {isMe && (
+                          <span className="font-bold text-[#D51659] text-[10px]">
+                            {(msg.readBy && msg.readBy.length > 1) ? '✓✓' : '✓'}
+                          </span>
+                        )}
+                        <span className="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:text-slate-800 font-bold uppercase tracking-wider ml-1">
                           React
                         </span>
                       </div>

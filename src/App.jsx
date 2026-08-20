@@ -136,8 +136,9 @@ function AppContent() {
 
   // ─── Socket Integration ──────────────────────────────
   useEffect(() => {
-    if (isAuthenticated && user?._id && token && !isGuest) {
-      const socket = initiateSocketConnection(user._id, token);
+    const currentUserId = user?._id || user?.id;
+    if (isAuthenticated && currentUserId && token && !isGuest) {
+      const socket = initiateSocketConnection(currentUserId, token);
 
       socket.on('new_message', (message) => {
         dispatch(addMessage(message));
