@@ -100,16 +100,31 @@ const VideoCall = ({
         if (error) {
           console.error('[EnableX Join Room Failed]', error);
           
-          // Handle media access denied or device not found errors gracefully
-          if (error.type === 'media-access-denied' || error.result === 1144 || error.result === 1143) {
+          // Check for permission denied, media access denied, missing device, or any join error
+          const isMediaError = 
+            error.type === 'media-access-denied' ||
+            error.msg?.result === 1144 ||
+            error.msg?.result === 1143 ||
+            error.msg?.error === 'Permission denied' ||
+            (typeof error.msg?.desc === 'string' && error.msg.desc.includes('NotAllowedError')) ||
+            (typeof error.msg?.desc === 'string' && error.msg.desc.includes('NotFoundError')) ||
+            Boolean(error);
+
+          if (isMediaError) {
             console.warn('⚠️ Camera/Microphone access denied or device not available. Switching to demo simulation call mode.');
             setIsSimulation(true);
             setCallStatus('connected');
+
+            let noticeText = 'Camera/Mic permission was denied or device is not available. Running in Demo Call Mode.';
+            if (!window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+              noticeText = 'WebRTC media access requires an HTTPS secure connection. Running in Demo Call Mode.';
+            }
+
             setChatMessages([
               {
                 id: 'system_perm_notice',
                 sender: 'system',
-                text: 'Camera/Mic permission was denied or not available. Running in Demo Call Mode.',
+                text: noticeText,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
               }
             ]);
@@ -125,29 +140,39 @@ const VideoCall = ({
         roomInstanceRef.current = room;
         setCallStatus('connected');
 
-        // Play local video stream
-        if (callType === 'video' && localVideoRef.current) {
-          localStream.play(localVideoRef.current.id);
-        }
+        // Function to safely play remote streams into the DOM container
+        const playRemoteStream = (stream) => {
+          if (!stream) return;
+          // Play stream into container so WebRTC audio and video tracks play
+          if (remoteVideoRef.current) {
+            try {
+              console.log('🔊 Playing remote media stream:', stream.getID());
+              stream.play(remoteVideoRef.current.id);
+            } catch (err) {
+              console.error('[EnableX Remote Stream Play Error]', err);
+            }
+          }
+        };
 
-        // Subscribe to existing remote streams
+        // Subscribe to existing remote streams in the room
         if (success.streams && success.streams.length > 0) {
           success.streams.forEach(stream => {
+            console.log('📡 Subscribing to existing stream:', stream.getID());
             room.subscribe(stream);
           });
         }
 
         // Event: Stream Added (Other participant published stream)
         room.addEventListener('stream-added', (event) => {
+          console.log('📡 Stream added to room:', event.stream.getID());
           room.subscribe(event.stream);
         });
 
         // Event: Stream Subscribed (Successfully receiving other user's stream)
         room.addEventListener('stream-subscribed', (event) => {
           const stream = event.stream;
-          if (stream.hasVideo() && remoteVideoRef.current) {
-            stream.play(remoteVideoRef.current.id);
-          }
+          console.log('🎉 Stream subscribed successfully:', stream.getID());
+          playRemoteStream(stream);
         });
 
         // Event: User Disconnected
@@ -342,6 +367,18 @@ const VideoCall = ({
       {callStatus === 'connected' && (
         <div className="flex-1 flex relative">
           
+          {/* Permanent media container elements for EnableX WebRTC stream playback (Audio + Video) */}
+          {!isSimulation && (
+            <div className={callType === 'audio' ? "w-0 h-0 opacity-0 pointer-events-none absolute" : "hidden"}>
+              {callType === 'audio' && (
+                <>
+                  <div id="remote-video-container" ref={remoteVideoRef} className="w-0 h-0" />
+                  <div id="local-video-container" ref={localVideoRef} className="w-0 h-0" />
+                </>
+              )}
+            </div>
+          )}
+
           {/* Main viewport */}
           {callType === 'audio' ? (
             <div className="flex-1 h-full relative overflow-hidden flex flex-col items-center justify-center bg-gradient-to-b from-[#150A1A] via-[#0A0A0A] to-[#1A0A15]">
