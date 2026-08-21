@@ -34,6 +34,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../utils/api';
 import { getSocket, joinConversation, emitMessage } from '../utils/socket';
 import VideoCall from '../components/VideoCall';
+import RechargeModal from '../components/RechargeModal';
+import { fetchMe } from '../redux/slices/authSlice';
 import toast from 'react-hot-toast';
 
 const Chat = () => {
@@ -46,6 +48,9 @@ const Chat = () => {
   const activeChatId = useSelector((state) => state.chat.activeChatId);
   const isTyping = useSelector((state) => state.chat.isTyping);
   const currentUser = useSelector((state) => state.auth.user);
+
+  const [showRechargeModal, setShowRechargeModal] = useState(false);
+
 
   const activeChat = chats.find(c => c.id === activeChatId) || chats[0];
   const activeChatMessages = useSelector((state) => state.chat.activeChatMessages);
@@ -300,9 +305,32 @@ const Chat = () => {
   }, [activeChatMessages, isTyping]);
 
   // Real Chat message sending via socket & Redux
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!inputMessage.trim() || !activeChat) return;
+
+    const isStaff = currentUser?.isStaff || currentUser?.isEliteAgent || currentUser?.role === 'staff';
+    const recipientId = activeChat.user?._id || activeChat.userId;
+
+    // If customer, deduct 30 coins
+    if (!isStaff) {
+      const userBalance = currentUser?.wallet?.balance || 0;
+      if (userBalance < 30) {
+        setShowRechargeModal(true);
+        return;
+      }
+
+      try {
+        const coinRes = await api.post('/coins/deduct-message', { recipientId });
+        if (!coinRes.data.success && coinRes.data.insufficientCoins) {
+          setShowRechargeModal(true);
+          return;
+        }
+        dispatch(fetchMe());
+      } catch (err) {
+        // Continue in local/dev fallback mode
+      }
+    }
 
     const messageText = inputMessage.trim();
     const activeId = activeChat.conversationId || activeChat.id;
@@ -333,6 +361,7 @@ const Chat = () => {
       dispatch(sendMessage({ chatId: activeId, text: messageText, tempId }));
     }
   };
+
 
   const handleAddReaction = (msgId, emoji) => {
     dispatch(addReaction({ chatId: activeChat.id, messageId: msgId, emoji }));
@@ -815,8 +844,16 @@ const Chat = () => {
         )}
       </AnimatePresence>
 
+      <RechargeModal
+        isOpen={showRechargeModal}
+        onClose={() => setShowRechargeModal(false)}
+        requiredCoins={30}
+        currentBalance={currentUser?.wallet?.balance || 0}
+      />
+
     </div>
   );
 };
+
 
 export default Chat;

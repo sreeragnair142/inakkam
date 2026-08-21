@@ -29,8 +29,10 @@ import {
   Check,
   Home,
   Wallet,
-  ShieldCheck
+  ShieldCheck,
+  Coins
 } from 'lucide-react';
+
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'framer-motion';
 
 const MainLayout = ({ children }) => {
@@ -147,12 +149,28 @@ const MainLayout = ({ children }) => {
           );
         })()}
 
-        {/* TOP RIGHT PROFILE MENU for Desktop */}
+        {/* TOP RIGHT PROFILE & COIN BADGE MENU */}
         {(() => {
           if (location.pathname === '/chat' || location.pathname === '/profile') return null;
+          const coinBalance = user?.wallet?.balance || 0;
           return (
-            <div className={`fixed top-4 right-4 md:top-6 md:right-6 z-50 hidden lg:flex items-center transition-all duration-500 ease-in-out ${isHeaderVisible ? 'translate-y-0 opacity-100' : '-translate-y-[150%] opacity-0'}`}>
-              <div className="relative">
+            <div className={`fixed top-4 right-4 md:top-6 md:right-6 z-50 flex items-center gap-3 transition-all duration-500 ease-in-out ${isHeaderVisible ? 'translate-y-0 opacity-100' : '-translate-y-[150%] opacity-0'}`}>
+              
+              {/* Tokify Style Coin Badge Button */}
+              <div
+                onClick={() => navigate('/buy-coin')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-600 to-[#D51659] text-white cursor-pointer shadow-lg shadow-purple-500/20 hover:scale-105 transition-all border border-white/20"
+              >
+                <div className="w-5 h-5 rounded-full bg-amber-400 flex items-center justify-center text-slate-900 shadow-xs">
+                  <Coins className="w-3.5 h-3.5 fill-current" />
+                </div>
+                <span className="text-xs font-black tracking-wide">
+                  {coinBalance.toLocaleString()}
+                </span>
+              </div>
+
+              {/* Desktop Profile Menu */}
+              <div className="relative hidden lg:block">
                 <div
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
                   className="flex items-center gap-2 p-1 pr-3 rounded-full border border-white/10 bg-[#D51659] hover:bg-[#b44ddc] cursor-pointer shadow-lg transition-all"
@@ -170,6 +188,7 @@ const MainLayout = ({ children }) => {
                   </span>
                   <ChevronDown className="w-3.5 h-3.5 text-white/80" />
                 </div>
+
 
                 {/* Profile Menu Dropdown */}
                 <AnimatePresence>

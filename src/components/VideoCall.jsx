@@ -14,6 +14,10 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import api from '../utils/api';
+import toast from 'react-hot-toast';
+
+
 const VideoCall = ({ 
   roomId, 
   token, 
@@ -39,18 +43,41 @@ const VideoCall = ({
   const localStreamRef = useRef(null);
   const simulationTimerRef = useRef(null);
 
-  // 1. Call timer
+  // 1. Call timer & Periodic Coin Deduction (every 20s)
   useEffect(() => {
     let timer = null;
+    let coinDeductInterval = null;
+
     if (callStatus === 'connected') {
       timer = setInterval(() => {
         setDuration(prev => prev + 1);
       }, 1000);
+
+      // Periodically deduct coins every 20 seconds for non-staff callers
+      const isStaff = currentUser?.isStaff || currentUser?.isEliteAgent || currentUser?.role === 'staff';
+      if (!isStaff) {
+        coinDeductInterval = setInterval(async () => {
+          try {
+            const res = await api.post('/coins/deduct-call', {
+              callType,
+              seconds: 20
+            });
+            if (!res.data.success && res.data.insufficientCoins) {
+              toast.error('Insufficient coin balance to continue call');
+              if (onEndCall) onEndCall();
+            }
+          } catch (err) {
+            // Ignore API error in mock mode
+          }
+        }, 20000);
+      }
     }
     return () => {
       if (timer) clearInterval(timer);
+      if (coinDeductInterval) clearInterval(coinDeductInterval);
     };
-  }, [callStatus]);
+  }, [callStatus, callType, currentUser, onEndCall]);
+
 
   // 2. EnableX Web SDK Join Room
   useEffect(() => {

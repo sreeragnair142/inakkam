@@ -11,6 +11,8 @@ import Likes from "../pages/Likes";
 import Chat from "../pages/Chat";
 import Membership from "../pages/Membership";
 import Profile from "../pages/Profile";
+import BuyCoin from "../pages/BuyCoin";
+import Wallet from "../pages/Wallet";
 import MainLayout from "../layouts/MainLayout";
 import KYCVerification from "../pages/kyc/KYCVerification";
 
@@ -81,6 +83,27 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/buy-coin"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <BuyCoin />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/wallet"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Wallet />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+
 
       <Route
         path="/chat"
