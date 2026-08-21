@@ -186,7 +186,7 @@ const Discover = () => {
   };
 
   return (
-    <div className="flex-1 flex items-start justify-center relative h-[calc(100vh-80px)] sm:h-auto min-h-[0px] pt-14 pb-2 sm:pt-28 sm:pb-16 lg:pt-36 lg:pb-20 px-2 sm:px-4 overflow-hidden">
+    <div className="flex-1 flex items-start justify-center relative h-[calc(100vh-115px)] sm:h-auto min-h-[0px] pt-14 pb-3 sm:pt-28 sm:pb-16 lg:pt-36 lg:pb-20 px-2 sm:px-4 overflow-hidden">
 
 
 
