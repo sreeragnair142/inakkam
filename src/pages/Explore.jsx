@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Heart, MapPin, X, Flame } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useSelector, useDispatch } from 'react-redux';
-import { fetchDiscoverUsers } from '../redux/slices/userSlice';
+import { useNavigate } from 'react-router-dom';
+import { fetchDiscoverUsers, fetchReceivedLikes } from '../redux/slices/userSlice';
 
 const exploreCategories = ['New Match', 'Like Me', 'Favourite', 'Passed'];
 
@@ -65,13 +66,17 @@ const dummyProfiles = [
 
 const Explore = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState('New Match');
   const likedProfiles = useSelector((state) => state.user.likedProfiles || []);
   const discoveredUsers = useSelector((state) => state.user.discoveredUsers || []);
+  const receivedLikes = useSelector((state) => state.user.receivedLikes || []);
 
   useEffect(() => {
     if (activeCategory === 'New Match' && discoveredUsers.length === 0) {
       dispatch(fetchDiscoverUsers(1));
+    } else if (activeCategory === 'Like Me') {
+      dispatch(fetchReceivedLikes());
     }
   }, [activeCategory, discoveredUsers.length, dispatch]);
 
@@ -81,7 +86,10 @@ const Explore = () => {
     sourceList = likedProfiles;
   } else if (activeCategory === 'New Match') {
     sourceList = discoveredUsers; // Real profiles from backend
+  } else if (activeCategory === 'Like Me' && receivedLikes.length > 0) {
+    sourceList = receivedLikes.map(item => item.user);
   }
+
 
   const displayProfiles = sourceList.map((p, i) => ({
     id: p.id || p._id || i,

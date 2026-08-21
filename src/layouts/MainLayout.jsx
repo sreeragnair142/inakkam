@@ -44,6 +44,8 @@ const MainLayout = ({ children }) => {
   const isGuest = useSelector((state) => state.auth.isGuest);
   const notifications = useSelector((state) => state.notification.items);
   const unreadNotifCount = useSelector((state) => state.notification.unreadCount);
+  const receivedLikes = useSelector((state) => state.user.receivedLikes);
+  const receivedLikesCount = receivedLikes ? receivedLikes.length : 0;
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -82,29 +84,32 @@ const MainLayout = ({ children }) => {
 
   useEffect(() => {
     const path = location.pathname.slice(1);
-    if (path && ['home', 'swipe', 'explore', 'chat', 'membership', 'profile', 'settings'].includes(path)) {
+    if (path && ['home', 'swipe', 'likes', 'explore', 'chat', 'membership', 'profile', 'settings'].includes(path)) {
       dispatch(setActiveTab(path));
     }
   }, [location.pathname, dispatch]);
 
-  // BOTTOM MOBILE NAV ITEMS (Matches 2nd Screenshot)
+  // BOTTOM MOBILE NAV ITEMS (Floating elevated capsule layout)
   const navItems = [
     { id: 'swipe', label: 'Home', icon: Flame, path: '/swipe' },
-    { id: 'explore', label: 'Explore', icon: Heart, path: '/explore', isSpecial: true },
+    { id: 'likes', label: 'Likes', icon: Heart, path: '/likes' },
+    { id: 'explore', label: 'Explore', icon: Sparkles, path: '/explore' },
     { id: 'chat', label: 'Chat', icon: MessageSquare, path: '/chat' },
     { id: 'profile', label: 'Profile', icon: User, path: '/profile' },
   ];
 
-  // SIDEBAR ITEMS (Matches 1st Screenshot perfectly)
+  // SIDEBAR ITEMS
   const sidebarItems = [
     { id: 'swipe', label: 'Home', icon: Flame, path: '/swipe' },
-    { id: 'explore', label: 'Explore', icon: Heart, path: '/explore' },
+    { id: 'likes', label: 'Likes You', icon: Heart, path: '/likes' },
+    { id: 'explore', label: 'Explore', icon: Sparkles, path: '/explore' },
     { id: 'settings', label: 'Settings', icon: Settings, action: () => { setShowSettingsModal(true); setShowSidebar(false); } },
     { id: 'wallet', label: 'Wallet', icon: Wallet, path: '/wallet' },
     { id: 'buy-coin', label: 'Buy Coin', icon: Sparkles, path: '/buy-coin' },
     { id: 'security', label: 'Account & Security', icon: ShieldCheck, path: '/security' },
     { id: 'chat', label: 'User Chat', icon: MessageSquare, path: '/chat' },
   ];
+
 
   const handleNavClick = (path) => {
     navigate(path);
@@ -459,75 +464,36 @@ const MainLayout = ({ children }) => {
 
       </div>
 
-      {/* Fixed Bottom Nav Bar on Mobile (App Style) */}
-      <div
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          zIndex: 40,
-          backgroundColor: '#D51659',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderTop: '1px solid rgba(255,255,255,0.15)',
-          boxShadow: '0 -10px 40px -10px rgba(213,22,89,0.3)',
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        }}
-        className="mobile-bottom-nav lg:hidden"
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', height: '64px', padding: '0 8px' }}>
+      {/* Elevated Premium Floating Bottom Nav Bar on Mobile */}
+      <div className="fixed bottom-4 left-3 right-3 sm:left-6 sm:right-6 lg:hidden z-40">
+        <nav className="bg-[#D51659]/95 backdrop-blur-xl border border-white/20 shadow-2xl shadow-[#D51659]/30 rounded-full px-2 py-2 flex items-center justify-around">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
-
-            if (item.isSpecial) {
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleNavClick(item.path)}
-                  className="flex flex-col items-center justify-center flex-1 h-full relative cursor-pointer border-none bg-transparent"
-                >
-                  <div className={`w-[42px] h-[42px] rounded-full flex items-center justify-center transition-all shadow-md mt-[-10px]
-                  ${isActive ? 'bg-white shadow-lg shadow-white/30 border border-white scale-110' : 'bg-white/15 border border-white/20'}`}
-                  >
-                    <item.icon className={`w-[22px] h-[22px] ${isActive ? 'text-[#D51659] fill-[#D51659]' : 'text-white/70'}`} strokeWidth={isActive ? 0 : 2} />
-                  </div>
-                  <span className={`text-[9px] font-bold mt-1 ${isActive ? 'text-white' : 'text-white/70'}`}>
-                    {item.label}
-                  </span>
-                </button>
-              );
-            }
-
             return (
               <button
                 key={item.id}
                 onClick={() => handleNavClick(item.path)}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flex: 1,
-                  height: '100%',
-                  gap: '4px',
-                  border: 'none',
-                  background: 'none',
-                  cursor: 'pointer',
-                  color: isActive ? '#ffffff' : 'rgba(255,255,255,0.7)',
-                  transition: 'all 0.2s',
-                  padding: 0,
-                }}
+                className={`flex flex-col items-center justify-center flex-1 py-1 px-0.5 rounded-full transition-all relative border-none bg-transparent cursor-pointer ${
+                  isActive ? 'text-white font-extrabold scale-105' : 'text-white/70 hover:text-white font-medium'
+                }`}
               >
-                <item.icon style={{ width: '22px', height: '22px', strokeWidth: isActive ? 2.5 : 2 }} />
-                <span style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.025em', transition: 'all 0.2s' }}>
+                <div className="relative flex items-center justify-center">
+                  <item.icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5px]' : 'stroke-2'}`} />
+                  {item.id === 'likes' && receivedLikesCount > 0 && (
+                    <span className="absolute -top-1 -right-2 min-w-[16px] h-4 px-1 bg-white text-[#D51659] text-[9px] font-black rounded-full flex items-center justify-center shadow-md">
+                      {receivedLikesCount}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] tracking-tight mt-0.5 whitespace-nowrap">
                   {item.label}
                 </span>
               </button>
             );
           })}
-        </div>
+        </nav>
       </div>
+
 
     </>
   );

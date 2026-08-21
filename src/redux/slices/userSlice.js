@@ -24,6 +24,15 @@ export const fetchMatches = createAsyncThunk('user/fetchMatches', async (_, { re
   }
 });
 
+export const fetchReceivedLikes = createAsyncThunk('user/fetchReceivedLikes', async (_, { rejectWithValue }) => {
+  try {
+    const res = await api.get('/swipe/received-likes');
+    return res.data.likes;
+  } catch (err) {
+    return rejectWithValue(err);
+  }
+});
+
 export const apiSwipe = createAsyncThunk('user/apiSwipe', async ({ userId, action }, { rejectWithValue }) => {
   try {
     const res = await api.post('/swipe', { swipedUserId: userId, action });
@@ -38,6 +47,7 @@ const initialState = {
   discoveredUsers: [], // Start empty
   currentSwipeIndex: 0,
   matches: [],
+  receivedLikes: [], // Profiles that liked current user
   selectedUserId: null,
   swipeHistory: [],
   likedProfiles: [], // New state for Explore page
@@ -85,6 +95,13 @@ const userSlice = createSlice({
       const exists = state.likedProfiles.some(p => (p.id || p._id) === (action.payload.id || action.payload._id));
       if (!exists) state.likedProfiles.unshift(action.payload);
     },
+    removeReceivedLike: (state, action) => {
+      const targetId = action.payload;
+      state.receivedLikes = state.receivedLikes.filter(item => {
+        const userId = item.user?._id || item.user?.id || item._id;
+        return userId !== targetId;
+      });
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -103,6 +120,10 @@ const userSlice = createSlice({
         state.matches = mapUsers(action.payload) || [];
       })
 
+      .addCase(fetchReceivedLikes.fulfilled, (state, action) => {
+        state.receivedLikes = action.payload || [];
+      })
+
       .addCase(apiSwipe.fulfilled, (state, action) => {
         // If it's a real match, the notification will fire via socket
         if (action.payload?.isMatch && action.payload?.match) {
@@ -112,5 +133,6 @@ const userSlice = createSlice({
   },
 });
 
-export const { swipeLeft, swipeRight, undoSwipe, selectUser, resetSwipes, addMatch, addLikedProfile } = userSlice.actions;
+export const { swipeLeft, swipeRight, undoSwipe, selectUser, resetSwipes, addMatch, addLikedProfile, removeReceivedLike } = userSlice.actions;
 export default userSlice.reducer;
+

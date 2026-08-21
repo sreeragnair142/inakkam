@@ -7,6 +7,7 @@ import Onboarding from "../pages/Onboarding";
 import Home from "../pages/Home";
 import Discover from "../pages/Discover";
 import Explore from "../pages/Explore";
+import Likes from "../pages/Likes";
 import Chat from "../pages/Chat";
 import Membership from "../pages/Membership";
 import Profile from "../pages/Profile";
@@ -61,6 +62,16 @@ const AppRoutes = () => {
         }
       />
       <Route
+        path="/likes"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Likes />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/explore"
         element={
           <ProtectedRoute>
@@ -70,6 +81,7 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+
       <Route
         path="/chat"
         element={
