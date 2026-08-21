@@ -39,9 +39,26 @@ const VideoCall = ({
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
+  const remoteAudioRef = useRef(null);
   const roomInstanceRef = useRef(null);
   const localStreamRef = useRef(null);
   const simulationTimerRef = useRef(null);
+
+  // Function to unlock audio on browser autoplay policy restrictions
+  const unlockAudio = () => {
+    if (remoteAudioRef.current) {
+      remoteAudioRef.current.play().catch(() => {});
+    }
+    const container = document.getElementById('remote-video-container');
+    if (container) {
+      const mediaEls = container.querySelectorAll('video, audio');
+      mediaEls.forEach(el => {
+        el.muted = false;
+        el.volume = 1.0;
+        el.play().catch(() => {});
+      });
+    }
+  };
 
   // 1. Call timer & Periodic Coin Deduction (every 20s)
   useEffect(() => {
@@ -122,12 +139,10 @@ const VideoCall = ({
       };
 
       // Join room and publish local stream
-      // EnxRtc.joinRoom returns the local stream, and callback receives room status
       const localStream = window.EnxRtc.joinRoom(token, publishOptions, (success, error) => {
         if (error) {
           console.error('[EnableX Join Room Failed]', error);
           
-          // Check for permission denied, media access denied, missing device, or any join error
           const isMediaError = 
             error.type === 'media-access-denied' ||
             error.msg?.result === 1144 ||
@@ -167,18 +182,56 @@ const VideoCall = ({
         roomInstanceRef.current = room;
         setCallStatus('connected');
 
-        // Function to safely play remote streams into the DOM container
+        // Unmute local mic audio explicitly to transmit voice
+        if (localStream) {
+          try {
+            localStream.unmuteAudio();
+            console.log('🎙️ Local microphone audio unmuted successfully');
+          } catch (e) {
+            console.warn('[Unmute Local Audio Warning]', e);
+          }
+        }
+
+        // Function to play remote streams and wire audio directly
         const playRemoteStream = (stream) => {
           if (!stream) return;
-          // Play stream into container so WebRTC audio and video tracks play
-          if (remoteVideoRef.current) {
+          console.log('🔊 Playing remote media stream:', stream.getID());
+          
+          // 1. EnableX SDK container play
+          try {
+            stream.play('remote-video-container');
+          } catch (err) {
+            console.error('[EnableX Remote Stream Play Error]', err);
+          }
+
+          // 2. Direct WebRTC MediaStream audio track attachment to dedicated HTMLAudioElement
+          const rawStream = stream.stream || (typeof stream.getMediaStream === 'function' ? stream.getMediaStream() : null);
+          if (rawStream && remoteAudioRef.current) {
             try {
-              console.log('🔊 Playing remote media stream:', stream.getID());
-              stream.play(remoteVideoRef.current.id);
+              console.log('🎙️ Attaching native WebRTC MediaStream to remoteAudioRef');
+              remoteAudioRef.current.srcObject = rawStream;
+              remoteAudioRef.current.volume = 1.0;
+              remoteAudioRef.current.muted = false;
+              remoteAudioRef.current.play().catch(e => {
+                console.warn('[Remote Audio Play Autoplay Notice]', e);
+              });
             } catch (err) {
-              console.error('[EnableX Remote Stream Play Error]', err);
+              console.error('[Remote Audio Attach Error]', err);
             }
           }
+
+          // 3. Ensure any nested video/audio tags inside container are unmuted and played
+          setTimeout(() => {
+            const container = document.getElementById('remote-video-container');
+            if (container) {
+              const mediaEls = container.querySelectorAll('video, audio');
+              mediaEls.forEach(el => {
+                el.muted = false;
+                el.volume = 1.0;
+                el.play().catch(() => {});
+              });
+            }
+          }, 400);
         };
 
         // Subscribe to existing remote streams in the room
@@ -201,6 +254,7 @@ const VideoCall = ({
           console.log('🎉 Stream subscribed successfully:', stream.getID());
           playRemoteStream(stream);
         });
+
 
         // Event: User Disconnected
         room.addEventListener('user-disconnected', () => {
@@ -354,8 +408,14 @@ const VideoCall = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[1000] flex bg-[#0A0A0A] text-white overflow-hidden font-sans select-none">
-      
+    <div
+      onClick={unlockAudio}
+      onTouchStart={unlockAudio}
+      className="fixed inset-0 z-[1000] flex bg-[#0A0A0A] text-white overflow-hidden font-sans select-none"
+    >
+      {/* Hidden Dedicated Audio Player for WebRTC MediaStream (guarantees voice output for both parties) */}
+      <audio ref={remoteAudioRef} id="remote-audio-player" autoPlay playsInline style={{ display: 'none' }} />
+
       {/* Radial glow backgrounds */}
       <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] rounded-full bg-[#D51659]/10 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] rounded-full bg-[#B44DDC]/10 blur-[120px] pointer-events-none" />
@@ -393,22 +453,18 @@ const VideoCall = ({
       {/* Active Call screen */}
       {callStatus === 'connected' && (
         <div className="flex-1 flex relative">
-          
-          {/* Permanent media container elements for EnableX WebRTC stream playback (Audio + Video) */}
-          {!isSimulation && (
-            <div className={callType === 'audio' ? "w-0 h-0 opacity-0 pointer-events-none absolute" : "hidden"}>
-              {callType === 'audio' && (
-                <>
-                  <div id="remote-video-container" ref={remoteVideoRef} className="w-0 h-0" />
-                  <div id="local-video-container" ref={localVideoRef} className="w-0 h-0" />
-                </>
-              )}
-            </div>
-          )}
 
           {/* Main viewport */}
           {callType === 'audio' ? (
             <div className="flex-1 h-full relative overflow-hidden flex flex-col items-center justify-center bg-gradient-to-b from-[#150A1A] via-[#0A0A0A] to-[#1A0A15]">
+              {/* Media Stream Containers for Audio Call */}
+              {!isSimulation && (
+                <div className="w-1 h-1 opacity-0 pointer-events-none absolute top-0 left-0 overflow-hidden">
+                  <div id="remote-video-container" ref={remoteVideoRef} className="w-full h-full" />
+                  <div id="local-video-container" ref={localVideoRef} className="w-full h-full" />
+                </div>
+              )}
+
               {/* Pulsing Glowing Aura */}
               <div className="relative mb-8 flex items-center justify-center">
                 <span className="absolute w-52 h-52 rounded-full bg-[#D51659]/20 blur-2xl animate-pulse" />
