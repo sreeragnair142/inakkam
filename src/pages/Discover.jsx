@@ -16,8 +16,85 @@ import {
   Gift,
   CheckCircle2
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import confetti from 'canvas-confetti';
+
+const MobileCard = ({ profile, active, onSwipe, swipeDirection, onClick }) => {
+  const x = useMotionValue(0);
+  const rotate = useTransform(x, [-150, 150], [-20, 20]);
+  const opacityLike = useTransform(x, [0, 80], [0, 1]);
+  const opacityNope = useTransform(x, [-80, 0], [1, 0]);
+
+  const handleDragEnd = (event, info) => {
+    const threshold = 100;
+    if (info.offset.x > threshold) {
+      onSwipe('like');
+    } else if (info.offset.x < -threshold) {
+      onSwipe('pass');
+    }
+  };
+
+  const ringStrokeOffset = 100 - (profile.matchPercentage || 0);
+
+  return (
+    <motion.div
+      style={{ x, rotate }}
+      drag={active ? "x" : false}
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={0.6}
+      onDragEnd={handleDragEnd}
+      whileDrag={{ scale: 1.02 }}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{
+        x: swipeDirection === 'right' ? 800 : swipeDirection === 'left' ? -800 : 0,
+        rotate: swipeDirection === 'right' ? 30 : swipeDirection === 'left' ? -30 : 0,
+        opacity: 0,
+        transition: { duration: 0.35 }
+      }}
+      onClick={onClick}
+      className="absolute inset-0 w-full h-full rounded-[2rem] overflow-hidden border border-slate-200 shadow-2xl bg-[#FCFAF2] cursor-grab active:cursor-grabbing select-none z-10"
+    >
+      <img src={profile.images?.[0] || 'https://via.placeholder.com/400x500'} alt={profile.name} className="w-full h-full object-cover pointer-events-none select-none" />
+      <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none" />
+
+      {/* Swipe Indicators */}
+      <motion.div
+        style={{ opacity: opacityLike }}
+        className="absolute top-8 left-8 border-4 border-green-500 text-green-500 font-extrabold text-2xl uppercase tracking-widest px-4 py-2 rounded-xl rotate-[-12deg] pointer-events-none z-30"
+      >
+        LIKE
+      </motion.div>
+      <motion.div
+        style={{ opacity: opacityNope }}
+        className="absolute top-8 right-8 border-4 border-rose-500 text-rose-500 font-extrabold text-2xl uppercase tracking-widest px-4 py-2 rounded-xl rotate-[12deg] pointer-events-none z-30"
+      >
+        NOPE
+      </motion.div>
+
+      {/* Info Container */}
+      <div className="absolute inset-x-0 bottom-10 px-5 flex justify-between items-end pointer-events-none select-none">
+        <h3 className="text-white font-black text-xl drop-shadow-md pb-1 truncate max-w-[60%]">
+          {profile.name}, {profile.age}
+        </h3>
+
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <div className="w-12 h-12 rounded-full flex items-center justify-center relative bg-black/10 backdrop-blur-sm border border-white/10">
+            <svg className="absolute inset-0 w-full h-full -rotate-90">
+              <circle cx="50%" cy="50%" r="42%" stroke="rgba(255,255,255,0.15)" strokeWidth="2.5" fill="none" />
+              <circle cx="50%" cy="50%" r="42%" stroke="white" strokeWidth="2.5" fill="none" strokeDasharray="100" strokeDashoffset={ringStrokeOffset} strokeLinecap="round" />
+            </svg>
+            <span className="text-white text-[11px] font-black">{profile.matchPercentage}%</span>
+          </div>
+          <div className="bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-1.5 border border-white/20 text-white shadow-lg">
+            <MapPin className="w-3 h-3 text-white/80" />
+            <span className="text-[10px] font-bold tracking-wider uppercase">{profile.distance}</span>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
 
 const Discover = () => {
   const dispatch = useDispatch();
@@ -25,6 +102,12 @@ const Discover = () => {
   const reduxDiscoveredUsers = useSelector((state) => state.user.discoveredUsers);
 
   const [localUsers, setLocalUsers] = useState([]);
+  const [swipeDirection, setSwipeDirection] = useState(null);
+
+  // Reset swipe direction when the top card changes
+  useEffect(() => {
+    setSwipeDirection(null);
+  }, [localUsers.length > 0 ? (localUsers[0].id || localUsers[0]._id) : null]);
 
   useEffect(() => {
     // Fetch users when the discover page mounts
@@ -39,7 +122,7 @@ const Discover = () => {
   }, [reduxDiscoveredUsers]);
 
   const handleAction = (e, actionType, profile) => {
-    e.stopPropagation();
+    if (e && e.stopPropagation) e.stopPropagation();
 
     if (actionType === 'message') {
       dispatch(createNewChat(profile));
@@ -73,6 +156,23 @@ const Discover = () => {
       dispatch({ type: 'user/addLikedProfile', payload: profile });
     }
   };
+
+  const handleMobileSwipe = (actionType) => {
+    if (localUsers.length === 0) return;
+    const topProfile = localUsers[0];
+
+    if (actionType === 'message') {
+      handleAction(null, 'message', topProfile);
+      return;
+    }
+
+    const direction = actionType === 'like' || actionType === 'gift' ? 'right' : 'left';
+    setSwipeDirection(direction);
+
+    // Remove user from state, triggering exit animation
+    handleAction(null, actionType, topProfile);
+  };
+
   const isMatchedOpen = useSelector((state) => state.ui.isMatchedModalOpen);
   const matchedUser = useSelector((state) => state.ui.lastMatchedUser);
   const currentUser = useSelector((state) => state.auth.user);
@@ -91,72 +191,121 @@ const Discover = () => {
 
 
       {localUsers && localUsers.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-x-8 md:gap-y-12 w-full max-w-7xl mx-auto px-4 z-10 relative">
-          <AnimatePresence>
-            {localUsers.map((profile) => (
-              <motion.div
-                key={profile.id}
-                layout
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                transition={{ duration: 0.3 }}
-                className="relative w-full aspect-[3/4] rounded-[2rem] overflow-visible group mt-4"
-              >
-                {/* Card Inner */}
-                <div
-                  onClick={() => setSelectedProfile(profile)}
-                  className="w-full h-full rounded-[2rem] overflow-hidden relative border border-slate-200 shadow-2xl bg-[#FCFAF2] cursor-pointer"
+        <>
+          {/* Desktop/Tablet Grid View */}
+          <div className="hidden sm:grid grid-cols-2 md:grid-cols-3 gap-6 md:gap-x-8 md:gap-y-12 w-full max-w-7xl mx-auto px-4 z-10 relative">
+            <AnimatePresence>
+              {localUsers.map((profile) => (
+                <motion.div
+                  key={profile.id || profile._id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                  transition={{ duration: 0.3 }}
+                  className="relative w-full aspect-[3/4] rounded-[2rem] overflow-visible group mt-4"
                 >
-                  <img src={profile.images[0]} alt={profile.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                  {/* Premium clean gradient only at the bottom for text readability */}
-                  <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none" />
+                  {/* Card Inner */}
+                  <div
+                    onClick={() => setSelectedProfile(profile)}
+                    className="w-full h-full rounded-[2rem] overflow-hidden relative border border-slate-200 shadow-2xl bg-[#FCFAF2] cursor-pointer"
+                  >
+                    <img src={profile.images[0]} alt={profile.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                    {/* Premium clean gradient only at the bottom for text readability */}
+                    <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none" />
 
-                  {/* Info Container */}
-                  <div className="absolute inset-x-0 bottom-10 px-5 flex justify-between items-end">
-                    {/* Left: Name and Age */}
-                    <h3 className="text-white font-black text-xl drop-shadow-md pb-1 truncate max-w-[60%]">
-                      {profile.name}, {profile.age}
-                    </h3>
+                    {/* Info Container */}
+                    <div className="absolute inset-x-0 bottom-10 px-5 flex justify-between items-end">
+                      {/* Left: Name and Age */}
+                      <h3 className="text-white font-black text-xl drop-shadow-md pb-1 truncate max-w-[60%]">
+                        {profile.name}, {profile.age}
+                      </h3>
 
-                    {/* Right: Ring and Location */}
-                    <div className="flex flex-col items-end gap-2 shrink-0">
-                      {/* Ring */}
-                      <div className="w-12 h-12 rounded-full flex items-center justify-center relative bg-black/10 backdrop-blur-sm border border-white/10">
-                        <svg className="absolute inset-0 w-full h-full -rotate-90">
-                          <circle cx="50%" cy="50%" r="42%" stroke="rgba(255,255,255,0.15)" strokeWidth="2.5" fill="none" />
-                          <circle cx="50%" cy="50%" r="42%" stroke="white" strokeWidth="2.5" fill="none" strokeDasharray="100" strokeDashoffset={100 - profile.matchPercentage} strokeLinecap="round" />
-                        </svg>
-                        <span className="text-white text-[11px] font-black">{profile.matchPercentage}%</span>
-                      </div>
-                      {/* Location Pill */}
-                      <div className="bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-1.5 border border-white/20 text-white shadow-lg">
-                        <MapPin className="w-3 h-3 text-white/80" />
-                        <span className="text-[10px] font-bold tracking-wider uppercase">{profile.distance}</span>
+                      {/* Right: Ring and Location */}
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        {/* Ring */}
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center relative bg-black/10 backdrop-blur-sm border border-white/15">
+                          <svg className="absolute inset-0 w-full h-full -rotate-90">
+                            <circle cx="50%" cy="50%" r="42%" stroke="rgba(255,255,255,0.15)" strokeWidth="2.5" fill="none" />
+                            <circle cx="50%" cy="50%" r="42%" stroke="white" strokeWidth="2.5" fill="none" strokeDasharray="100" strokeDashoffset={100 - profile.matchPercentage} strokeLinecap="round" />
+                          </svg>
+                          <span className="text-white text-[11px] font-black">{profile.matchPercentage}%</span>
+                        </div>
+                        {/* Location Pill */}
+                        <div className="bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-1.5 border border-white/20 text-white shadow-lg">
+                          <MapPin className="w-3 h-3 text-white/80" />
+                          <span className="text-[10px] font-bold tracking-wider uppercase">{profile.distance}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Overlapping Action Buttons */}
-                <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2.5 z-20">
-                  <button onClick={(e) => handleAction(e, 'pass', profile)} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
-                    <X className="w-5 h-5 text-yellow-500" strokeWidth={2.5} />
-                  </button>
-                  <button onClick={(e) => handleAction(e, 'like', profile)} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
-                    <Heart className="w-5 h-5 text-rose-500 fill-current" />
-                  </button>
-                  <button onClick={(e) => handleAction(e, 'message', profile)} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
-                    <MessageSquare className="w-5 h-5 text-purple-500 fill-current" />
-                  </button>
-                  <button onClick={(e) => handleAction(e, 'gift', profile)} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
-                    <Gift className="w-5 h-5 text-yellow-400 fill-current" />
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
+                  {/* Overlapping Action Buttons */}
+                  <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2.5 z-20">
+                    <button onClick={(e) => handleAction(e, 'pass', profile)} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                      <X className="w-5 h-5 text-yellow-500" strokeWidth={2.5} />
+                    </button>
+                    <button onClick={(e) => handleAction(e, 'like', profile)} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                      <Heart className="w-5 h-5 text-rose-500 fill-current" />
+                    </button>
+                    <button onClick={(e) => handleAction(e, 'message', profile)} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                      <MessageSquare className="w-5 h-5 text-purple-500 fill-current" />
+                    </button>
+                    <button onClick={(e) => handleAction(e, 'gift', profile)} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                      <Gift className="w-5 h-5 text-yellow-400 fill-current" />
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+
+          {/* Mobile Tinder-Style Swiping Stack */}
+          <div className="block sm:hidden w-full max-w-sm px-4 mx-auto z-10 relative">
+            <div className="relative w-full aspect-[3/4.2] rounded-[2rem] overflow-visible">
+              <AnimatePresence>
+                {localUsers[1] && (
+                  <div
+                    key={localUsers[1].id || localUsers[1]._id}
+                    className="absolute inset-0 w-full h-full rounded-[2rem] overflow-hidden border border-slate-200/80 shadow-md bg-[#FCFAF2] scale-95 translate-y-3 opacity-60 origin-bottom transition-all duration-300 pointer-events-none"
+                  >
+                    <img src={localUsers[1].images?.[0] || 'https://via.placeholder.com/400x500'} alt={localUsers[1].name} className="w-full h-full object-cover" />
+                    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+                  </div>
+                )}
+
+                {localUsers[0] && (
+                  <MobileCard
+                    key={localUsers[0].id || localUsers[0]._id}
+                    profile={localUsers[0]}
+                    active={true}
+                    swipeDirection={swipeDirection}
+                    onSwipe={handleMobileSwipe}
+                    onClick={() => setSelectedProfile(localUsers[0])}
+                  />
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Control action buttons - keep EXACT icons and colors */}
+            {localUsers[0] && (
+              <div className="flex items-center justify-center gap-3.5 mt-8 z-20">
+                <button onClick={() => handleMobileSwipe('pass')} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                  <X className="w-5 h-5 text-yellow-500" strokeWidth={2.5} />
+                </button>
+                <button onClick={() => handleMobileSwipe('like')} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                  <Heart className="w-5 h-5 text-rose-500 fill-current" />
+                </button>
+                <button onClick={() => handleMobileSwipe('message')} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                  <MessageSquare className="w-5 h-5 text-purple-500 fill-current" />
+                </button>
+                <button onClick={() => handleMobileSwipe('gift')} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                  <Gift className="w-5 h-5 text-yellow-400 fill-current" />
+                </button>
+              </div>
+            )}
+          </div>
+        </>
       ) : (
         /* Empty State */
         <div className="relative z-10 max-w-md w-full p-10 rounded-[2.5rem] text-center bg-[#FCFAF2] border border-slate-200 shadow-xl">
