@@ -14,8 +14,10 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { useDispatch } from 'react-redux';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
+import { fetchMe } from '../redux/slices/authSlice';
 
 
 const VideoCall = ({ 
@@ -25,8 +27,10 @@ const VideoCall = ({
   remoteUserPhoto, 
   callType = 'video', 
   onEndCall, 
-  currentUser 
+  currentUser,
+  targetUserId
 }) => {
+  const dispatch = useDispatch();
   const [callStatus, setCallStatus] = useState('ringing'); // ringing | connecting | connected | disconnected
   const [duration, setDuration] = useState(0);
   const [micActive, setMicActive] = useState(true);
@@ -60,7 +64,7 @@ const VideoCall = ({
     }
   };
 
-  // 1. Call timer & Periodic Coin Deduction (every 20s)
+  // 1. Call timer & Periodic Coin Deduction / Agent Earnings (every 20s)
   useEffect(() => {
     let timer = null;
     let coinDeductInterval = null;
@@ -70,30 +74,30 @@ const VideoCall = ({
         setDuration(prev => prev + 1);
       }, 1000);
 
-      // Periodically deduct coins every 20 seconds for non-staff callers
-      const isStaff = currentUser?.isStaff || currentUser?.isEliteAgent || currentUser?.role === 'staff';
-      if (!isStaff) {
-        coinDeductInterval = setInterval(async () => {
-          try {
-            const res = await api.post('/coins/deduct-call', {
-              callType,
-              seconds: 20
-            });
-            if (!res.data.success && res.data.insufficientCoins) {
-              toast.error('Insufficient coin balance to continue call');
-              if (onEndCall) onEndCall();
-            }
-          } catch (err) {
-            // Ignore API error in mock mode
+      // Periodically deduct/credit coins every 20 seconds for calls
+      coinDeductInterval = setInterval(async () => {
+        try {
+          const res = await api.post('/coins/deduct-call', {
+            targetUserId,
+            callType,
+            seconds: 20
+          });
+          if (!res.data.success && res.data.insufficientCoins) {
+            toast.error('Insufficient coin balance to continue call');
+            if (onEndCall) onEndCall();
+          } else {
+            dispatch(fetchMe());
           }
-        }, 20000);
-      }
+        } catch (err) {
+          // Ignore API error in simulation mode
+        }
+      }, 20000);
     }
     return () => {
       if (timer) clearInterval(timer);
       if (coinDeductInterval) clearInterval(coinDeductInterval);
     };
-  }, [callStatus, callType, currentUser, onEndCall]);
+  }, [callStatus, callType, currentUser, targetUserId, dispatch, onEndCall]);
 
 
   // 2. EnableX Web SDK Join Room

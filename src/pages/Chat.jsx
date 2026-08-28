@@ -52,7 +52,11 @@ const Chat = () => {
   const [showRechargeModal, setShowRechargeModal] = useState(false);
 
 
-  const activeChat = chats.find(c => c.id === activeChatId) || chats[0];
+  const hasAutoSelectedRef = useRef(false);
+
+  const activeChat = activeChatId
+    ? chats.find(c => String(c.id || c.conversationId) === String(activeChatId) || String(c.conversationId) === String(activeChatId))
+    : null;
   const activeChatMessages = useSelector((state) => state.chat.activeChatMessages);
   const messagesEndRef = useRef(null);
 
@@ -61,10 +65,13 @@ const Chat = () => {
     dispatch(fetchConversations());
   }, [dispatch]);
 
-  // Auto-select first active thread if none selected
+  // Auto-select first active thread on desktop initial load if none selected
   useEffect(() => {
-    if (!activeChatId && chats && chats.length > 0) {
-      dispatch(setActiveChat(chats[0].id));
+    if (!hasAutoSelectedRef.current && !activeChatId && chats && chats.length > 0) {
+      hasAutoSelectedRef.current = true;
+      if (window.innerWidth >= 768) {
+        dispatch(setActiveChat(chats[0].id || chats[0].conversationId));
+      }
     }
   }, [chats, activeChatId, dispatch]);
 
@@ -312,24 +319,24 @@ const Chat = () => {
     const isStaff = currentUser?.isStaff || currentUser?.isEliteAgent || currentUser?.role === 'staff';
     const recipientId = activeChat.user?._id || activeChat.userId;
 
-    // If customer, deduct 30 coins
-    if (!isStaff) {
-      const userBalance = currentUser?.wallet?.balance || 0;
-      if (userBalance < 30) {
-        setShowRechargeModal(true);
-        return;
-      }
-
-      try {
-        const coinRes = await api.post('/coins/deduct-message', { recipientId });
-        if (!coinRes.data.success && coinRes.data.insufficientCoins) {
+    // Process message coin deduction (customer spends coins) or credit (agent earns coins)
+    try {
+      if (!isStaff) {
+        const userBalance = currentUser?.wallet?.balance || 0;
+        if (userBalance < 30) {
           setShowRechargeModal(true);
           return;
         }
-        dispatch(fetchMe());
-      } catch (err) {
-        // Continue in local/dev fallback mode
       }
+
+      const coinRes = await api.post('/coins/deduct-message', { recipientId });
+      if (!isStaff && !coinRes.data.success && coinRes.data.insufficientCoins) {
+        setShowRechargeModal(true);
+        return;
+      }
+      dispatch(fetchMe());
+    } catch (err) {
+      // Continue in local/dev fallback mode
     }
 
     const messageText = inputMessage.trim();
@@ -392,7 +399,7 @@ const Chat = () => {
 
       {/* LEFT PANE: Conversations list */}
       <div className={`w-full md:w-80 border-r shrink-0 flex flex-col justify-between
-        ${activeChatId && 'hidden md:flex'}
+        ${activeChatId ? 'hidden md:flex' : 'flex'}
         border-slate-200/60 bg-white/95 backdrop-blur-xl z-10 shadow-[4px_0_24px_rgba(0,0,0,0.015)]`}
       >
         <div className="p-4 border-b border-slate-100/60 flex flex-col gap-3">
@@ -428,7 +435,7 @@ const Chat = () => {
         {/* Conversations Thread list */}
         <div className="flex-1 overflow-y-auto no-scrollbar py-2 space-y-1">
           {filteredChats.map((chat) => {
-            const isSelected = activeChat && chat.id === activeChat.id;
+            const isSelected = activeChat && (chat.id === activeChat.id || chat.conversationId === activeChat.conversationId);
             const lastMsgText = chat.lastMessage?.text || '';
             const lastMsgTime = chat.lastMessage?.createdAt
               ? new Date(chat.lastMessage.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -436,8 +443,8 @@ const Chat = () => {
 
             return (
               <div
-                key={chat.id}
-                onClick={() => dispatch(setActiveChat(chat.id))}
+                key={chat.id || chat.conversationId}
+                onClick={() => dispatch(setActiveChat(chat.id || chat.conversationId))}
                 className={`mx-3 p-3 flex items-center gap-3 cursor-pointer rounded-2xl transition-all duration-300 border relative
                   ${isSelected
                     ? 'bg-white border-[#D51659]/30 shadow-md shadow-[#D51659]/5'
@@ -486,7 +493,7 @@ const Chat = () => {
 
       {/* RIGHT PANE: Message window */}
       <div className={`flex-1 flex flex-col min-w-0 bg-[#F4F3ED] relative z-10 shadow-inner
-        ${!activeChat && 'hidden md:flex'}`}
+        ${!activeChatId ? 'hidden md:flex' : 'flex'}`}
       >
         {activeChat ? (
           <>
@@ -496,9 +503,10 @@ const Chat = () => {
                 {/* Back button for mobile */}
                 <button
                   onClick={() => dispatch(setActiveChat(null))}
-                  className="md:hidden p-1.5 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 mr-1"
+                  className="md:hidden p-1.5 rounded-xl text-slate-600 hover:text-[#D51659] hover:bg-slate-100/80 transition-colors mr-1 flex items-center justify-center border border-slate-200/60 shadow-sm bg-white cursor-pointer active:scale-95 shrink-0"
+                  title="Back to conversations"
                 >
-                  <ChevronRight className="w-5 h-5 rotate-180" />
+                  <ArrowLeft className="w-5 h-5 text-slate-700" />
                 </button>
 
                 <div className="relative">
@@ -799,6 +807,7 @@ const Chat = () => {
           callType={activeCall.callType}
           onEndCall={handleEndCall}
           currentUser={currentUser}
+          targetUserId={activeCall.targetUserId || activeChat?.user?._id || activeChat?.userId}
         />
       )}
 

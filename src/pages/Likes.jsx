@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Heart, X, Sparkles, MapPin, MessageSquare, CheckCircle2, Flame, Shield, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchReceivedLikes, apiSwipe, removeReceivedLike } from '../redux/slices/userSlice';
+import { createNewChat } from '../redux/slices/chatSlice';
 import toast from 'react-hot-toast';
 
 const mockDemoLikes = [
@@ -88,20 +89,34 @@ const Likes = () => {
       const result = await dispatch(apiSwipe({ userId: targetUserId, action: 'right' })).unwrap();
       dispatch(removeReceivedLike(targetUserId));
 
+      const conversationId = result?.match?.conversationId || `chat_${targetUserId}`;
+      const matchId = result?.match?.matchId || 'temp_match_' + Date.now();
+
+      // Populate Redux chat state immediately
+      dispatch(createNewChat({
+        ...targetUser,
+        conversationId
+      }));
+
       // Trigger Instant Match Celebration Modal
       setMatchModalData({
         user: targetUser,
-        matchId: result?.match?.matchId,
-        conversationId: result?.match?.conversationId
+        matchId,
+        conversationId
       });
       toast.success(`You matched with ${targetUser.name}! 🎉`);
     } catch (err) {
       // Local fallback for smooth UI demo
       dispatch(removeReceivedLike(targetUserId));
+      const fallbackConvId = `chat_${targetUserId}`;
+      dispatch(createNewChat({
+        ...targetUser,
+        conversationId: fallbackConvId
+      }));
       setMatchModalData({
         user: targetUser,
         matchId: 'temp_match_' + Date.now(),
-        conversationId: 'temp_conv_' + Date.now()
+        conversationId: fallbackConvId
       });
       toast.success(`You matched with ${targetUser.name}! 🎉`);
     }
@@ -306,6 +321,12 @@ const Likes = () => {
               <div className="w-full flex flex-col gap-3">
                 <button
                   onClick={() => {
+                    if (matchModalData?.user) {
+                      dispatch(createNewChat({
+                        ...matchModalData.user,
+                        conversationId: matchModalData.conversationId || `chat_${matchModalData.user._id || matchModalData.user.id}`
+                      }));
+                    }
                     setMatchModalData(null);
                     navigate('/chat');
                   }}
