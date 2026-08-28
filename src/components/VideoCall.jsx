@@ -18,14 +18,30 @@ import toast from 'react-hot-toast';
 import { fetchMe } from '../redux/slices/authSlice';
 import { getSocket } from '../utils/socket';
 
-// ─── STUN Servers for robust NAT traversal ──────────────────
+// ─── STUN & TURN Servers for Guaranteed Traversal ────────────
 const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
   { urls: 'stun:stun2.l.google.com:19302' },
   { urls: 'stun:stun3.l.google.com:19302' },
   { urls: 'stun:stun4.l.google.com:19302' },
-  { urls: 'stun:global.stun.twilio.com:3478' }
+  { urls: 'stun:stun.services.mozilla.com' },
+  { urls: 'stun:global.stun.twilio.com:3478' },
+  {
+    urls: 'turn:openrelay.metered.ca:80',
+    username: 'openrelay',
+    credential: 'openrelay',
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443',
+    username: 'openrelay',
+    credential: 'openrelay',
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+    username: 'openrelay',
+    credential: 'openrelay',
+  },
 ];
 
 const VideoCall = ({
@@ -58,22 +74,26 @@ const VideoCall = ({
   const remoteStreamRef = useRef(null); // Remote MediaStream
   const onEndCallRef = useRef(onEndCall);
   const endedRef = useRef(false); // Prevent double-end
-  const callStatusRef = useRef('connecting'); // Track callStatus without stale closures
-  const iceCandidateBuffer = useRef([]); // Buffer ICE candidates until remote description is set
-  const remoteDescSet = useRef(false); // Track if remote description has been set
-  const disconnectTimerRef = useRef(null); // Recovery timer for 'disconnected' state
+  const callStatusRef = useRef('connecting');
 
-  // Keep ref in sync without causing re-renders
+  // Signal Queues to prevent race conditions during async getUserMedia
+  const pendingOfferRef = useRef(null);
+  const pendingAnswerRef = useRef(null);
+  const pendingIceCandidatesRef = useRef([]);
+  const pendingReadyRef = useRef(false);
+  const remoteDescSetRef = useRef(false);
+  const disconnectTimerRef = useRef(null);
+
+  // Keep callback refs in sync
   useEffect(() => {
     onEndCallRef.current = onEndCall;
   }, [onEndCall]);
 
-  // Keep callStatusRef in sync
   useEffect(() => {
     callStatusRef.current = callStatus;
   }, [callStatus]);
 
-  // Sync streams to video elements whenever state changes
+  // Keep local stream attached to local video
   useEffect(() => {
     if (localVideoRef.current && localStreamRef.current) {
       if (localVideoRef.current.srcObject !== localStreamRef.current) {
@@ -82,38 +102,35 @@ const VideoCall = ({
     }
   }, [callStatus, videoActive]);
 
+  // Keep remote stream attached to remote video
   useEffect(() => {
     if (remoteVideoRef.current && remoteStreamRef.current) {
       if (remoteVideoRef.current.srcObject !== remoteStreamRef.current) {
         remoteVideoRef.current.srcObject = remoteStreamRef.current;
       }
-      remoteVideoRef.current.play?.().catch((e) => console.warn('[WebRTC] Remote auto-play error:', e));
+      remoteVideoRef.current.play?.().catch((e) => console.warn('[WebRTC] Remote auto-play:', e));
     }
   }, [callStatus]);
 
-  // ─── Format timer ─────────────────────────────────────
   const formatTime = (secs) => {
     const m = Math.floor(secs / 60).toString().padStart(2, '0');
     const s = (secs % 60).toString().padStart(2, '0');
     return `${m}:${s}`;
   };
 
-  // ─── Graceful teardown ────────────────────────────────
+  // ─── Teardown ─────────────────────────────────────────
   const teardown = useCallback(() => {
     if (endedRef.current) return;
     endedRef.current = true;
 
-    // Stop local tracks
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((t) => t.stop());
       localStreamRef.current = null;
     }
-    // Stop remote tracks
     if (remoteStreamRef.current) {
       remoteStreamRef.current.getTracks().forEach((t) => t.stop());
       remoteStreamRef.current = null;
     }
-    // Close peer connection
     if (pcRef.current) {
       try {
         pcRef.current.close();
@@ -124,7 +141,6 @@ const VideoCall = ({
     setCallStatus('disconnected');
     callStatusRef.current = 'disconnected';
 
-    // Clear any disconnect recovery timer
     if (disconnectTimerRef.current) {
       clearTimeout(disconnectTimerRef.current);
       disconnectTimerRef.current = null;
@@ -155,96 +171,134 @@ const VideoCall = ({
     };
   }, [callStatus, callType, targetUserId, dispatch, teardown]);
 
-  // ─── Helper: flush buffered ICE candidates ────────────
+  // ─── Flush ICE Candidates ─────────────────────────────
   const flushIceCandidates = useCallback(async () => {
-    if (!pcRef.current) return;
-    const candidates = [...iceCandidateBuffer.current];
-    iceCandidateBuffer.current = [];
+    const pc = pcRef.current;
+    if (!pc || !remoteDescSetRef.current) return;
+    const candidates = [...pendingIceCandidatesRef.current];
+    pendingIceCandidatesRef.current = [];
     for (const candidate of candidates) {
       try {
-        await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
       } catch (e) {
         console.warn('[WebRTC] Failed to add buffered ICE candidate', e);
       }
     }
   }, []);
 
-  // ─── Helper: Create and send offer ────────────────────
+  // ─── Helper: Create & Send Offer ──────────────────────
   const createAndSendOffer = useCallback(async () => {
     const pc = pcRef.current;
     const socket = getSocket();
-    if (!pc || !socket || !targetUserId) return;
+    if (!pc || !socket || !targetUserId) {
+      console.log('[WebRTC] PeerConnection not ready yet, queuing ready flag');
+      pendingReadyRef.current = true;
+      return;
+    }
 
     try {
-      console.log('[WebRTC] Creating offer for target:', targetUserId);
+      console.log('[WebRTC] Creating and sending offer to', targetUserId);
       const offer = await pc.createOffer({
         offerToReceiveAudio: true,
         offerToReceiveVideo: callType === 'video',
       });
       await pc.setLocalDescription(offer);
-      socket.emit('webrtc_offer', { targetUserId, offer });
-      console.log('[WebRTC] Offer sent successfully');
+      socket.emit('webrtc_offer', { targetUserId: String(targetUserId), offer });
     } catch (e) {
       console.error('[WebRTC] createAndSendOffer error:', e);
     }
   }, [callType, targetUserId]);
+
+  // ─── Helper: Handle Received Offer ────────────────────
+  const handleOffer = useCallback(
+    async (offer, senderId) => {
+      const pc = pcRef.current;
+      const socket = getSocket();
+      if (!pc || !socket) {
+        console.log('[WebRTC] PC not ready yet, queuing incoming offer from', senderId);
+        pendingOfferRef.current = { offer, senderId };
+        return;
+      }
+
+      try {
+        console.log('[WebRTC] Processing offer from', senderId);
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        remoteDescSetRef.current = true;
+        await flushIceCandidates();
+
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        socket.emit('webrtc_answer', {
+          targetUserId: String(senderId || targetUserId),
+          answer,
+        });
+        console.log('[WebRTC] Answer dispatched to', senderId || targetUserId);
+      } catch (e) {
+        console.error('[WebRTC] handleOffer error:', e);
+      }
+    },
+    [flushIceCandidates, targetUserId]
+  );
+
+  // ─── Helper: Handle Received Answer ───────────────────
+  const handleAnswer = useCallback(
+    async (answer) => {
+      const pc = pcRef.current;
+      if (!pc) {
+        console.log('[WebRTC] PC not ready yet, queuing incoming answer');
+        pendingAnswerRef.current = answer;
+        return;
+      }
+
+      try {
+        console.log('[WebRTC] Processing answer');
+        await pc.setRemoteDescription(new RTCSessionDescription(answer));
+        remoteDescSetRef.current = true;
+        await flushIceCandidates();
+      } catch (e) {
+        console.error('[WebRTC] handleAnswer error:', e);
+      }
+    },
+    [flushIceCandidates]
+  );
+
+  // ─── Helper: Handle Received ICE Candidate ────────────
+  const handleIceCandidate = useCallback(
+    async (candidate) => {
+      const pc = pcRef.current;
+      if (!pc || !remoteDescSetRef.current) {
+        pendingIceCandidatesRef.current.push(candidate);
+        return;
+      }
+
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (e) {
+        console.warn('[WebRTC] handleIceCandidate error:', e);
+      }
+    },
+    []
+  );
 
   // ─── Socket Signaling Listeners ──────────────────────
   useEffect(() => {
     const socket = getSocket();
     if (!socket) return;
 
-    // Receiver gets offer from caller
-    const onOffer = async ({ senderId, offer }) => {
-      const pc = pcRef.current;
-      if (!pc || !offer) return;
-      try {
-        console.log('[WebRTC] Received offer from', senderId);
-        await pc.setRemoteDescription(new RTCSessionDescription(offer));
-        remoteDescSet.current = true;
-        await flushIceCandidates();
-
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        socket.emit('webrtc_answer', { targetUserId: senderId || targetUserId, answer });
-        console.log('[WebRTC] Answer sent back to', senderId || targetUserId);
-      } catch (e) {
-        console.error('[WebRTC] onOffer error:', e);
-      }
+    const onOffer = ({ senderId, offer }) => {
+      handleOffer(offer, senderId);
     };
 
-    // Caller gets answer from receiver
-    const onAnswer = async ({ answer }) => {
-      const pc = pcRef.current;
-      if (!pc || !answer) return;
-      try {
-        console.log('[WebRTC] Received answer');
-        await pc.setRemoteDescription(new RTCSessionDescription(answer));
-        remoteDescSet.current = true;
-        await flushIceCandidates();
-      } catch (e) {
-        console.error('[WebRTC] onAnswer error:', e);
-      }
+    const onAnswer = ({ answer }) => {
+      handleAnswer(answer);
     };
 
-    // Candidate exchange
-    const onIce = async ({ candidate }) => {
-      const pc = pcRef.current;
-      if (!pc || !candidate) return;
-      if (!remoteDescSet.current) {
-        iceCandidateBuffer.current.push(candidate);
-        return;
-      }
-      try {
-        await pc.addIceCandidate(new RTCIceCandidate(candidate));
-      } catch (e) {
-        console.warn('[WebRTC] onIce error:', e);
-      }
+    const onIce = ({ candidate }) => {
+      handleIceCandidate(candidate);
     };
 
-    // When receiver is mounted and ready, or caller receives call_accepted
-    const onReceiverReady = () => {
-      console.log('[WebRTC] Peer is ready! Initiating/resending offer...');
+    const onReady = () => {
+      console.log('[WebRTC] Peer announced ready');
       if (isCaller) {
         createAndSendOffer();
       }
@@ -253,17 +307,17 @@ const VideoCall = ({
     socket.on('webrtc_offer', onOffer);
     socket.on('webrtc_answer', onAnswer);
     socket.on('webrtc_ice_candidate', onIce);
-    socket.on('webrtc_ready', onReceiverReady);
-    socket.on('call_accepted', onReceiverReady);
+    socket.on('webrtc_ready', onReady);
+    socket.on('call_accepted', onReady);
 
     return () => {
       socket.off('webrtc_offer', onOffer);
       socket.off('webrtc_answer', onAnswer);
       socket.off('webrtc_ice_candidate', onIce);
-      socket.off('webrtc_ready', onReceiverReady);
-      socket.off('call_accepted', onReceiverReady);
+      socket.off('webrtc_ready', onReady);
+      socket.off('call_accepted', onReady);
     };
-  }, [teardown, targetUserId, isCaller, flushIceCandidates, createAndSendOffer]);
+  }, [handleOffer, handleAnswer, handleIceCandidate, createAndSendOffer, isCaller]);
 
   // ─── Main WebRTC Initialization ───────────────────────
   useEffect(() => {
@@ -271,7 +325,7 @@ const VideoCall = ({
 
     const start = async () => {
       try {
-        // 1. Capture local audio & video
+        // 1. Capture local media
         const constraints = {
           audio: true,
           video:
@@ -284,12 +338,12 @@ const VideoCall = ({
         try {
           stream = await navigator.mediaDevices.getUserMedia(constraints);
         } catch (err) {
-          console.warn('[WebRTC] Camera access failed, falling back to audio:', err);
-          setCamError('Camera access unavailable. Falling back to audio-only.');
+          console.warn('[WebRTC] Fallback to audio-only:', err);
+          setCamError('Camera access unavailable. Continuing audio-only.');
           try {
             stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
           } catch (audioErr) {
-            console.error('[WebRTC] Media access totally failed:', audioErr);
+            console.error('[WebRTC] Failed audio capture:', audioErr);
             throw audioErr;
           }
         }
@@ -301,47 +355,62 @@ const VideoCall = ({
 
         localStreamRef.current = stream;
 
-        // Attach local stream to video element
+        // Attach local preview immediately
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
         }
 
-        // 2. Instantiate RTCPeerConnection
+        // 2. Instantiate PeerConnection
         const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
         pcRef.current = pc;
 
-        // Add local tracks to peer connection
+        // Add local tracks to RTCPeerConnection
         stream.getTracks().forEach((track) => {
           pc.addTrack(track, stream);
         });
 
-        // 3. Handle remote incoming tracks
+        // 3. Receive Remote Media Tracks
         pc.ontrack = (event) => {
           console.log('[WebRTC] Remote track received:', event.track.kind);
-          const remoteStream = event.streams[0] || new MediaStream([event.track]);
-          remoteStreamRef.current = remoteStream;
+          let remoteStream = remoteStreamRef.current;
+          if (!remoteStream) {
+            remoteStream = new MediaStream();
+            remoteStreamRef.current = remoteStream;
+          }
+
+          if (event.streams && event.streams[0]) {
+            remoteStream = event.streams[0];
+            remoteStreamRef.current = remoteStream;
+          } else {
+            if (!remoteStream.getTracks().some((t) => t.id === event.track.id)) {
+              remoteStream.addTrack(event.track);
+            }
+          }
 
           if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = remoteStream;
-            remoteVideoRef.current.play?.().catch((e) => console.warn('[WebRTC] Remote video play error:', e));
+            remoteVideoRef.current.play?.().catch((e) => console.warn('[WebRTC] Remote auto-play warning:', e));
           }
 
           setCallStatus('connected');
           callStatusRef.current = 'connected';
         };
 
-        // 4. Handle ICE candidate discovery
+        // 4. ICE candidate emission
         const socket = getSocket();
         pc.onicecandidate = ({ candidate }) => {
           if (candidate && socket && targetUserId) {
-            socket.emit('webrtc_ice_candidate', { targetUserId, candidate });
+            socket.emit('webrtc_ice_candidate', {
+              targetUserId: String(targetUserId),
+              candidate,
+            });
           }
         };
 
-        // 5. Connection State Monitoring
+        // 5. Connection State Handlers
         pc.onconnectionstatechange = () => {
           const state = pc.connectionState;
-          console.log('[WebRTC] Connection state changed:', state);
+          console.log('[WebRTC] Connection state:', state);
 
           if (state === 'connected') {
             if (disconnectTimerRef.current) {
@@ -351,11 +420,9 @@ const VideoCall = ({
             setCallStatus('connected');
             callStatusRef.current = 'connected';
           } else if (state === 'disconnected') {
-            console.log('[WebRTC] Disconnected, attempting 8s recovery...');
             if (disconnectTimerRef.current) clearTimeout(disconnectTimerRef.current);
             disconnectTimerRef.current = setTimeout(() => {
               if (pcRef.current && pcRef.current.connectionState === 'disconnected') {
-                console.log('[WebRTC] Connection failed to recover, ending call.');
                 if (!endedRef.current) teardown();
               }
             }, 8000);
@@ -364,21 +431,36 @@ const VideoCall = ({
           }
         };
 
-        // 6. If caller: create initial offer; If receiver: announce ready
+        // 6. Process any signals queued while waiting for media
+        if (pendingOfferRef.current) {
+          const { offer, senderId } = pendingOfferRef.current;
+          pendingOfferRef.current = null;
+          await handleOffer(offer, senderId);
+        } else if (pendingAnswerRef.current) {
+          const ans = pendingAnswerRef.current;
+          pendingAnswerRef.current = null;
+          await handleAnswer(ans);
+        }
+
+        // 7. Trigger initial handshake
         if (isCaller) {
-          console.log('[WebRTC] Caller initializing offer...');
+          console.log('[WebRTC] Caller initiating offer...');
           await createAndSendOffer();
         } else {
           console.log('[WebRTC] Receiver announcing readiness...');
           if (socket && targetUserId) {
-            socket.emit('webrtc_ready', { targetUserId });
+            socket.emit('webrtc_ready', { targetUserId: String(targetUserId) });
           }
         }
 
-        // 7. Fallback timeout: if connection takes >25s, switch to connected UI so controls remain active
+        if (pendingReadyRef.current && isCaller) {
+          pendingReadyRef.current = false;
+          await createAndSendOffer();
+        }
+
+        // Fallback UI switch if connection takes >25s
         const fallbackTimer = setTimeout(() => {
           if (!cancelled && callStatusRef.current === 'connecting') {
-            console.log('[WebRTC] Connection fallback timeout triggered');
             setCallStatus('connected');
             callStatusRef.current = 'connected';
           }
@@ -411,7 +493,7 @@ const VideoCall = ({
         pcRef.current = null;
       }
     };
-  }, [isCaller, callType, targetUserId, createAndSendOffer, teardown]);
+  }, [callType, targetUserId, isCaller, createAndSendOffer, handleOffer, handleAnswer, teardown]);
 
   // ─── Controls ─────────────────────────────────────────
   const toggleMic = () => {
@@ -471,7 +553,7 @@ const VideoCall = ({
               remoteVideoRef.current = el;
               if (el && remoteStreamRef.current && el.srcObject !== remoteStreamRef.current) {
                 el.srcObject = remoteStreamRef.current;
-                el.play?.().catch((e) => console.warn('[WebRTC] Remote video auto-play error:', e));
+                el.play?.().catch((e) => console.warn('[WebRTC] Remote auto-play error:', e));
               }
             }}
             autoPlay
