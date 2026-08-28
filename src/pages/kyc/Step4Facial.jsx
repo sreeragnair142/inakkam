@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { Camera, CheckCircle2, RotateCcw, AlertCircle, Video } from 'lucide-react';
 
 const Step4Facial = ({ data, onChange }) => {
@@ -26,6 +26,21 @@ const Step4Facial = ({ data, onChange }) => {
         : 'Unable to access camera. Please ensure your device has a camera.');
       setCamState('error');
     }
+  }, []);
+
+  // Auto-start camera when component mounts (if no selfie taken yet)
+  useEffect(() => {
+    if (!data.selfieImage) {
+      startCamera();
+    }
+    return () => {
+      // Cleanup: stop camera stream when leaving this step
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const stopCamera = useCallback(() => {
@@ -71,7 +86,7 @@ const Step4Facial = ({ data, onChange }) => {
         {/* Camera / preview area */}
         <div className="relative rounded-3xl overflow-hidden bg-black/40 border border-white/10 aspect-[4/3]">
           {camState === 'active' && (
-            <video ref={videoRef} className="w-full h-full object-cover scale-x-[-1]" playsInline muted />
+            <video ref={videoRef} className="w-full h-full object-cover scale-x-[-1]" playsInline autoPlay muted />
           )}
           {(camState === 'captured' && data.selfieImage) && (
             <img src={data.selfieImage} alt="Selfie" className="w-full h-full object-cover scale-x-[-1]" />
