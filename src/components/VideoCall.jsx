@@ -81,10 +81,13 @@ const VideoCall = ({
   const pendingOfferRef = useRef(null);
   const pendingAnswerRef = useRef(null);
   const pendingIceCandidatesRef = useRef([]);
-  const pendingReadyRef = useRef(false);
   const remoteDescSetRef = useRef(false);
   const disconnectTimerRef = useRef(null);
   const fallbackTimerRef = useRef(null);
+  // Prevent double-offer: only send offer once
+  const offerSentRef = useRef(false);
+  // Track whether media+PC are ready for signaling
+  const pcReadyRef = useRef(false);
 
   useEffect(() => {
     onEndCallRef.current = onEndCall;
@@ -188,15 +191,21 @@ const VideoCall = ({
     }
   }, []);
 
-  // ─── Create & Send Offer ──────────────────────────────
+  // ─── Create & Send Offer (guarded – only fires once) ──
   const createAndSendOffer = useCallback(async () => {
+    // Prevent sending a second offer which breaks receiver SDP state machine
+    if (offerSentRef.current) {
+      console.log('[WebRTC] Offer already sent – ignoring duplicate request');
+      return;
+    }
     const pc = pcRef.current;
     const socket = getSocket();
     if (!pc || !socket || !targetUserId) {
-      pendingReadyRef.current = true;
+      console.log('[WebRTC] PC not ready yet – will send offer once ready');
       return;
     }
 
+    offerSentRef.current = true;
     try {
       console.log('[WebRTC] Creating offer for', targetUserId);
       const offer = await pc.createOffer({
@@ -207,6 +216,7 @@ const VideoCall = ({
       socket.emit('webrtc_offer', { targetUserId: String(targetUserId), offer });
       console.log('[WebRTC] Offer sent to', targetUserId);
     } catch (e) {
+      offerSentRef.current = false; // allow retry on error
       console.error('[WebRTC] createAndSendOffer error:', e);
     }
   }, [callType, targetUserId]);
@@ -285,7 +295,8 @@ const VideoCall = ({
     const onAnswer = ({ answer }) => handleAnswer(answer);
     const onIce = ({ candidate }) => handleIceCandidate(candidate);
     const onReady = () => {
-      console.log('[WebRTC] Peer is ready – sending offer');
+      console.log('[WebRTC] Peer is ready – sending offer (guarded)');
+      // Only the caller sends the offer; offerSentRef guards against duplicates
       if (isCaller) createAndSendOffer();
     };
 
@@ -431,32 +442,33 @@ const VideoCall = ({
           }
         };
 
-        // 6. Process any signals queued while waiting for getUserMedia
-        if (pendingOfferRef.current) {
-          const { offer, senderId } = pendingOfferRef.current;
-          pendingOfferRef.current = null;
-          await handleOffer(offer, senderId);
-        } else if (pendingAnswerRef.current) {
-          const ans = pendingAnswerRef.current;
-          pendingAnswerRef.current = null;
-          await handleAnswer(ans);
-        }
+        // 6. Process any queued signals & initiate handshake
+        pcReadyRef.current = true;
 
-        // 7. Initiate handshake
         if (isCaller) {
-          console.log('[WebRTC] Caller: creating offer now');
+          // If we received an answer while waiting for media, process it now
+          if (pendingAnswerRef.current) {
+            const ans = pendingAnswerRef.current;
+            pendingAnswerRef.current = null;
+            await handleAnswer(ans);
+          }
+          // Send the offer (offerSentRef prevents a second send if
+          // call_accepted / webrtc_ready already triggered it)
+          console.log('[WebRTC] Caller: sending offer now');
           await createAndSendOffer();
         } else {
-          // The receiver signals readiness so the caller can send an offer
-          console.log('[WebRTC] Receiver: announcing readiness');
-          if (socket && targetUserId) {
-            socket.emit('webrtc_ready', { targetUserId: String(targetUserId) });
+          // Receiver: if the offer arrived before media was ready, process it
+          if (pendingOfferRef.current) {
+            const { offer: qOffer, senderId: qSender } = pendingOfferRef.current;
+            pendingOfferRef.current = null;
+            await handleOffer(qOffer, qSender);
+          } else {
+            // No queued offer yet – tell the caller we are ready
+            console.log('[WebRTC] Receiver: announcing readiness');
+            if (socket && targetUserId) {
+              socket.emit('webrtc_ready', { targetUserId: String(targetUserId) });
+            }
           }
-        }
-
-        if (pendingReadyRef.current && isCaller) {
-          pendingReadyRef.current = false;
-          await createAndSendOffer();
         }
 
         // 8. Fallback: if no ontrack fires within 20 s, still show the call UI
@@ -712,8 +724,8 @@ const VideoCall = ({
           <button
             onClick={toggleMic}
             className={`p-3 rounded-2xl transition-all duration-300 ${micActive
-                ? 'bg-white/10 text-white hover:bg-white/20'
-                : 'bg-[#D51659]/30 text-[#D51659] border border-[#D51659]/50'
+              ? 'bg-white/10 text-white hover:bg-white/20'
+              : 'bg-[#D51659]/30 text-[#D51659] border border-[#D51659]/50'
               }`}
             title={micActive ? 'Mute' : 'Unmute'}
           >
@@ -724,8 +736,8 @@ const VideoCall = ({
             <button
               onClick={toggleVideo}
               className={`p-3 rounded-2xl transition-all duration-300 ${videoActive
-                  ? 'bg-white/10 text-white hover:bg-white/20'
-                  : 'bg-[#D51659]/30 text-[#D51659] border border-[#D51659]/50'
+                ? 'bg-white/10 text-white hover:bg-white/20'
+                : 'bg-[#D51659]/30 text-[#D51659] border border-[#D51659]/50'
                 }`}
               title={videoActive ? 'Turn off camera' : 'Turn on camera'}
             >
@@ -736,8 +748,8 @@ const VideoCall = ({
           <button
             onClick={() => setShowChat((c) => !c)}
             className={`p-3 rounded-2xl transition-all duration-300 relative ${showChat
-                ? 'bg-purple-500/30 text-purple-300 border border-purple-500/50'
-                : 'bg-white/10 text-white hover:bg-white/20'
+              ? 'bg-purple-500/30 text-purple-300 border border-purple-500/50'
+              : 'bg-white/10 text-white hover:bg-white/20'
               }`}
             title="Chat"
           >
@@ -792,8 +804,8 @@ const VideoCall = ({
                       <span className="text-[9px] text-slate-500 font-semibold mb-0.5 px-1">{msg.senderName}</span>
                       <div
                         className={`p-2.5 rounded-2xl text-xs max-w-[85%] break-words leading-relaxed ${isMe
-                            ? 'bg-[#D51659] text-white rounded-tr-none'
-                            : 'bg-white/10 text-slate-200 rounded-tl-none border border-white/5'
+                          ? 'bg-[#D51659] text-white rounded-tr-none'
+                          : 'bg-white/10 text-slate-200 rounded-tl-none border border-white/5'
                           }`}
                       >
                         {msg.text}
