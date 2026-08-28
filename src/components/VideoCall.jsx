@@ -186,11 +186,21 @@ const VideoCall = ({
         roomInstanceRef.current = room;
         setCallStatus('connected');
 
-        // Unmute local mic audio explicitly to transmit voice
+        // Unmute local mic audio explicitly to transmit voice & play local camera video
         if (localStream) {
           try {
             localStream.unmuteAudio();
             console.log('🎙️ Local microphone audio unmuted successfully');
+            if (callType === 'video') {
+              setTimeout(() => {
+                try {
+                  localStream.play('local-video-container');
+                  console.log('📹 Local video stream playing in local-video-container');
+                } catch (e) {
+                  console.warn('[Play Local Video Error]', e);
+                }
+              }, 400);
+            }
           } catch (e) {
             console.warn('[Unmute Local Audio Warning]', e);
           }
@@ -232,6 +242,9 @@ const VideoCall = ({
               mediaEls.forEach(el => {
                 el.muted = false;
                 el.volume = 1.0;
+                el.style.width = '100%';
+                el.style.height = '100%';
+                el.style.objectFit = 'cover';
                 el.play().catch(() => {});
               });
             }
@@ -417,6 +430,23 @@ const VideoCall = ({
       onTouchStart={unlockAudio}
       className="fixed inset-0 z-[1000] flex bg-[#0A0A0A] text-white overflow-hidden font-sans select-none"
     >
+      <style>{`
+        #remote-video-container, #local-video-container {
+          width: 100% !important;
+          height: 100% !important;
+          position: relative !important;
+          overflow: hidden !important;
+        }
+        #remote-video-container video, #remote-video-container audio, #remote-video-container canvas,
+        #local-video-container video, #local-video-container audio, #local-video-container canvas,
+        .enx_stream, .enx_video_player, div[id*="stream_"] video {
+          width: 100% !important;
+          height: 100% !important;
+          object-fit: cover !important;
+          display: block !important;
+          border-radius: inherit !important;
+        }
+      `}</style>
       {/* Hidden Dedicated Audio Player for WebRTC MediaStream (guarantees voice output for both parties) */}
       <audio ref={remoteAudioRef} id="remote-audio-player" autoPlay playsInline style={{ display: 'none' }} />
 

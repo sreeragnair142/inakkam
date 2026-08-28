@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { mockStories, mockUsers } from '../data/mockData';
 import { setActiveTab } from '../redux/slices/uiSlice';
 import { selectUser } from '../redux/slices/userSlice';
+import { createNewChat } from '../redux/slices/chatSlice';
+import api from '../utils/api';
 import { VerificationBadge } from '../components/VerificationStatus';
 import {
   Flame,
@@ -18,7 +20,9 @@ import {
   ShieldCheck,
   Star,
   Users,
-  MessageSquare
+  MessageSquare,
+  Phone,
+  Video
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import coupleImg from '../assets/couple.jpg';
@@ -30,6 +34,31 @@ const Home = () => {
   const user = useSelector((state) => state.auth.user);
   const themeMode = useSelector((state) => state.theme.mode);
   const { status: verificationStatus } = useSelector((s) => s.verification);
+  const [agents, setAgents] = useState([]);
+  const [loadingAgents, setLoadingAgents] = useState(true);
+
+  useEffect(() => {
+    const loadAgents = async () => {
+      try {
+        setLoadingAgents(true);
+        const res = await api.get('/users/agents');
+        if (res.data && res.data.agents) {
+          setAgents(res.data.agents);
+        }
+      } catch (err) {
+        console.error('[Load Agents Error]', err);
+      } finally {
+        setLoadingAgents(false);
+      }
+    };
+    loadAgents();
+  }, []);
+
+  const handleStartChatWithAgent = (agent) => {
+    dispatch(createNewChat(agent));
+    dispatch(setActiveTab('chat'));
+    navigate('/chat');
+  };
 
   const getContainerClass = () => {
     return 'bg-[#FCFAF2] text-[#2D2D2D] border border-slate-200 shadow-sm';
@@ -142,6 +171,113 @@ const Home = () => {
             </div>
           </section>
         )}
+
+        {/* FEATURED HOSTS & ACTIVE AGENTS SECTION */}
+        <section className="w-full space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-gradient-to-r from-[#D51659]/15 to-[#b44ddc]/15 border border-[#D51659]/30 text-[#D51659] text-[11px] font-black uppercase tracking-widest mb-2">
+                <Sparkles className="w-3.5 h-3.5 animate-pulse" />
+                <span>Verified Elite Hosts</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-black text-bumble-charcoal tracking-tight">
+                Connect with Active Agents & Hosts
+              </h2>
+              <p className="text-slate-500 text-xs sm:text-sm font-semibold mt-1">
+                Start real-time voice & video calls instantly with online verified agents.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                dispatch(setActiveTab('swipe'));
+                navigate('/swipe');
+              }}
+              className="text-xs font-bold text-[#D51659] hover:underline flex items-center gap-1 shrink-0 cursor-pointer"
+            >
+              <span>Explore All Singles</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          {loadingAgents ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {[1, 2, 3, 4, 5].map(n => (
+                <div key={n} className="h-64 rounded-3xl bg-slate-200 animate-pulse" />
+              ))}
+            </div>
+          ) : agents.length === 0 ? (
+            <div className="p-8 rounded-3xl bg-white border border-slate-200 text-center shadow-sm">
+              <p className="text-slate-500 text-sm font-semibold">No hosts currently active. Check back shortly!</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4.5">
+              {agents.map((agent) => {
+                const photoUrl = agent.photos?.[0]?.url || agent.images?.[0] || 'https://via.placeholder.com/300';
+                return (
+                  <motion.div
+                    key={agent._id || agent.id}
+                    whileHover={{ y: -6 }}
+                    transition={{ type: 'spring', stiffness: 300 }}
+                    className="bg-white rounded-3xl overflow-hidden border border-slate-200/80 shadow-md hover:shadow-xl transition-all flex flex-col group relative"
+                  >
+                    {/* Image Header */}
+                    <div className="relative h-48 sm:h-52 w-full overflow-hidden bg-slate-900">
+                      <img
+                        src={photoUrl}
+                        alt={agent.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+
+                      {/* Online Status Dot */}
+                      <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/20 flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full ${agent.isOnline ? 'bg-green-500 animate-pulse' : 'bg-slate-400'}`} />
+                        <span className="text-[10px] font-bold text-white tracking-wider uppercase">
+                          {agent.isOnline ? 'Online' : 'Host'}
+                        </span>
+                      </div>
+
+                      {/* Verified Badge */}
+                      <div className="absolute top-3 right-3 bg-gradient-to-r from-[#D51659] to-[#b44ddc] p-1.5 rounded-full text-white shadow-lg">
+                        <Sparkles className="w-3.5 h-3.5" />
+                      </div>
+
+                      {/* Name & Age Overlay */}
+                      <div className="absolute bottom-3 left-3 right-3 text-white">
+                        <div className="flex items-center gap-1 font-extrabold text-sm truncate">
+                          <span>{agent.name}{agent.age ? `, ${agent.age}` : ''}</span>
+                          <CheckCircle2 className="w-4 h-4 text-blue-400 fill-current shrink-0" />
+                        </div>
+                        <span className="text-[10px] font-semibold text-slate-300 block truncate">
+                          {agent.occupation || agent.work || 'Verified Host'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Actions footer */}
+                    <div className="p-3 bg-[#FAF8F5] border-t border-slate-100 flex items-center gap-2">
+                      <button
+                        onClick={() => handleStartChatWithAgent(agent)}
+                        className="flex-1 py-2 px-3 rounded-2xl bg-[#D51659] text-white hover:bg-[#b01048] font-bold text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
+                        title="Chat & Call Host"
+                      >
+                        <Video className="w-3.5 h-3.5" />
+                        <span>Call</span>
+                      </button>
+                      <button
+                        onClick={() => handleStartChatWithAgent(agent)}
+                        className="p-2 rounded-2xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-xs flex items-center justify-center shadow-sm active:scale-95 transition-all cursor-pointer"
+                        title="Send Message"
+                      >
+                        <MessageSquare className="w-4 h-4 text-[#D51659]" />
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         {/* 2. WE EXIST TO BRING PEOPLE CLOSER TO LOVE */}
         <section className="w-full flex flex-col lg:flex-row items-center gap-16">

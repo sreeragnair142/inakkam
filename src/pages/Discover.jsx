@@ -58,6 +58,14 @@ const MobileCard = ({ profile, active, onSwipe, swipeDirection, onClick }) => {
       <img src={profile.images?.[0] || 'https://via.placeholder.com/400x500'} alt={profile.name} className="w-full h-full object-cover pointer-events-none select-none" />
       <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none" />
 
+      {/* Verified Agent / Host Badge Overlay */}
+      {(profile.isEliteAgent || profile.isStaff || profile.role === 'staff') && (
+        <div className="absolute top-4 left-4 bg-gradient-to-r from-[#D51659] to-[#b44ddc] text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-lg flex items-center gap-1.5 z-20">
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Verified Host</span>
+        </div>
+      )}
+
       {/* Swipe Indicators */}
       <motion.div
         style={{ opacity: opacityLike }}
@@ -210,7 +218,16 @@ const Discover = () => {
                     onClick={() => setSelectedProfile(profile)}
                     className="w-full h-full rounded-[2rem] overflow-hidden relative border border-slate-200 shadow-2xl bg-[#FCFAF2] cursor-pointer"
                   >
-                    <img src={profile.images[0]} alt={profile.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                    <img src={profile.images?.[0] || 'https://via.placeholder.com/400x500'} alt={profile.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+
+                    {/* Verified Agent / Host Badge Overlay */}
+                    {(profile.isEliteAgent || profile.isStaff || profile.role === 'staff') && (
+                      <div className="absolute top-4 left-4 bg-gradient-to-r from-[#D51659] to-[#b44ddc] text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-lg flex items-center gap-1.5 z-20">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Verified Host</span>
+                      </div>
+                    )}
+
                     {/* Premium clean gradient only at the bottom for text readability */}
                     <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none" />
 
