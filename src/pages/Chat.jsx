@@ -212,7 +212,8 @@ const Chat = () => {
         remoteUserName: activeChat.userName,
         remoteUserPhoto: activeChat.userImage,
         callType: type,
-        targetUserId
+        targetUserId,
+        isCaller: true,  // We initiated the call
       });
 
     } catch (err) {
@@ -259,7 +260,8 @@ const Chat = () => {
         remoteUserName: incomingCall.callerName,
         remoteUserPhoto: incomingCall.callerPhoto,
         callType: incomingCall.callType,
-        targetUserId: incomingCall.callerId
+        targetUserId: incomingCall.callerId,
+        isCaller: false,  // We received the call
       });
 
       // Clear incoming call dialog
@@ -288,13 +290,13 @@ const Chat = () => {
   };
 
   // End Call Callback from VideoCall component
+  // VideoCall calls this via onEndCall after its own teardown.
+  // We emit end_call here (VideoCall no longer emits it) to avoid double-emission.
   const handleEndCall = () => {
-    if (!activeCall) return;
-
     const socket = getSocket();
-    if (socket) {
+    if (socket && activeCall?.targetUserId) {
       socket.emit('end_call', {
-        conversationId: activeChat?.id || activeCall.roomId,
+        conversationId: activeChat?.id || activeCall?.roomId,
         targetUserId: activeCall.targetUserId
       });
     }
@@ -797,7 +799,6 @@ const Chat = () => {
         )}
       </div>
 
-      {/* Video / Audio call active overlay */}
       {activeCall && (
         <VideoCall
           roomId={activeCall.roomId}
@@ -808,6 +809,7 @@ const Chat = () => {
           onEndCall={handleEndCall}
           currentUser={currentUser}
           targetUserId={activeCall.targetUserId || activeChat?.user?._id || activeChat?.userId}
+          isCaller={activeCall.isCaller ?? true}
         />
       )}
 
