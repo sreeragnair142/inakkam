@@ -10,7 +10,6 @@ import {
   X,
   Volume2,
   VolumeX,
-  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDispatch } from 'react-redux';
@@ -19,11 +18,14 @@ import toast from 'react-hot-toast';
 import { fetchMe } from '../redux/slices/authSlice';
 import { getSocket } from '../utils/socket';
 
-// ─── ICE Servers (STUN) ──────────────────────────────────
+// ─── STUN Servers for robust NAT traversal ──────────────────
 const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
   { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun3.l.google.com:19302' },
+  { urls: 'stun:stun4.l.google.com:19302' },
+  { urls: 'stun:global.stun.twilio.com:3478' }
 ];
 
 const VideoCall = ({
@@ -35,7 +37,7 @@ const VideoCall = ({
   onEndCall,
   currentUser,
   targetUserId,
-  isCaller = true,         // true = caller (moderator), false = receiver (participant)
+  isCaller = true, // true = caller, false = receiver
 }) => {
   const dispatch = useDispatch();
 
@@ -51,17 +53,43 @@ const VideoCall = ({
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
-  const pcRef = useRef(null);   // RTCPeerConnection
-  const localStreamRef = useRef(null);   // Local MediaStream
+  const pcRef = useRef(null); // RTCPeerConnection
+  const localStreamRef = useRef(null); // Local MediaStream
+  const remoteStreamRef = useRef(null); // Remote MediaStream
   const onEndCallRef = useRef(onEndCall);
-  const endedRef = useRef(false);  // Prevent double-end
+  const endedRef = useRef(false); // Prevent double-end
   const callStatusRef = useRef('connecting'); // Track callStatus without stale closures
-  const iceCandidateBuffer = useRef([]);  // Buffer ICE candidates until remote description is set
-  const remoteDescSet = useRef(false);    // Track if remote description has been set
+  const iceCandidateBuffer = useRef([]); // Buffer ICE candidates until remote description is set
+  const remoteDescSet = useRef(false); // Track if remote description has been set
   const disconnectTimerRef = useRef(null); // Recovery timer for 'disconnected' state
 
   // Keep ref in sync without causing re-renders
-  useEffect(() => { onEndCallRef.current = onEndCall; }, [onEndCall]);
+  useEffect(() => {
+    onEndCallRef.current = onEndCall;
+  }, [onEndCall]);
+
+  // Keep callStatusRef in sync
+  useEffect(() => {
+    callStatusRef.current = callStatus;
+  }, [callStatus]);
+
+  // Sync streams to video elements whenever state changes
+  useEffect(() => {
+    if (localVideoRef.current && localStreamRef.current) {
+      if (localVideoRef.current.srcObject !== localStreamRef.current) {
+        localVideoRef.current.srcObject = localStreamRef.current;
+      }
+    }
+  }, [callStatus, videoActive]);
+
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteStreamRef.current) {
+      if (remoteVideoRef.current.srcObject !== remoteStreamRef.current) {
+        remoteVideoRef.current.srcObject = remoteStreamRef.current;
+      }
+      remoteVideoRef.current.play?.().catch((e) => console.warn('[WebRTC] Remote auto-play error:', e));
+    }
+  }, [callStatus]);
 
   // ─── Format timer ─────────────────────────────────────
   const formatTime = (secs) => {
@@ -77,29 +105,38 @@ const VideoCall = ({
 
     // Stop local tracks
     if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(t => t.stop());
+      localStreamRef.current.getTracks().forEach((t) => t.stop());
       localStreamRef.current = null;
+    }
+    // Stop remote tracks
+    if (remoteStreamRef.current) {
+      remoteStreamRef.current.getTracks().forEach((t) => t.stop());
+      remoteStreamRef.current = null;
     }
     // Close peer connection
     if (pcRef.current) {
-      pcRef.current.close();
+      try {
+        pcRef.current.close();
+      } catch (_) {}
       pcRef.current = null;
     }
 
     setCallStatus('disconnected');
     callStatusRef.current = 'disconnected';
+
     // Clear any disconnect recovery timer
     if (disconnectTimerRef.current) {
       clearTimeout(disconnectTimerRef.current);
       disconnectTimerRef.current = null;
     }
+
     onEndCallRef.current?.();
   }, []);
 
   // ─── Coin deduction timer ─────────────────────────────
   useEffect(() => {
     if (callStatus !== 'connected') return;
-    const timer = setInterval(() => setDuration(d => d + 1), 1000);
+    const timer = setInterval(() => setDuration((d) => d + 1), 1000);
     const coinInterval = setInterval(async () => {
       try {
         const res = await api.post('/coins/deduct-call', { targetUserId, callType, seconds: 20 });
@@ -109,9 +146,13 @@ const VideoCall = ({
         } else {
           dispatch(fetchMe());
         }
-      } catch (_) { }
+      } catch (_) {}
     }, 20000);
-    return () => { clearInterval(timer); clearInterval(coinInterval); };
+
+    return () => {
+      clearInterval(timer);
+      clearInterval(coinInterval);
+    };
   }, [callStatus, callType, targetUserId, dispatch, teardown]);
 
   // ─── Helper: flush buffered ICE candidates ────────────
@@ -128,110 +169,168 @@ const VideoCall = ({
     }
   }, []);
 
-  // ─── Listen for remote WebRTC signals via socket ──────
+  // ─── Helper: Create and send offer ────────────────────
+  const createAndSendOffer = useCallback(async () => {
+    const pc = pcRef.current;
+    const socket = getSocket();
+    if (!pc || !socket || !targetUserId) return;
+
+    try {
+      console.log('[WebRTC] Creating offer for target:', targetUserId);
+      const offer = await pc.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: callType === 'video',
+      });
+      await pc.setLocalDescription(offer);
+      socket.emit('webrtc_offer', { targetUserId, offer });
+      console.log('[WebRTC] Offer sent successfully');
+    } catch (e) {
+      console.error('[WebRTC] createAndSendOffer error:', e);
+    }
+  }, [callType, targetUserId]);
+
+  // ─── Socket Signaling Listeners ──────────────────────
   useEffect(() => {
     const socket = getSocket();
     if (!socket) return;
 
+    // Receiver gets offer from caller
     const onOffer = async ({ senderId, offer }) => {
-      if (!pcRef.current) return;
+      const pc = pcRef.current;
+      if (!pc || !offer) return;
       try {
-        await pcRef.current.setRemoteDescription(new RTCSessionDescription(offer));
+        console.log('[WebRTC] Received offer from', senderId);
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
         remoteDescSet.current = true;
-        // Flush any ICE candidates that arrived before remote description was set
         await flushIceCandidates();
-        const answer = await pcRef.current.createAnswer();
-        await pcRef.current.setLocalDescription(answer);
-        socket.emit('webrtc_answer', { targetUserId: senderId, answer });
-      } catch (e) { console.error('[WebRTC] onOffer error', e); }
+
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        socket.emit('webrtc_answer', { targetUserId: senderId || targetUserId, answer });
+        console.log('[WebRTC] Answer sent back to', senderId || targetUserId);
+      } catch (e) {
+        console.error('[WebRTC] onOffer error:', e);
+      }
     };
 
+    // Caller gets answer from receiver
     const onAnswer = async ({ answer }) => {
-      if (!pcRef.current) return;
+      const pc = pcRef.current;
+      if (!pc || !answer) return;
       try {
-        await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+        console.log('[WebRTC] Received answer');
+        await pc.setRemoteDescription(new RTCSessionDescription(answer));
         remoteDescSet.current = true;
-        // Flush any ICE candidates that arrived before remote description was set
         await flushIceCandidates();
-      } catch (e) { console.error('[WebRTC] onAnswer error', e); }
+      } catch (e) {
+        console.error('[WebRTC] onAnswer error:', e);
+      }
     };
 
+    // Candidate exchange
     const onIce = async ({ candidate }) => {
-      if (!pcRef.current || !candidate) return;
-      // Buffer ICE candidates if remote description hasn't been set yet
+      const pc = pcRef.current;
+      if (!pc || !candidate) return;
       if (!remoteDescSet.current) {
         iceCandidateBuffer.current.push(candidate);
         return;
       }
       try {
-        await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
-      } catch (e) { console.error('[WebRTC] onIce error', e); }
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (e) {
+        console.warn('[WebRTC] onIce error:', e);
+      }
     };
 
-    // NOTE: call_ended is handled by Chat.jsx which unmounts this component.
-    // No need to listen here — prevents duplicate teardown race condition.
+    // When receiver is mounted and ready, or caller receives call_accepted
+    const onReceiverReady = () => {
+      console.log('[WebRTC] Peer is ready! Initiating/resending offer...');
+      if (isCaller) {
+        createAndSendOffer();
+      }
+    };
 
     socket.on('webrtc_offer', onOffer);
     socket.on('webrtc_answer', onAnswer);
     socket.on('webrtc_ice_candidate', onIce);
+    socket.on('webrtc_ready', onReceiverReady);
+    socket.on('call_accepted', onReceiverReady);
 
     return () => {
       socket.off('webrtc_offer', onOffer);
       socket.off('webrtc_answer', onAnswer);
       socket.off('webrtc_ice_candidate', onIce);
+      socket.off('webrtc_ready', onReceiverReady);
+      socket.off('call_accepted', onReceiverReady);
     };
-  }, [teardown, targetUserId, flushIceCandidates]);
+  }, [teardown, targetUserId, isCaller, flushIceCandidates, createAndSendOffer]);
 
-  // ─── Main WebRTC setup ───────────────────────────────
+  // ─── Main WebRTC Initialization ───────────────────────
   useEffect(() => {
     let cancelled = false;
 
     const start = async () => {
       try {
-        // 1. Get local camera/mic
+        // 1. Capture local audio & video
         const constraints = {
           audio: true,
-          video: callType === 'video'
-            ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }
-            : false,
+          video:
+            callType === 'video'
+              ? { width: { ideal: 1280, min: 640 }, height: { ideal: 720, min: 480 }, facingMode: 'user' }
+              : false,
         };
 
         let stream;
         try {
           stream = await navigator.mediaDevices.getUserMedia(constraints);
         } catch (err) {
-          // Try audio-only fallback
-          setCamError('Camera not available. Running audio-only.');
-          stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+          console.warn('[WebRTC] Camera access failed, falling back to audio:', err);
+          setCamError('Camera access unavailable. Falling back to audio-only.');
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+          } catch (audioErr) {
+            console.error('[WebRTC] Media access totally failed:', audioErr);
+            throw audioErr;
+          }
         }
 
-        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
 
         localStreamRef.current = stream;
 
-        // Show local video
-        if (localVideoRef.current && callType === 'video') {
+        // Attach local stream to video element
+        if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
-          localVideoRef.current.muted = true; // Don't echo own audio
         }
 
-        // 2. Create RTCPeerConnection
+        // 2. Instantiate RTCPeerConnection
         const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
         pcRef.current = pc;
 
-        // Add local tracks
-        stream.getTracks().forEach(track => pc.addTrack(track, stream));
+        // Add local tracks to peer connection
+        stream.getTracks().forEach((track) => {
+          pc.addTrack(track, stream);
+        });
 
-        // When remote track arrives → show in remoteVideoRef
+        // 3. Handle remote incoming tracks
         pc.ontrack = (event) => {
-          if (remoteVideoRef.current && event.streams[0]) {
-            remoteVideoRef.current.srcObject = event.streams[0];
-            remoteVideoRef.current.muted = false;
+          console.log('[WebRTC] Remote track received:', event.track.kind);
+          const remoteStream = event.streams[0] || new MediaStream([event.track]);
+          remoteStreamRef.current = remoteStream;
+
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = remoteStream;
+            remoteVideoRef.current.play?.().catch((e) => console.warn('[WebRTC] Remote video play error:', e));
           }
+
           setCallStatus('connected');
+          callStatusRef.current = 'connected';
         };
 
-        // ICE candidate → send to remote via socket
+        // 4. Handle ICE candidate discovery
         const socket = getSocket();
         pc.onicecandidate = ({ candidate }) => {
           if (candidate && socket && targetUserId) {
@@ -239,59 +338,56 @@ const VideoCall = ({
           }
         };
 
+        // 5. Connection State Monitoring
         pc.onconnectionstatechange = () => {
-          console.log('[WebRTC] Connection state:', pc.connectionState);
-          if (pc.connectionState === 'connected') {
-            // Clear any disconnect recovery timer
+          const state = pc.connectionState;
+          console.log('[WebRTC] Connection state changed:', state);
+
+          if (state === 'connected') {
             if (disconnectTimerRef.current) {
               clearTimeout(disconnectTimerRef.current);
               disconnectTimerRef.current = null;
             }
             setCallStatus('connected');
             callStatusRef.current = 'connected';
-          } else if (pc.connectionState === 'disconnected') {
-            // 'disconnected' is temporary (network hiccup). Give 8s to recover.
-            console.log('[WebRTC] Connection disconnected — waiting 8s for recovery...');
+          } else if (state === 'disconnected') {
+            console.log('[WebRTC] Disconnected, attempting 8s recovery...');
             if (disconnectTimerRef.current) clearTimeout(disconnectTimerRef.current);
             disconnectTimerRef.current = setTimeout(() => {
-              // If still disconnected after 8s, treat as failed
               if (pcRef.current && pcRef.current.connectionState === 'disconnected') {
-                console.log('[WebRTC] No recovery after 8s, ending call.');
+                console.log('[WebRTC] Connection failed to recover, ending call.');
                 if (!endedRef.current) teardown();
               }
             }, 8000);
-          } else if (['failed', 'closed'].includes(pc.connectionState)) {
+          } else if (state === 'failed' || state === 'closed') {
             if (!endedRef.current) teardown();
           }
         };
 
-        // 3. If caller → create and send offer
-        if (isCaller && socket && targetUserId) {
-          const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: callType === 'video' });
-          await pc.setLocalDescription(offer);
-          socket.emit('webrtc_offer', { targetUserId, offer });
+        // 6. If caller: create initial offer; If receiver: announce ready
+        if (isCaller) {
+          console.log('[WebRTC] Caller initializing offer...');
+          await createAndSendOffer();
+        } else {
+          console.log('[WebRTC] Receiver announcing readiness...');
+          if (socket && targetUserId) {
+            socket.emit('webrtc_ready', { targetUserId });
+          }
         }
 
-        // Show connecting state (remote video will trigger 'connected')
-        setCallStatus('connecting');
-        callStatusRef.current = 'connecting';
-
-        // Fallback: if no remote track in 30s → show connected (for audio-only/demo mode)
-        // Uses ref to avoid stale closure over callStatus
-        const connectTimeout = setTimeout(() => {
-          if (!cancelled && callStatusRef.current !== 'connected') {
-            console.log('[WebRTC] 30s timeout — forcing connected status (no remote track received)');
+        // 7. Fallback timeout: if connection takes >25s, switch to connected UI so controls remain active
+        const fallbackTimer = setTimeout(() => {
+          if (!cancelled && callStatusRef.current === 'connecting') {
+            console.log('[WebRTC] Connection fallback timeout triggered');
             setCallStatus('connected');
             callStatusRef.current = 'connected';
           }
-        }, 30000);
+        }, 25000);
 
-        return () => clearTimeout(connectTimeout);
-
+        return () => clearTimeout(fallbackTimer);
       } catch (err) {
-        console.error('[WebRTC] Setup error:', err);
-        setCamError(`Camera/mic error: ${err.message}`);
-        // Still allow call to proceed in audio simulation
+        console.error('[WebRTC] Setup initialization error:', err);
+        setCamError(`Setup error: ${err.message}`);
         setCallStatus('connected');
       }
     };
@@ -300,268 +396,345 @@ const VideoCall = ({
 
     return () => {
       cancelled = true;
-      // Cleanup on unmount (NOT calling teardown here to avoid double-end)
       if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach(t => t.stop());
+        localStreamRef.current.getTracks().forEach((t) => t.stop());
         localStreamRef.current = null;
       }
+      if (remoteStreamRef.current) {
+        remoteStreamRef.current.getTracks().forEach((t) => t.stop());
+        remoteStreamRef.current = null;
+      }
       if (pcRef.current) {
-        pcRef.current.close();
+        try {
+          pcRef.current.close();
+        } catch (_) {}
         pcRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isCaller, callType, targetUserId, createAndSendOffer, teardown]);
 
-  // ─── Toggle Mic ───────────────────────────────────────
+  // ─── Controls ─────────────────────────────────────────
   const toggleMic = () => {
     const next = !micActive;
     setMicActive(next);
     if (localStreamRef.current) {
-      localStreamRef.current.getAudioTracks().forEach(t => { t.enabled = next; });
+      localStreamRef.current.getAudioTracks().forEach((t) => {
+        t.enabled = next;
+      });
     }
   };
 
-  // ─── Toggle Video ─────────────────────────────────────
   const toggleVideo = () => {
     const next = !videoActive;
     setVideoActive(next);
     if (localStreamRef.current) {
-      localStreamRef.current.getVideoTracks().forEach(t => { t.enabled = next; });
+      localStreamRef.current.getVideoTracks().forEach((t) => {
+        t.enabled = next;
+      });
     }
   };
 
-  // ─── Handle End Call ──────────────────────────────────
-  // Only teardown locally. Chat.jsx's onEndCall callback handles
-  // emitting the socket 'end_call' event to prevent double emission.
   const handleEndCall = () => {
     teardown();
   };
 
-  // ─── In-call chat ─────────────────────────────────────
+  // ─── In-call Chat ─────────────────────────────────────
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    setChatMessages(prev => [...prev, {
-      id: `my_${Date.now()}`, sender: 'me',
-      senderName: currentUser?.name || 'Me', text: chatInput.trim(), time: timeStr
-    }]);
+    setChatMessages((prev) => [
+      ...prev,
+      {
+        id: `my_${Date.now()}`,
+        sender: 'me',
+        senderName: currentUser?.name || 'Me',
+        text: chatInput.trim(),
+        time: timeStr,
+      },
+    ]);
     setChatInput('');
   };
 
   return (
     <div className="fixed inset-0 z-[1000] flex bg-[#0A0A0A] text-white overflow-hidden font-sans select-none">
-      {/* Radial glow */}
+      {/* Radial glow background */}
       <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] rounded-full bg-[#D51659]/10 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] rounded-full bg-[#B44DDC]/10 blur-[120px] pointer-events-none" />
 
-      {/* ── Connecting screen ────────────────────────── */}
-      {callStatus === 'connecting' && (
-        <div className="flex-1 flex flex-col items-center justify-center p-6">
-          <div className="relative mb-6">
-            <span className="absolute inset-[-15px] rounded-full border border-[#D51659]/30 animate-ping" style={{ animationDuration: '2s' }} />
-            <span className="absolute inset-[-30px] rounded-full border border-purple-500/20 animate-ping" style={{ animationDuration: '3.5s' }} />
-            <img
-              src={remoteUserPhoto || 'https://via.placeholder.com/150'}
-              alt={remoteUserName}
-              className="w-32 h-32 rounded-full object-cover border-4 border-white/10 shadow-[0_8px_32px_rgba(213,22,89,0.3)]"
-            />
-          </div>
-          <h2 className="text-xl font-bold tracking-wide">{remoteUserName}</h2>
-          <p className="text-sm text-slate-400 mt-2 flex items-center gap-1.5 uppercase font-semibold tracking-widest text-xs">
-            <span className="inline-block w-2 h-2 rounded-full bg-[#D51659] animate-pulse" />
-            Connecting...
-          </p>
-          {camError && (
-            <p className="mt-4 text-xs text-amber-400 bg-amber-500/10 px-4 py-2 rounded-xl border border-amber-500/20 max-w-xs text-center">
-              ⚠️ {camError}
-            </p>
-          )}
-        </div>
-      )}
+      {/* Main Container */}
+      <div className="flex-1 flex relative overflow-hidden">
+        {/* Remote video (full screen) */}
+        <div className="absolute inset-0 bg-[#121212] flex items-center justify-center">
+          <video
+            ref={(el) => {
+              remoteVideoRef.current = el;
+              if (el && remoteStreamRef.current && el.srcObject !== remoteStreamRef.current) {
+                el.srcObject = remoteStreamRef.current;
+                el.play?.().catch((e) => console.warn('[WebRTC] Remote video auto-play error:', e));
+              }
+            }}
+            autoPlay
+            playsInline
+            className="w-full h-full object-cover"
+            style={{ display: callType === 'video' ? 'block' : 'none' }}
+          />
 
-      {/* ── Active Call ──────────────────────────────── */}
-      {callStatus === 'connected' && (
-        <div className="flex-1 flex relative overflow-hidden">
-
-          {/* Remote video (full screen background) */}
-          <div className="absolute inset-0 bg-[#121212] flex items-center justify-center">
-            <video
-              ref={remoteVideoRef}
-              autoPlay
-              playsInline
-              className="w-full h-full object-cover"
-              style={{ display: callType === 'video' ? 'block' : 'none' }}
-            />
-            {/* Fallback avatar when no remote video or audio call */}
-            {callType === 'audio' && (
-              <div className="flex flex-col items-center justify-center gap-4">
-                <div className="relative mb-8 flex items-center justify-center">
-                  <span className="absolute w-52 h-52 rounded-full bg-[#D51659]/20 blur-2xl animate-pulse" />
-                  <span className="absolute w-40 h-40 rounded-full border border-[#D51659]/40 animate-ping" style={{ animationDuration: '3s' }} />
-                  <img
-                    src={remoteUserPhoto || 'https://via.placeholder.com/150'}
-                    alt={remoteUserName}
-                    className="w-32 h-32 rounded-full object-cover border-4 border-white/10 shadow-[0_0_50px_rgba(213,22,89,0.4)] relative z-10"
-                  />
-                </div>
-                <h2 className="text-2xl font-black text-white tracking-wide drop-shadow-md">{remoteUserName}</h2>
-                <p className="text-xs font-bold text-[#D51659] uppercase tracking-widest flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  Voice Call Connected · {formatTime(duration)}
-                </p>
-                {/* Sound wave */}
-                <div className="flex items-center gap-1.5 mt-8 h-10">
-                  {[40, 75, 30, 90, 50, 85, 45, 65, 100, 55, 80, 35, 70, 45].map((h, i) => (
-                    <span key={i} className="w-1.5 bg-gradient-to-t from-[#D51659] to-[#B44DDC] rounded-full animate-pulse"
-                      style={{ height: micActive ? `${h}%` : '20%', animationDelay: `${(i * 120) % 600}ms`, animationDuration: '1.2s' }} />
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* cam error notice */}
-          {camError && (
-            <div className="absolute top-16 left-1/2 -translate-x-1/2 z-20 bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-semibold px-4 py-2 rounded-xl backdrop-blur-sm">
-              ⚠️ {camError}
-            </div>
-          )}
-
-          {/* Local PiP (Picture-in-Picture) */}
-          {callType === 'video' && (
-            <div className="absolute top-6 right-6 w-28 h-40 md:w-36 md:h-52 rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-slate-900 z-20">
-              {videoActive ? (
-                <video
-                  ref={localVideoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover scale-x-[-1]"
+          {/* Fallback avatar when audio call or no video stream */}
+          {callType === 'audio' && (
+            <div className="flex flex-col items-center justify-center gap-4">
+              <div className="relative mb-8 flex items-center justify-center">
+                <span className="absolute w-52 h-52 rounded-full bg-[#D51659]/20 blur-2xl animate-pulse" />
+                <span
+                  className="absolute w-40 h-40 rounded-full border border-[#D51659]/40 animate-ping"
+                  style={{ animationDuration: '3s' }}
                 />
-              ) : (
-                <div className="w-full h-full bg-slate-950 flex flex-col items-center justify-center gap-2">
-                  <img
-                    src={currentUser?.photos?.[0]?.url || 'https://via.placeholder.com/150'}
-                    alt="Me"
-                    className="w-10 h-10 rounded-full object-cover grayscale"
+                <img
+                  src={remoteUserPhoto || 'https://via.placeholder.com/150'}
+                  alt={remoteUserName}
+                  className="w-32 h-32 rounded-full object-cover border-4 border-white/10 shadow-[0_0_50px_rgba(213,22,89,0.4)] relative z-10"
+                />
+              </div>
+              <h2 className="text-2xl font-black text-white tracking-wide drop-shadow-md">{remoteUserName}</h2>
+              <p className="text-xs font-bold text-[#D51659] uppercase tracking-widest flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                Voice Call Connected · {formatTime(duration)}
+              </p>
+              <div className="flex items-center gap-1.5 mt-8 h-10">
+                {[40, 75, 30, 90, 50, 85, 45, 65, 100, 55, 80, 35, 70, 45].map((h, i) => (
+                  <span
+                    key={i}
+                    className="w-1.5 bg-gradient-to-t from-[#D51659] to-[#B44DDC] rounded-full animate-pulse"
+                    style={{
+                      height: micActive ? `${h}%` : '20%',
+                      animationDelay: `${(i * 120) % 600}ms`,
+                      animationDuration: '1.2s',
+                    }}
                   />
-                  <VideoOff className="w-3.5 h-3.5 text-slate-500" />
-                </div>
-              )}
-              <div className="absolute bottom-2 left-2 text-[9px] font-semibold bg-black/65 px-1.5 py-0.5 rounded text-slate-300">
-                You
+                ))}
               </div>
             </div>
           )}
-
-          {/* Top overlay */}
-          <div className="absolute top-0 left-0 right-0 p-6 bg-gradient-to-b from-black/60 to-transparent flex items-center justify-between pointer-events-none">
-            <div className="pointer-events-auto">
-              <h4 className="font-extrabold text-sm text-white drop-shadow-md">{remoteUserName}</h4>
-              <p className="text-[10px] font-bold text-[#D51659] uppercase tracking-wider flex items-center gap-1">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                Live · {formatTime(duration)}
-              </p>
-            </div>
-            <button
-              onClick={() => setIsMutedSound(m => !m)}
-              className="p-2.5 rounded-xl bg-black/40 border border-white/10 hover:bg-black/60 text-white transition-colors pointer-events-auto"
-            >
-              {isMutedSound ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-            </button>
-          </div>
-
-          {/* Bottom controls */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 px-6 py-3.5 bg-black/50 border border-white/10 backdrop-blur-xl rounded-3xl flex items-center gap-5 md:gap-7 z-25 shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
-            {/* Mic */}
-            <button onClick={toggleMic}
-              className={`p-3 rounded-2xl transition-all duration-300 ${micActive ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-[#D51659]/30 text-[#D51659] border border-[#D51659]/50'}`}
-              title={micActive ? 'Mute' : 'Unmute'}>
-              {micActive ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
-            </button>
-
-            {/* Video */}
-            {callType === 'video' && (
-              <button onClick={toggleVideo}
-                className={`p-3 rounded-2xl transition-all duration-300 ${videoActive ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-[#D51659]/30 text-[#D51659] border border-[#D51659]/50'}`}
-                title={videoActive ? 'Turn off camera' : 'Turn on camera'}>
-                {videoActive ? <VideoIcon className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
-              </button>
-            )}
-
-            {/* Chat */}
-            <button onClick={() => setShowChat(c => !c)}
-              className={`p-3 rounded-2xl transition-all duration-300 relative ${showChat ? 'bg-purple-500/30 text-purple-300 border border-purple-500/50' : 'bg-white/10 text-white hover:bg-white/20'}`}
-              title="Chat">
-              <MessageSquare className="w-5 h-5" />
-              {!showChat && chatMessages.length > 0 && (
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#D51659] rounded-full border border-black animate-pulse" />
-              )}
-            </button>
-
-            <span className="w-[1px] h-6 bg-white/15" />
-
-            {/* End Call */}
-            <button onClick={handleEndCall}
-              className="p-3.5 rounded-full bg-[#D51659] hover:bg-[#D51659]/90 text-white hover:scale-110 active:scale-95 transition-all shadow-[0_4px_16px_rgba(213,22,89,0.4)]"
-              title="End Call">
-              <PhoneOff className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* In-call chat drawer */}
-          <AnimatePresence>
-            {showChat && (
-              <motion.div
-                initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
-                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="w-full sm:w-80 h-full bg-[#0F0F16]/95 border-l border-white/10 backdrop-blur-xl flex flex-col z-30 relative shadow-[-10px_0_30px_rgba(0,0,0,0.5)]"
-              >
-                <div className="h-16 px-4 border-b border-white/5 flex items-center justify-between bg-black/30">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4 text-[#D51659]" />
-                    <span className="font-extrabold text-sm tracking-wider uppercase">Session Chat</span>
-                  </div>
-                  <button onClick={() => setShowChat(false)} className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-4 space-y-3.5 no-scrollbar">
-                  {chatMessages.length === 0 && (
-                    <p className="text-center text-xs text-white/20 py-6">No messages yet. Say hi! 👋</p>
-                  )}
-                  {chatMessages.map((msg) => {
-                    const isMe = msg.sender === 'me';
-                    return (
-                      <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                        <span className="text-[9px] text-slate-500 font-semibold mb-0.5 px-1">{msg.senderName}</span>
-                        <div className={`p-2.5 rounded-2xl text-xs max-w-[85%] break-words leading-relaxed ${isMe ? 'bg-[#D51659] text-white rounded-tr-none' : 'bg-white/10 text-slate-200 rounded-tl-none border border-white/5'}`}>
-                          {msg.text}
-                        </div>
-                        <span className="text-[8px] text-slate-600 mt-0.5 px-1">{msg.time}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <form onSubmit={handleSendMessage} className="p-3 border-t border-white/5 bg-black/40 flex items-center gap-2">
-                  <input
-                    type="text" value={chatInput} onChange={e => setChatInput(e.target.value)}
-                    placeholder="Send message..."
-                    className="flex-1 px-3 py-2 text-xs rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-[#D51659] transition-all"
-                  />
-                  <button type="submit" className="p-2 rounded-xl bg-[#D51659] text-white hover:scale-105 active:scale-95 transition-all">
-                    <Send className="w-3.5 h-3.5" />
-                  </button>
-                </form>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
-      )}
+
+        {/* ── Connecting Overlay (Visible during connection negotiation) ── */}
+        <AnimatePresence>
+          {callStatus === 'connecting' && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-40 bg-[#0A0A0A]/90 backdrop-blur-md flex flex-col items-center justify-center p-6"
+            >
+              <div className="relative mb-6">
+                <span
+                  className="absolute inset-[-15px] rounded-full border border-[#D51659]/30 animate-ping"
+                  style={{ animationDuration: '2s' }}
+                />
+                <span
+                  className="absolute inset-[-30px] rounded-full border border-purple-500/20 animate-ping"
+                  style={{ animationDuration: '3.5s' }}
+                />
+                <img
+                  src={remoteUserPhoto || 'https://via.placeholder.com/150'}
+                  alt={remoteUserName}
+                  className="w-32 h-32 rounded-full object-cover border-4 border-white/10 shadow-[0_8px_32px_rgba(213,22,89,0.3)] relative z-10"
+                />
+              </div>
+              <h2 className="text-xl font-bold tracking-wide text-white">{remoteUserName}</h2>
+              <p className="text-sm text-slate-400 mt-2 flex items-center gap-1.5 uppercase font-semibold tracking-widest text-xs">
+                <span className="inline-block w-2 h-2 rounded-full bg-[#D51659] animate-pulse" />
+                Connecting...
+              </p>
+              {camError && (
+                <p className="mt-4 text-xs text-amber-400 bg-amber-500/10 px-4 py-2 rounded-xl border border-amber-500/20 max-w-xs text-center">
+                  ⚠️ {camError}
+                </p>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Cam error notice banner */}
+        {camError && callStatus === 'connected' && (
+          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-20 bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-semibold px-4 py-2 rounded-xl backdrop-blur-sm">
+            ⚠️ {camError}
+          </div>
+        )}
+
+        {/* Local PiP (Picture-in-Picture) */}
+        {callType === 'video' && (
+          <div className="absolute top-6 right-6 w-28 h-40 md:w-36 md:h-52 rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-slate-900 z-30">
+            {videoActive ? (
+              <video
+                ref={(el) => {
+                  localVideoRef.current = el;
+                  if (el && localStreamRef.current && el.srcObject !== localStreamRef.current) {
+                    el.srcObject = localStreamRef.current;
+                  }
+                }}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover scale-x-[-1]"
+              />
+            ) : (
+              <div className="w-full h-full bg-slate-950 flex flex-col items-center justify-center gap-2">
+                <img
+                  src={currentUser?.photos?.[0]?.url || 'https://via.placeholder.com/150'}
+                  alt="Me"
+                  className="w-10 h-10 rounded-full object-cover grayscale"
+                />
+                <VideoOff className="w-3.5 h-3.5 text-slate-500" />
+              </div>
+            )}
+            <div className="absolute bottom-2 left-2 text-[9px] font-semibold bg-black/65 px-1.5 py-0.5 rounded text-slate-300">
+              You
+            </div>
+          </div>
+        )}
+
+        {/* Top Header Overlay */}
+        <div className="absolute top-0 left-0 right-0 p-6 bg-gradient-to-b from-black/60 to-transparent flex items-center justify-between pointer-events-none z-30">
+          <div className="pointer-events-auto">
+            <h4 className="font-extrabold text-sm text-white drop-shadow-md">{remoteUserName}</h4>
+            <p className="text-[10px] font-bold text-[#D51659] uppercase tracking-wider flex items-center gap-1">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              {callStatus === 'connected' ? `Live · ${formatTime(duration)}` : 'Connecting...'}
+            </p>
+          </div>
+          <button
+            onClick={() => setIsMutedSound((m) => !m)}
+            className="p-2.5 rounded-xl bg-black/40 border border-white/10 hover:bg-black/60 text-white transition-colors pointer-events-auto"
+          >
+            {isMutedSound ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+          </button>
+        </div>
+
+        {/* Bottom Control Bar */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 px-6 py-3.5 bg-black/50 border border-white/10 backdrop-blur-xl rounded-3xl flex items-center gap-5 md:gap-7 z-30 shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
+          {/* Mic */}
+          <button
+            onClick={toggleMic}
+            className={`p-3 rounded-2xl transition-all duration-300 ${
+              micActive
+                ? 'bg-white/10 text-white hover:bg-white/20'
+                : 'bg-[#D51659]/30 text-[#D51659] border border-[#D51659]/50'
+            }`}
+            title={micActive ? 'Mute' : 'Unmute'}
+          >
+            {micActive ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+          </button>
+
+          {/* Video Toggle */}
+          {callType === 'video' && (
+            <button
+              onClick={toggleVideo}
+              className={`p-3 rounded-2xl transition-all duration-300 ${
+                videoActive
+                  ? 'bg-white/10 text-white hover:bg-white/20'
+                  : 'bg-[#D51659]/30 text-[#D51659] border border-[#D51659]/50'
+              }`}
+              title={videoActive ? 'Turn off camera' : 'Turn on camera'}
+            >
+              {videoActive ? <VideoIcon className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
+            </button>
+          )}
+
+          {/* Chat Drawer Toggle */}
+          <button
+            onClick={() => setShowChat((c) => !c)}
+            className={`p-3 rounded-2xl transition-all duration-300 relative ${
+              showChat
+                ? 'bg-purple-500/30 text-purple-300 border border-purple-500/50'
+                : 'bg-white/10 text-white hover:bg-white/20'
+            }`}
+            title="Chat"
+          >
+            <MessageSquare className="w-5 h-5" />
+            {!showChat && chatMessages.length > 0 && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#D51659] rounded-full border border-black animate-pulse" />
+            )}
+          </button>
+
+          <span className="w-[1px] h-6 bg-white/15" />
+
+          {/* End Call */}
+          <button
+            onClick={handleEndCall}
+            className="p-3.5 rounded-full bg-[#D51659] hover:bg-[#D51659]/90 text-white hover:scale-110 active:scale-95 transition-all shadow-[0_4px_16px_rgba(213,22,89,0.4)]"
+            title="End Call"
+          >
+            <PhoneOff className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* In-Call Chat Drawer */}
+        <AnimatePresence>
+          {showChat && (
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="w-full sm:w-80 h-full bg-[#0F0F16]/95 border-l border-white/10 backdrop-blur-xl flex flex-col z-40 relative shadow-[-10px_0_30px_rgba(0,0,0,0.5)]"
+            >
+              <div className="h-16 px-4 border-b border-white/5 flex items-center justify-between bg-black/30">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-[#D51659]" />
+                  <span className="font-extrabold text-sm tracking-wider uppercase">Session Chat</span>
+                </div>
+                <button
+                  onClick={() => setShowChat(false)}
+                  className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-3.5 no-scrollbar">
+                {chatMessages.length === 0 && (
+                  <p className="text-center text-xs text-white/20 py-6">No messages yet. Say hi! 👋</p>
+                )}
+                {chatMessages.map((msg) => {
+                  const isMe = msg.sender === 'me';
+                  return (
+                    <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                      <span className="text-[9px] text-slate-500 font-semibold mb-0.5 px-1">{msg.senderName}</span>
+                      <div
+                        className={`p-2.5 rounded-2xl text-xs max-w-[85%] break-words leading-relaxed ${
+                          isMe
+                            ? 'bg-[#D51659] text-white rounded-tr-none'
+                            : 'bg-white/10 text-slate-200 rounded-tl-none border border-white/5'
+                        }`}
+                      >
+                        {msg.text}
+                      </div>
+                      <span className="text-[8px] text-slate-600 mt-0.5 px-1">{msg.time}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <form onSubmit={handleSendMessage} className="p-3 border-t border-white/5 bg-black/40 flex items-center gap-2">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="Send message..."
+                  className="flex-1 px-3 py-2 text-xs rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-[#D51659] transition-all"
+                />
+                <button
+                  type="submit"
+                  className="p-2 rounded-xl bg-[#D51659] text-white hover:scale-105 active:scale-95 transition-all"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                </button>
+              </form>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 };

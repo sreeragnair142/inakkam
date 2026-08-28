@@ -167,34 +167,33 @@ const Chat = () => {
     try {
       toast.loading('Initializing call...', { id: 'call_init' });
 
-      // 1. Create Room on EnableX
-      const roomRes = await api.post('/enablex/create-room', {
-        name: `Call with ${activeChat.userName}`
-      });
+      let roomId = `room_${Date.now()}`;
+      let token = '';
 
-      if (!roomRes.data.success) {
-        throw new Error(roomRes.data.message || 'Failed to create room');
+      // 1. Try Create Room & Token on EnableX (optional service)
+      try {
+        const roomRes = await api.post('/enablex/create-room', {
+          name: `Call with ${activeChat.userName}`
+        });
+        if (roomRes.data?.success && roomRes.data?.room?.room_id) {
+          roomId = roomRes.data.room.room_id;
+          const tokenRes = await api.post('/enablex/get-token', {
+            roomId,
+            role: 'moderator'
+          });
+          if (tokenRes.data?.success) {
+            token = tokenRes.data.token;
+          }
+        }
+      } catch (svcErr) {
+        console.warn('[EnableX Room Init Fallback to WebRTC]', svcErr);
       }
 
-      const roomId = roomRes.data.room.room_id;
-
-      // 2. Generate Token for Caller (Moderator)
-      const tokenRes = await api.post('/enablex/get-token', {
-        roomId,
-        role: 'moderator'
-      });
-
-      if (!tokenRes.data.success) {
-        throw new Error(tokenRes.data.message || 'Failed to generate token');
-      }
-
-      const token = tokenRes.data.token;
-
-      // 3. Emit socket event
+      // 2. Emit socket call event
       const socket = getSocket();
       if (socket) {
         socket.emit('call_user', {
-          conversationId: activeChat.id,
+          conversationId: activeChat.id || activeChat.conversationId,
           targetUserId,
           roomId,
           callerName: currentUser?.name || 'Inakkam User',
@@ -205,7 +204,7 @@ const Chat = () => {
 
       toast.dismiss('call_init');
 
-      // 4. Set Active Call State
+      // 3. Set Active Call State
       setActiveCall({
         roomId,
         token,
@@ -230,17 +229,20 @@ const Chat = () => {
     try {
       toast.loading('Connecting call...', { id: 'call_connect' });
 
-      // 1. Generate Token for Receiver (Participant)
-      const tokenRes = await api.post('/enablex/get-token', {
-        roomId: incomingCall.roomId,
-        role: 'participant'
-      });
-
-      if (!tokenRes.data.success) {
-        throw new Error(tokenRes.data.message || 'Failed to join room');
+      let token = '';
+      if (incomingCall.roomId) {
+        try {
+          const tokenRes = await api.post('/enablex/get-token', {
+            roomId: incomingCall.roomId,
+            role: 'participant'
+          });
+          if (tokenRes.data?.success) {
+            token = tokenRes.data.token;
+          }
+        } catch (svcErr) {
+          console.warn('[EnableX Token Fallback to WebRTC]', svcErr);
+        }
       }
-
-      const token = tokenRes.data.token;
 
       // 2. Emit socket accept
       const socket = getSocket();
