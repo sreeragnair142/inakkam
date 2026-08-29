@@ -113,7 +113,9 @@ const Chat = () => {
 
     const handleCallAccepted = (data) => {
       console.log('📞 Socket event: call_accepted', data);
-      toast.success('Call accepted!');
+      // The callee accepted — caller is already in VideoCall component, no state change needed
+      // Just notify user call was accepted
+      toast.success('Call accepted! Connecting...');
     };
 
     const handleCallRejected = (data) => {
@@ -292,18 +294,20 @@ const Chat = () => {
   };
 
   // End Call Callback from VideoCall component
-  // VideoCall calls this via onEndCall after its own teardown.
-  // We emit end_call here (VideoCall no longer emits it) to avoid double-emission.
   const handleEndCall = () => {
+    // Note: activeCall might already be null if called from cleanup
+    const callSnapshot = activeCall;
+
     const socket = getSocket();
-    if (socket && activeCall?.targetUserId) {
+    if (socket && callSnapshot) {
       socket.emit('end_call', {
-        conversationId: activeChat?.id || activeCall?.roomId,
-        targetUserId: activeCall.targetUserId
+        conversationId: activeChat?.id || activeChat?.conversationId || callSnapshot.roomId,
+        targetUserId: callSnapshot.targetUserId
       });
     }
 
     setActiveCall(null);
+    setIncomingCall(null);
   };
 
   // Scroll to bottom on new messages

@@ -26,8 +26,8 @@
     <!-- Manifest -->
     <link rel="manifest" href="/manifest.json" />
 
-    <!-- EnableX Web SDK -->
-    <script src="https://developer.enablex.io/downloads/video/web/v3.1.10/EnxRtc.js"></script>
+    <!-- EnableX Web SDK — loads synchronously so window.EnxRtc is ready before React mounts -->
+    <script src="https://developer.enablex.io/downloads/video/web/v3.1.12/EnxRtc.js" crossorigin="anonymous"></script>
 
     <title>Inakkam — Infinite Match</title>
   </head>
