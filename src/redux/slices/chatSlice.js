@@ -14,7 +14,7 @@ export const fetchConversations = createAsyncThunk('chat/fetchConversations', as
       ...conv,
       id: conv.conversationId,
       userName: conv.user?.name || 'Unknown',
-      userImage: conv.user?.photos?.[0]?.url || 'https://via.placeholder.com/150',
+      userImage: conv.user?.photos?.[0]?.url || `https://ui-avatars.com/api/?name=${encodeURIComponent(conv.user?.name||'U')}&background=D51659&color=fff&size=150`,
       messages: [] // messages are fetched separately or via socket
     }));
   } catch (err) {

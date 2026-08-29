@@ -832,7 +832,7 @@ const Chat = () => {
               <div className="relative inline-block mb-4">
                 <span className="absolute inset-[-10px] rounded-full border-2 border-[#D51659]/30 animate-ping" />
                 <img
-                  src={incomingCall.callerPhoto || "https://via.placeholder.com/150"}
+                  src={incomingCall.callerPhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(incomingCall.callerName||'User')}&background=D51659&color=fff&size=150`}
                   alt={incomingCall.callerName}
                   className="w-24 h-24 rounded-full object-cover border-4 border-slate-50 mx-auto animate-pulse"
                 />
