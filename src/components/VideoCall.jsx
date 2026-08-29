@@ -205,24 +205,143 @@ const VideoCall = ({
       return;
     }
 
+    // Refs for async state within this effect
+    const pendingOfferRef = { current: null }; // Offer received before PC was ready
+    const pcReadyRef = { current: false };       // PC and tracks are added
     let pc;
 
+    // ── STEP 1: Register socket listeners IMMEDIATELY (before async getUserMedia) ──
+    // This prevents race conditions where callee emits 'webrtc_ready' before
+    // caller's async setup completes.
+
+    const handleOffer = async ({ senderId, offer }) => {
+      if (String(senderId) !== String(targetUserId)) return;
+      console.log('[WebRTC] Received offer. PC ready:', pcReadyRef.current);
+
+      if (!pcReadyRef.current) {
+        // PC not ready yet — queue the offer to be processed after setup
+        pendingOfferRef.current = offer;
+        console.warn('[WebRTC] PC not ready — queuing offer for later processing');
+        return;
+      }
+      await processOffer(offer);
+    };
+
+    const processOffer = async (offer) => {
+      if (!pcRef.current) return;
+      console.log('[WebRTC] Processing offer...');
+      await pcRef.current.setRemoteDescription(new RTCSessionDescription(offer));
+      hasRemoteDescRef.current = true;
+      await flushIceCandidateQueue();
+
+      const answer = await pcRef.current.createAnswer();
+      await pcRef.current.setLocalDescription(answer);
+      socket.emit('webrtc_answer', { targetUserId, answer });
+      console.log('[WebRTC] ✅ Sent answer');
+    };
+
+    const handleAnswer = async ({ senderId, answer }) => {
+      if (String(senderId) !== String(targetUserId)) return;
+      console.log('[WebRTC] Received answer');
+      if (!pcRef.current) return;
+      await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+      hasRemoteDescRef.current = true;
+      await flushIceCandidateQueue();
+    };
+
+    const handleIceCandidate = async ({ senderId, candidate }) => {
+      if (String(senderId) !== String(targetUserId)) return;
+      if (!hasRemoteDescRef.current || !pcRef.current) {
+        iceCandidateQueueRef.current.push(candidate);
+        return;
+      }
+      try {
+        await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (e) {
+        console.warn('[WebRTC] Failed to add ICE candidate', e);
+      }
+    };
+
+    const sendOffer = async () => {
+      if (!isCaller || offerSentRef.current || !pcRef.current) return;
+      offerSentRef.current = true;
+      console.log('[WebRTC] Creating and sending offer...');
+      const offer = await pcRef.current.createOffer();
+      await pcRef.current.setLocalDescription(offer);
+      socket.emit('webrtc_offer', { targetUserId, offer });
+      console.log('[WebRTC] ✅ Sent offer');
+    };
+
+    const handleRemoteReady = async ({ senderId }) => {
+      if (String(senderId) !== String(targetUserId)) return;
+      console.log('[WebRTC] Remote is ready — isCaller:', isCaller, '| PC ready:', pcReadyRef.current);
+      if (isCaller && !offerSentRef.current) {
+        if (pcReadyRef.current) {
+          await sendOffer();
+        } else {
+          // PC setup is still in progress (getUserMedia slow) — signal it to send offer when ready
+          offerSentRef.current = false; // Will be set to true in sendOffer
+          console.warn('[WebRTC] Got webrtc_ready before PC ready — will send offer once setup completes');
+          // Set flag so setup completion knows to send the offer
+          pendingOfferRef.current = 'SEND_OFFER_WHEN_READY';
+        }
+      }
+    };
+
+    const handleCallerReady = ({ senderId }) => {
+      if (String(senderId) !== String(targetUserId)) return;
+      console.log('[WebRTC] Received webrtc_caller_ready. isCaller:', isCaller);
+      if (!isCaller) {
+        socket.emit('webrtc_ready', { targetUserId });
+        console.log('[WebRTC] Callee responding to webrtc_caller_ready with webrtc_ready');
+      }
+    };
+
+    const handleCallEnded = () => {
+      toast('Call ended by the other person', { icon: '📞' });
+      if (isMountedRef.current && !isDisconnectedRef.current) handleDisconnect();
+    };
+
+    // Register listeners SYNCHRONOUSLY before any async work
+    socket.on('webrtc_offer', handleOffer);
+    socket.on('webrtc_answer', handleAnswer);
+    socket.on('webrtc_ice_candidate', handleIceCandidate);
+    socket.on('webrtc_ready', handleRemoteReady);
+    socket.on('webrtc_caller_ready', handleCallerReady);
+    socket.on('call_ended', handleCallEnded);
+    console.log('[WebRTC] 📡 Socket listeners registered. isCaller:', isCaller);
+
+    // ── STEP 2: Get local media asynchronously ────────────
     const start = async () => {
       try {
-        // 1. Get local media
         const constraints = {
           audio: true,
-          video: callType === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' } : false
+          video: callType === 'video'
+            ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }
+            : false
         };
 
         let stream;
         try {
           stream = await navigator.mediaDevices.getUserMedia(constraints);
         } catch (mediaErr) {
-          console.error('[VideoCall] Camera/mic error:', mediaErr);
-          toast.error('Camera/microphone access denied. Please allow and retry.');
-          handleDisconnect();
-          return;
+          console.error('[VideoCall] Camera/mic error:', mediaErr.name, mediaErr.message);
+          // Try audio-only fallback for video calls
+          if (callType === 'video') {
+            try {
+              stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+              console.warn('[VideoCall] Falling back to audio-only');
+              if (isMountedRef.current) setVideoActive(false);
+            } catch (audioErr) {
+              toast.error('Camera/microphone access denied. Please allow in browser settings.');
+              handleDisconnect();
+              return;
+            }
+          } else {
+            toast.error('Microphone access denied. Please allow in browser settings.');
+            handleDisconnect();
+            return;
+          }
         }
 
         if (!isMountedRef.current) {
@@ -232,99 +351,56 @@ const VideoCall = ({
 
         localStreamRef.current = stream;
 
-        // Show local video preview
-        if (localVideoRef.current && callType === 'video') {
+        // Show local camera preview
+        if (localVideoRef.current && stream.getVideoTracks().length > 0) {
           localVideoRef.current.srcObject = stream;
         }
 
-        // 2. Create peer connection
+        // 3. Create peer connection and add tracks
         pc = createPeerConnection();
         pcRef.current = pc;
+        stream.getTracks().forEach(track => pc.addTrack(track, stream));
+        pcReadyRef.current = true;
+        console.log('[WebRTC] ✅ PC ready with', stream.getTracks().length, 'tracks');
 
-        // 3. Add tracks to peer connection
-        stream.getTracks().forEach(track => {
-          pc.addTrack(track, stream);
-        });
-
-        // 4. Signaling: Handle offer/answer/ICE from remote peer
-        const handleOffer = async ({ senderId, offer }) => {
-          if (String(senderId) !== String(targetUserId)) return;
-          console.log('[WebRTC] Received offer');
-          await pc.setRemoteDescription(new RTCSessionDescription(offer));
-          hasRemoteDescRef.current = true;
-          await flushIceCandidateQueue();
-
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          socket.emit('webrtc_answer', { targetUserId, answer });
-          console.log('[WebRTC] Sent answer');
-        };
-
-        const handleAnswer = async ({ senderId, answer }) => {
-          if (String(senderId) !== String(targetUserId)) return;
-          console.log('[WebRTC] Received answer');
-          await pc.setRemoteDescription(new RTCSessionDescription(answer));
-          hasRemoteDescRef.current = true;
-          await flushIceCandidateQueue();
-        };
-
-        const handleIceCandidate = async ({ senderId, candidate }) => {
-          if (String(senderId) !== String(targetUserId)) return;
-          if (!hasRemoteDescRef.current) {
-            // Queue until remote description is set
-            iceCandidateQueueRef.current.push(candidate);
-            return;
-          }
-          try {
-            await pc.addIceCandidate(new RTCIceCandidate(candidate));
-          } catch (e) {
-            console.warn('[WebRTC] Failed to add ICE candidate', e);
-          }
-        };
-
-        const handleRemoteReady = async ({ senderId }) => {
-          if (String(senderId) !== String(targetUserId)) return;
-          console.log('[WebRTC] Remote is ready — sending offer (caller).');
-          // Only caller responds to webrtc_ready; guard against duplicate offers
-          if (isCaller && !offerSentRef.current) {
-            offerSentRef.current = true;
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            socket.emit('webrtc_offer', { targetUserId, offer });
-            console.log('[WebRTC] Sent offer after callee ready signal');
-          }
-        };
-
-        const handleCallEnded = () => {
-          toast('Call ended by the other person', { icon: '📞' });
-          if (isMountedRef.current && !isDisconnectedRef.current) handleDisconnect();
-        };
-
-        socket.on('webrtc_offer', handleOffer);
-        socket.on('webrtc_answer', handleAnswer);
-        socket.on('webrtc_ice_candidate', handleIceCandidate);
-        socket.on('webrtc_ready', handleRemoteReady);
-        socket.on('call_ended', handleCallEnded);
-
-        // 5. Start signaling handshake
+        // 4. Now that PC is ready, start signaling handshake
         if (isCaller) {
-          // Caller WAITS for callee's webrtc_ready signal before sending offer.
-          // This prevents a race where the offer arrives before callee's VideoCall mounts.
-          console.log('[WebRTC] Caller waiting for callee ready signal...');
+          // Check if we already received webrtc_ready before PC was ready
+          if (pendingOfferRef.current === 'SEND_OFFER_WHEN_READY') {
+            pendingOfferRef.current = null;
+            await sendOffer();
+          } else {
+            // Caller waits for callee's webrtc_ready
+            // Also emit a 'caller_ready' so callee knows to send webrtc_ready
+            socket.emit('webrtc_caller_ready', { targetUserId });
+            console.log('[WebRTC] Caller: PC ready, sent webrtc_caller_ready. Waiting for callee...');
+            // Safety fallback: if we never get webrtc_ready within 4s, send offer anyway
+            setTimeout(async () => {
+              if (isMountedRef.current && !offerSentRef.current && pcRef.current) {
+                console.warn('[WebRTC] Timeout: callee never sent webrtc_ready — sending offer anyway');
+                await sendOffer();
+              }
+            }, 4000);
+          }
         } else {
-          // Callee signals ready — this triggers the caller to send an offer
-          socket.emit('webrtc_ready', { targetUserId });
-          console.log('[WebRTC] Callee sent webrtc_ready — waiting for offer...');
+          // Callee: process any offer that arrived before PC was ready
+          if (pendingOfferRef.current && pendingOfferRef.current !== 'SEND_OFFER_WHEN_READY') {
+            const queuedOffer = pendingOfferRef.current;
+            pendingOfferRef.current = null;
+            await processOffer(queuedOffer);
+          } else {
+            // Send webrtc_ready — caller will respond with an offer
+            socket.emit('webrtc_ready', { targetUserId });
+            console.log('[WebRTC] Callee: sent webrtc_ready to caller');
+            // Re-send after 2s in case caller's socket listener missed it
+            setTimeout(() => {
+              if (isMountedRef.current && !hasRemoteDescRef.current) {
+                socket.emit('webrtc_ready', { targetUserId });
+                console.log('[WebRTC] Callee: re-sent webrtc_ready (retry)');
+              }
+            }, 2500);
+          }
         }
-
-        // Return cleanup for socket listeners
-        return () => {
-          socket.off('webrtc_offer', handleOffer);
-          socket.off('webrtc_answer', handleAnswer);
-          socket.off('webrtc_ice_candidate', handleIceCandidate);
-          socket.off('webrtc_ready', handleRemoteReady);
-          socket.off('call_ended', handleCallEnded);
-        };
 
       } catch (err) {
         console.error('[VideoCall] Setup error:', err);
@@ -335,16 +411,19 @@ const VideoCall = ({
       }
     };
 
-    let cleanupSocketListeners;
-    start().then(cleanup => {
-      cleanupSocketListeners = cleanup;
-    });
+    start();
 
     return () => {
-      if (cleanupSocketListeners) cleanupSocketListeners();
+      socket.off('webrtc_offer', handleOffer);
+      socket.off('webrtc_answer', handleAnswer);
+      socket.off('webrtc_ice_candidate', handleIceCandidate);
+      socket.off('webrtc_ready', handleRemoteReady);
+      socket.off('webrtc_caller_ready', handleCallerReady);
+      socket.off('call_ended', handleCallEnded);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   // ─── Toggle Mic ──────────────────────────────────────────
   const toggleMic = () => {
