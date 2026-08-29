@@ -224,30 +224,55 @@ const VideoCall = ({
       return;
     }
 
-    // Wait for EnableX SDK to load (it's a CDN script — may need a moment)
+    // ─── Ensure EnableX SDK is loaded (CDN may still be loading or failed) ─
+    const ENABLEX_SDK_URL = 'https://developer.enablex.io/downloads/video/web/v3.1.10/EnxRtc.js';
     let sdkCheckAttempts = 0;
-    const maxAttempts = 20; // 20 × 250ms = 5 seconds max wait
+    const maxAttempts = 40; // 40 × 250ms = 10 seconds max wait
 
     const tryJoinRoom = () => {
       if (!isMountedRef.current) return;
 
-      if (typeof window.EnxRtc === 'undefined') {
-        sdkCheckAttempts++;
-        if (sdkCheckAttempts < maxAttempts) {
-          console.warn(`[EnableX] SDK not ready yet, retrying... (attempt ${sdkCheckAttempts}/${maxAttempts})`);
-          setTimeout(tryJoinRoom, 250);
-          return;
-        }
-        // SDK never loaded — fallback to simulation
-        console.error('[EnableX] SDK failed to load. Falling back to Simulation Mode.');
-        if (isMountedRef.current) {
-          setIsSimulation(true);
-          setCallStatus('connected');
-          toast.error('Real-time call SDK unavailable. Running in demo mode.');
-        }
+      if (typeof window.EnxRtc !== 'undefined') {
+        // SDK is ready — proceed to join
+        doJoinRoom();
         return;
       }
 
+      sdkCheckAttempts++;
+
+      // On first attempt, check if script tag already exists, if not inject it
+      if (sdkCheckAttempts === 1) {
+        const existingScript = document.querySelector(`script[src="${ENABLEX_SDK_URL}"]`);
+        if (!existingScript) {
+          console.warn('[EnableX] SDK script not in DOM — dynamically injecting...');
+          const script = document.createElement('script');
+          script.src = ENABLEX_SDK_URL;
+          script.crossOrigin = 'anonymous';
+          script.onerror = () => {
+            console.error('[EnableX] Dynamic script injection also failed. No network access to CDN?');
+          };
+          document.head.appendChild(script);
+        } else {
+          console.warn('[EnableX] Script tag found in DOM but SDK not ready yet — waiting...');
+        }
+      }
+
+      if (sdkCheckAttempts < maxAttempts) {
+        console.warn(`[EnableX] SDK not ready, waiting... (${sdkCheckAttempts}/${maxAttempts})`);
+        setTimeout(tryJoinRoom, 250);
+        return;
+      }
+
+      // SDK truly failed to load after 10s
+      console.error('[EnableX] SDK failed to load after 10s. Check network connection to developer.enablex.io');
+      if (isMountedRef.current) {
+        setIsSimulation(true);
+        setCallStatus('connected');
+        toast.error('Call SDK unavailable. Check internet connection & try again.', { duration: 6000 });
+      }
+    };
+
+    const doJoinRoom = () => {
       console.log('[EnableX] SDK loaded. Joining room:', roomId);
       setCallStatus('connecting');
 
@@ -398,8 +423,9 @@ const VideoCall = ({
       }
     };
 
-    // Start joining
+    // Start joining (waits for SDK if needed, then calls doJoinRoom)
     tryJoinRoom();
+
 
     // NOTE: We intentionally do NOT call handleDisconnect in the cleanup here.
     // Cleanup is only triggered by the user explicitly hanging up (handleDisconnect btn)
