@@ -26,6 +26,9 @@ const ICE_SERVERS = {
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:global.stun.twilio.com:3478' }
   ]
 };
 
@@ -67,7 +70,6 @@ const VideoCall = ({
   const isMountedRef = useRef(true);
   const iceCandidateQueueRef = useRef([]); // Queue ICE candidates until remote desc is set
   const hasRemoteDescRef = useRef(false);
-  const offerSentRef = useRef(false);      // Guard against double-offer
 
   // ─── Format call duration ───────────────────────────────
   const formatTime = (secs) => {
@@ -169,7 +171,7 @@ const VideoCall = ({
   // ─── Attach ICE candidates from queue ───────────────────
   const flushIceCandidateQueue = useCallback(async () => {
     const pc = pcRef.current;
-    if (!pc) return;
+    if (!pc || !pc.remoteDescription) return;
     while (iceCandidateQueueRef.current.length > 0) {
       const candidate = iceCandidateQueueRef.current.shift();
       try {
@@ -260,14 +262,37 @@ const VideoCall = ({
     // Helper to verify message sender
     const isMatchingSender = (senderId) => {
       if (!senderId || !targetUid) return true;
-      return String(senderId) === targetUid;
+      const sId = String(senderId?._id || senderId?.id || senderId || '');
+      const tId = String(targetUid?._id || targetUid?.id || targetUid || '');
+      if (!sId || !tId) return true;
+      return sId === tId;
+    };
+
+    const sendOffer = async () => {
+      if (!isCaller || !pcRef.current) return;
+      if (hasRemoteDescRef.current) {
+        console.log('[WebRTC] Remote description already set, skipping offer.');
+        return;
+      }
+      console.log('[WebRTC] Creating and sending offer to:', targetUid);
+      try {
+        const offer = await pcRef.current.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: callType === 'video'
+        });
+        await pcRef.current.setLocalDescription(offer);
+        socket.emit('webrtc_offer', { targetUserId: targetUid, offer });
+        console.log('[WebRTC] ✅ Sent offer to:', targetUid);
+      } catch (err) {
+        console.error('[WebRTC] Error creating/sending offer:', err);
+      }
     };
 
     const handleOffer = async ({ senderId, offer }) => {
       if (!isMatchingSender(senderId)) return;
       console.log('[WebRTC] Received offer. PC ready:', pcReadyRef.current);
 
-      if (!pcReadyRef.current) {
+      if (!pcReadyRef.current || !pcRef.current) {
         pendingOfferRef.current = offer;
         console.warn('[WebRTC] PC not ready — queuing offer for later processing');
         return;
@@ -277,29 +302,44 @@ const VideoCall = ({
 
     const processOffer = async (offer) => {
       if (!pcRef.current) return;
-      console.log('[WebRTC] Processing offer...');
-      await pcRef.current.setRemoteDescription(new RTCSessionDescription(offer));
-      hasRemoteDescRef.current = true;
-      await flushIceCandidateQueue();
+      try {
+        console.log('[WebRTC] Processing offer and generating answer...');
+        await pcRef.current.setRemoteDescription(new RTCSessionDescription(offer));
+        hasRemoteDescRef.current = true;
+        await flushIceCandidateQueue();
 
-      const answer = await pcRef.current.createAnswer();
-      await pcRef.current.setLocalDescription(answer);
-      socket.emit('webrtc_answer', { targetUserId: targetUid, answer });
-      console.log('[WebRTC] ✅ Sent answer to target:', targetUid);
+        const answer = await pcRef.current.createAnswer();
+        await pcRef.current.setLocalDescription(answer);
+        socket.emit('webrtc_answer', { targetUserId: targetUid, answer });
+        console.log('[WebRTC] ✅ Sent answer to target:', targetUid);
+      } catch (err) {
+        console.error('[WebRTC] Error processing offer / creating answer:', err);
+      }
     };
 
     const handleAnswer = async ({ senderId, answer }) => {
       if (!isMatchingSender(senderId)) return;
-      console.log('[WebRTC] Received answer');
+      console.log('[WebRTC] Received answer from callee');
       if (!pcRef.current) return;
-      await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer));
-      hasRemoteDescRef.current = true;
-      await flushIceCandidateQueue();
+      try {
+        if (pcRef.current.signalingState === 'have-local-offer') {
+          await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+          hasRemoteDescRef.current = true;
+          await flushIceCandidateQueue();
+          console.log('[WebRTC] ✅ Remote description set from answer');
+        } else {
+          console.warn('[WebRTC] Received answer in signalingState:', pcRef.current.signalingState);
+        }
+      } catch (err) {
+        console.error('[WebRTC] Error setting remote description from answer:', err);
+      }
     };
 
     const handleIceCandidate = async ({ senderId, candidate }) => {
       if (!isMatchingSender(senderId)) return;
-      if (!hasRemoteDescRef.current || !pcRef.current) {
+      if (!candidate) return;
+
+      if (!hasRemoteDescRef.current || !pcRef.current || !pcRef.current.remoteDescription) {
         iceCandidateQueueRef.current.push(candidate);
         return;
       }
@@ -310,35 +350,38 @@ const VideoCall = ({
       }
     };
 
-    const sendOffer = async () => {
-      if (!isCaller || offerSentRef.current || !pcRef.current) return;
-      offerSentRef.current = true;
-      console.log('[WebRTC] Creating and sending offer to:', targetUid);
-      const offer = await pcRef.current.createOffer();
-      await pcRef.current.setLocalDescription(offer);
-      socket.emit('webrtc_offer', { targetUserId: targetUid, offer });
-      console.log('[WebRTC] ✅ Sent offer');
-    };
-
+    // When callee is ready, caller MUST immediately send an offer
     const handleRemoteReady = async ({ senderId }) => {
       if (!isMatchingSender(senderId)) return;
       console.log('[WebRTC] Remote is ready — isCaller:', isCaller, '| PC ready:', pcReadyRef.current);
-      if (isCaller && !offerSentRef.current) {
+      if (isCaller) {
         if (pcReadyRef.current) {
           await sendOffer();
         } else {
-          offerSentRef.current = false;
           pendingOfferRef.current = 'SEND_OFFER_WHEN_READY';
         }
       }
     };
 
+    // When caller announces ready
     const handleCallerReady = ({ senderId }) => {
       if (!isMatchingSender(senderId)) return;
       console.log('[WebRTC] Received webrtc_caller_ready. isCaller:', isCaller);
       if (!isCaller) {
         socket.emit('webrtc_ready', { targetUserId: targetUid });
         console.log('[WebRTC] Callee responding to webrtc_caller_ready with webrtc_ready');
+      }
+    };
+
+    // When call is accepted by other party
+    const handleCallAccepted = async () => {
+      console.log('[WebRTC] Call accepted event received — isCaller:', isCaller);
+      if (isCaller) {
+        if (pcReadyRef.current) {
+          await sendOffer();
+        } else {
+          pendingOfferRef.current = 'SEND_OFFER_WHEN_READY';
+        }
       }
     };
 
@@ -353,6 +396,7 @@ const VideoCall = ({
     socket.on('webrtc_ice_candidate', handleIceCandidate);
     socket.on('webrtc_ready', handleRemoteReady);
     socket.on('webrtc_caller_ready', handleCallerReady);
+    socket.on('call_accepted', handleCallAccepted);
     socket.on('call_ended', handleCallEnded);
     console.log('[WebRTC] 📡 Socket listeners registered. isCaller:', isCaller, 'targetUid:', targetUid);
 
@@ -411,13 +455,6 @@ const VideoCall = ({
           } else {
             socket.emit('webrtc_caller_ready', { targetUserId: targetUid });
             console.log('[WebRTC] Caller: PC ready, sent webrtc_caller_ready to:', targetUid);
-            // Safety fallback: if we never get webrtc_ready within 2.5s, send offer anyway
-            setTimeout(async () => {
-              if (isMountedRef.current && !offerSentRef.current && pcRef.current) {
-                console.warn('[WebRTC] Timeout: sending offer now');
-                await sendOffer();
-              }
-            }, 2500);
           }
         } else {
           // Callee: process any offer that arrived before PC was ready
@@ -426,12 +463,17 @@ const VideoCall = ({
             pendingOfferRef.current = null;
             await processOffer(queuedOffer);
           } else {
+            // Signal caller that callee is ready to receive offer
             socket.emit('webrtc_ready', { targetUserId: targetUid });
             console.log('[WebRTC] Callee: sent webrtc_ready to caller:', targetUid);
-            setTimeout(() => {
-              if (isMountedRef.current && !hasRemoteDescRef.current) {
+            
+            // Re-announce ready every 2s until remote description is received
+            const retryInterval = setInterval(() => {
+              if (isMountedRef.current && !hasRemoteDescRef.current && pcRef.current) {
                 socket.emit('webrtc_ready', { targetUserId: targetUid });
                 console.log('[WebRTC] Callee: re-sent webrtc_ready (retry)');
+              } else {
+                clearInterval(retryInterval);
               }
             }, 2000);
           }
@@ -454,6 +496,7 @@ const VideoCall = ({
       socket.off('webrtc_ice_candidate', handleIceCandidate);
       socket.off('webrtc_ready', handleRemoteReady);
       socket.off('webrtc_caller_ready', handleCallerReady);
+      socket.off('call_accepted', handleCallAccepted);
       socket.off('call_ended', handleCallEnded);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
