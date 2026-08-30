@@ -141,204 +141,645 @@ const VideoCall = ({
   }, [roomId, targetUid]);
 
   // ─── EnableX SDK Initialization ─────────────────────────
-  useEffect(() => {
-    let activeLocalStream = null;
+  // ─── EnableX SDK Initialization ─────────────────────────
+useEffect(() => {
+  let activeLocalStream = null;
+  let activeRoom = null;
+  let cancelled = false;
 
-    const startCall = async () => {
-      try {
-        const EnxRtc = window.EnxRtc;
-        if (!EnxRtc) {
-          console.error('❌ EnableX EnxRtc SDK not loaded on window.');
-          toast.error('Video service initialization failed.');
-          handleDisconnect();
-          return;
-        }
+  const startCall = async () => {
+    try {
+      const EnxRtc = window.EnxRtc;
 
-        // 1. Obtain Room Token
-        let token = initialToken;
-        if (!token && roomId) {
-          try {
-            const tokenRes = await api.post('/enablex/get-token', {
-              roomId,
-              role: isCaller ? 'moderator' : 'participant'
-            });
-            if (tokenRes.data?.success) {
-              token = tokenRes.data.token;
-            }
-          } catch (tokErr) {
-            console.error('[EnableX] Error obtaining token:', tokErr);
-          }
-        }
-
-        if (!token) {
-          toast.error('Unable to retrieve session token.');
-          handleDisconnect();
-          return;
-        }
-
-        // 2. Setup Local Stream
-        const streamConfig = {
-          audio: true,
-          video: callType === 'video',
-          data: true,
-          videoSize: [640, 480, 1280, 720],
-          attributes: { name: currentUser?.name || 'Me' },
-          maxVideoBW: 1500,
-          minVideoBW: 300
-        };
-
-        console.log('🎥 [EnableX] Setting up local stream with config:', streamConfig);
-
-        activeLocalStream = EnxRtc.setupStream(streamConfig, (setupEvent) => {
-          if (setupEvent.result === 0) {
-            localStreamRef.current = activeLocalStream;
-
-            // Play local stream preview
-            setTimeout(() => {
-              try {
-                const connectingContainer = document.getElementById('connecting_local_video');
-                if (connectingContainer) {
-                  activeLocalStream.play('connecting_local_video', {
-                    player: { autoplay: true, playsinline: true, muted: true }
-                  });
-                }
-              } catch (playErr) {
-                console.warn('Local preview play warning:', playErr);
-              }
-            }, 100);
-
-            // 3. Join EnableX Room
-            const roomOptions = {
-              player: { autoplay: true, playsinline: true }
-            };
-
-            console.log('🚀 [EnableX] Joining room with token...');
-
-            EnxRtc.joinRoom(token, roomOptions, (room, user) => {
-              if (!isMountedRef.current || isDisconnectedRef.current) {
-                if (room) room.disconnect();
-                return;
-              }
-
-              roomRef.current = room;
-
-              // Event: Room Connected
-              room.addEventListener('room-connected', (roomEvent) => {
-                console.log('✅ [EnableX] Room Connected successfully:', roomEvent);
-                // Publish local stream to the room
-                room.publish(activeLocalStream);
-
-                // Subscribe to any existing streams in the room
-                if (roomEvent.streams && Array.isArray(roomEvent.streams)) {
-                  roomEvent.streams.forEach((st) => {
-                    console.log('📹 [EnableX] Subscribing to existing stream:', st.getID());
-                    room.subscribe(st);
-                  });
-                }
-              });
-
-              // Event: Stream Added (Remote participant joined and published stream)
-              room.addEventListener('stream-added', (streamEvent) => {
-                const stream = streamEvent.stream;
-                console.log('📹 [EnableX] Stream Added by remote peer:', stream.getID());
-                room.subscribe(stream);
-              });
-
-              // Event: Stream Subscribed (Remote video/audio is ready to render)
-              room.addEventListener('stream-subscribed', (streamEvent) => {
-                console.log('✅ [EnableX] Stream Subscribed successfully:', streamEvent.stream.getID());
-                const remoteStream = streamEvent.stream;
-                remoteStreamRef.current = remoteStream;
-
-                if (isMountedRef.current) {
-                  setRemoteStreamActive(true);
-                  setCallStatus('connected');
-                }
-
-                setTimeout(() => {
-                  try {
-                    // Play remote stream fullscreen
-                    const remoteContainer = document.getElementById('remote_video_player');
-                    if (remoteContainer) {
-                      remoteStream.play('remote_video_player', {
-                        player: { autoplay: true, playsinline: true }
-                      });
-                    }
-                    // Play local stream in PiP
-                    const localPipContainer = document.getElementById('local_pip_video');
-                    if (localPipContainer && activeLocalStream) {
-                      activeLocalStream.play('local_pip_video', {
-                        player: { autoplay: true, playsinline: true, muted: true }
-                      });
-                    }
-                  } catch (e) {
-                    console.warn('Error playing subscribed streams:', e);
-                  }
-                }, 100);
-              });
-
-              // Event: User Disconnected
-              room.addEventListener('user-disconnected', (userEvent) => {
-                console.log('📞 [EnableX] User disconnected:', userEvent);
-                toast('User left the call', { icon: '📞' });
-                if (isMountedRef.current && !isDisconnectedRef.current) {
-                  handleDisconnect();
-                }
-              });
-
-              // Connect to the room
-              room.connect();
-            }, (joinError) => {
-              console.error('❌ [EnableX] joinRoom Error:', joinError);
-              if (isMountedRef.current) {
-                toast.error('Failed to connect to video room.');
-                handleDisconnect();
-              }
-            });
-
-          } else {
-            console.error('❌ [EnableX] setupStream failed:', setupEvent);
-            if (isMountedRef.current) {
-              toast.error('Unable to access camera or microphone.');
-              handleDisconnect();
-            }
-          }
-        });
-
-      } catch (err) {
-        console.error('❌ [EnableX] Call Setup Exception:', err);
-        if (isMountedRef.current) {
-          toast.error('Call failed to start.');
-          handleDisconnect();
-        }
-      }
-    };
-
-    // Socket listener for remote hangup
-    const socket = getSocket();
-    const handleRemoteCallEnded = () => {
-      toast('Call ended by the other person', { icon: '📞' });
-      if (isMountedRef.current && !isDisconnectedRef.current) {
+      // --------------------------------------------------
+      // 1. Check SDK
+      // --------------------------------------------------
+      if (!EnxRtc) {
+        console.error('[EnableX] EnxRtc SDK not loaded');
+        toast.error('Video service initialization failed.');
         handleDisconnect();
+        return;
       }
-    };
+
+      console.log('[EnableX] SDK loaded successfully');
+
+      // Enable verbose SDK logging during testing
+      try {
+        if (EnxRtc.Logger?.setLogLevel) {
+          EnxRtc.Logger.setLogLevel(0);
+        }
+      } catch (e) {
+        console.warn('[EnableX] Could not enable SDK debug logging:', e);
+      }
+
+      // --------------------------------------------------
+      // 2. Get token
+      // --------------------------------------------------
+      let token = initialToken;
+
+      if (!token && roomId) {
+        console.log('[EnableX] Requesting token for room:', roomId);
+
+        try {
+          const tokenRes = await api.post('/enablex/get-token', {
+            roomId,
+            role: isCaller ? 'moderator' : 'participant'
+          });
+
+          console.log(
+            '[EnableX] Token response:',
+            tokenRes.data
+          );
+
+          if (tokenRes.data?.success && tokenRes.data?.token) {
+            token = tokenRes.data.token;
+          }
+        } catch (tokenError) {
+          console.error(
+            '[EnableX] Token request failed:',
+            tokenError?.response?.data || tokenError
+          );
+        }
+      }
+
+      if (!token) {
+        console.error('[EnableX] No session token available');
+
+        toast.error('Unable to retrieve video session token.');
+        handleDisconnect();
+        return;
+      }
+
+      if (cancelled || isDisconnectedRef.current) {
+        return;
+      }
+
+      // --------------------------------------------------
+      // 3. Stream configuration
+      // --------------------------------------------------
+      const streamOptions = {
+        audio: true,
+        video: callType === 'video',
+        data: true,
+
+        audioMuted: false,
+        videoMuted: callType !== 'video',
+
+        videoSize: [320, 180, 1280, 720],
+
+        attributes: {
+          name: currentUser?.name || 'Inakkam User'
+        }
+      };
+
+      console.log(
+        '[EnableX] Creating local stream:',
+        streamOptions
+      );
+
+      // --------------------------------------------------
+      // 4. Create EnableX local stream
+      //
+      // IMPORTANT:
+      // v3.1.10 uses:
+      // EnxRtc.EnxStream(options).init()
+      //
+      // NOT:
+      // EnxRtc.setupStream()
+      // --------------------------------------------------
+      activeLocalStream = EnxRtc.EnxStream(streamOptions);
+
+      if (!activeLocalStream) {
+        throw new Error(
+          'EnableX EnxStream() did not return a stream'
+        );
+      }
+
+      localStreamRef.current = activeLocalStream;
+
+      // Media permission granted
+      activeLocalStream.addEventListener(
+        'media-access-allowed',
+        (event) => {
+          console.log(
+            '[EnableX] ✅ Camera/microphone access granted',
+            event
+          );
+
+          if (cancelled) return;
+
+          // Show local preview
+          setTimeout(() => {
+            try {
+              const connectingContainer =
+                document.getElementById(
+                  'connecting_local_video'
+                );
+
+              if (
+                connectingContainer &&
+                activeLocalStream &&
+                callType === 'video'
+              ) {
+                activeLocalStream.play(
+                  'connecting_local_video',
+                  {
+                    player: {
+                      autoplay: true,
+                      playsinline: true,
+                      muted: true
+                    },
+                    toolbar: {
+                      displayMode: false,
+                      branding: {
+                        display: false
+                      }
+                    }
+                  }
+                );
+              }
+            } catch (previewError) {
+              console.warn(
+                '[EnableX] Local preview error:',
+                previewError
+              );
+            }
+          }, 300);
+        }
+      );
+
+      // Media permission denied
+      activeLocalStream.addEventListener(
+        'media-access-denied',
+        (event) => {
+          console.error(
+            '[EnableX] ❌ Camera/microphone permission denied:',
+            event
+          );
+
+          toast.error(
+            'Please allow camera and microphone access.'
+          );
+
+          handleDisconnect();
+        }
+      );
+
+      // --------------------------------------------------
+      // Initialize stream
+      // --------------------------------------------------
+      activeLocalStream.init();
+
+      console.log(
+        '[EnableX] Local stream initialized:',
+        activeLocalStream
+      );
+
+      // --------------------------------------------------
+      // 5. Create EnableX room
+      // --------------------------------------------------
+      activeRoom = EnxRtc.EnxRoom({
+        token
+      });
+
+      if (!activeRoom) {
+        throw new Error(
+          'EnableX EnxRoom() did not return a room'
+        );
+      }
+
+      roomRef.current = activeRoom;
+
+      console.log(
+        '[EnableX] Room object created'
+      );
+
+      // --------------------------------------------------
+      // 6. Remote stream handler
+      // --------------------------------------------------
+      const subscribeToStream = (stream) => {
+        if (!stream || !activeRoom) {
+          console.warn(
+            '[EnableX] Invalid remote stream'
+          );
+          return;
+        }
+
+        try {
+          const streamId =
+            typeof stream.getID === 'function'
+              ? stream.getID()
+              : 'unknown';
+
+          console.log(
+            '[EnableX] 📹 Remote stream detected:',
+            streamId
+          );
+
+          activeRoom.subscribe(
+            stream,
+            {
+              audio: true,
+              video: callType === 'video',
+              data: true
+            },
+            (response) => {
+              console.log(
+                '[EnableX] Subscribe response:',
+                response
+              );
+            }
+          );
+        } catch (subscribeError) {
+          console.error(
+            '[EnableX] Subscribe error:',
+            subscribeError
+          );
+        }
+      };
+
+      // --------------------------------------------------
+      // 7. Room connected
+      // --------------------------------------------------
+      activeRoom.addEventListener(
+        'room-connected',
+        (event) => {
+          console.log(
+            '[EnableX] ✅ ROOM CONNECTED:',
+            event
+          );
+
+          if (
+            cancelled ||
+            isDisconnectedRef.current
+          ) {
+            return;
+          }
+
+          // Publish our local stream
+          try {
+            activeRoom.publish(
+              activeLocalStream,
+              {},
+              (publishResponse) => {
+                console.log(
+                  '[EnableX] Publish response:',
+                  publishResponse
+                );
+
+                if (
+                  publishResponse &&
+                  publishResponse.result !== undefined &&
+                  publishResponse.result !== 0
+                ) {
+                  console.error(
+                    '[EnableX] Publish failed:',
+                    publishResponse
+                  );
+                }
+              }
+            );
+          } catch (publishError) {
+            console.error(
+              '[EnableX] ❌ Publish error:',
+              publishError
+            );
+          }
+
+          // Subscribe to streams already present
+          if (
+            event?.streams &&
+            Array.isArray(event.streams)
+          ) {
+            event.streams.forEach(
+              (stream) => {
+                subscribeToStream(stream);
+              }
+            );
+          }
+
+          // Some SDK versions expose remoteStreams
+          if (
+            activeRoom.remoteStreams &&
+            typeof activeRoom.remoteStreams.forEach ===
+              'function'
+          ) {
+            activeRoom.remoteStreams.forEach(
+              (stream) => {
+                subscribeToStream(stream);
+              }
+            );
+          }
+        }
+      );
+
+      // --------------------------------------------------
+      // 8. Remote stream added
+      // --------------------------------------------------
+      activeRoom.addEventListener(
+        'stream-added',
+        (event) => {
+          console.log(
+            '[EnableX] 📹 STREAM ADDED:',
+            event
+          );
+
+          const stream =
+            event?.stream || event;
+
+          subscribeToStream(stream);
+        }
+      );
+
+      // --------------------------------------------------
+      // 9. Remote stream subscribed
+      // --------------------------------------------------
+      activeRoom.addEventListener(
+        'stream-subscribed',
+        (event) => {
+          console.log(
+            '[EnableX] ✅ STREAM SUBSCRIBED:',
+            event
+          );
+
+          const remoteStream =
+            event?.stream;
+
+          if (!remoteStream) {
+            console.warn(
+              '[EnableX] stream-subscribed without stream'
+            );
+            return;
+          }
+
+          remoteStreamRef.current =
+            remoteStream;
+
+          if (isMountedRef.current) {
+            setRemoteStreamActive(true);
+            setCallStatus('connected');
+          }
+
+          // Play remote stream
+          setTimeout(() => {
+            try {
+              if (callType === 'video') {
+                const remoteContainer =
+                  document.getElementById(
+                    'remote_video_player'
+                  );
+
+                if (remoteContainer) {
+                  remoteStream.play(
+                    'remote_video_player',
+                    {
+                      player: {
+                        autoplay: true,
+                        playsinline: true
+                      },
+                      toolbar: {
+                        displayMode: false,
+                        branding: {
+                          display: false
+                        }
+                      }
+                    }
+                  );
+                }
+
+                // Local PiP
+                if (activeLocalStream) {
+                  const localPip =
+                    document.getElementById(
+                      'local_pip_video'
+                    );
+
+                  if (localPip) {
+                    activeLocalStream.play(
+                      'local_pip_video',
+                      {
+                        player: {
+                          autoplay: true,
+                          playsinline: true,
+                          muted: true
+                        },
+                        toolbar: {
+                          displayMode: false,
+                          branding: {
+                            display: false
+                          }
+                        }
+                      }
+                    );
+                  }
+                }
+              } else {
+                // Audio call
+                const audioContainer =
+                  document.getElementById(
+                    'remote_audio_player'
+                  );
+
+                if (audioContainer) {
+                  remoteStream.play(
+                    'remote_audio_player',
+                    {
+                      player: {
+                        autoplay: true,
+                        playsinline: true
+                      }
+                    }
+                  );
+                }
+              }
+            } catch (playError) {
+              console.error(
+                '[EnableX] Remote stream play error:',
+                playError
+              );
+            }
+          }, 200);
+        }
+      );
+
+      // --------------------------------------------------
+      // 10. Remote user disconnected
+      // --------------------------------------------------
+      activeRoom.addEventListener(
+        'user-disconnected',
+        (event) => {
+          console.log(
+            '[EnableX] User disconnected:',
+            event
+          );
+
+          toast('User left the call', {
+            icon: '📞'
+          });
+
+          if (
+            isMountedRef.current &&
+            !isDisconnectedRef.current
+          ) {
+            handleDisconnect();
+          }
+        }
+      );
+
+      // --------------------------------------------------
+      // 11. Room errors
+      // --------------------------------------------------
+      activeRoom.addEventListener(
+        'room-error',
+        (error) => {
+          console.error(
+            '[EnableX] ❌ ROOM ERROR:',
+            error
+          );
+
+          if (!isMountedRef.current) {
+            return;
+          }
+
+          toast.error(
+            error?.msg ||
+            error?.message ||
+            'EnableX video room connection failed.'
+          );
+
+          handleDisconnect();
+        }
+      );
+
+      // --------------------------------------------------
+      // 12. Room disconnected
+      // --------------------------------------------------
+      activeRoom.addEventListener(
+        'room-disconnected',
+        (event) => {
+          console.log(
+            '[EnableX] Room disconnected:',
+            event
+          );
+
+          if (
+            isMountedRef.current &&
+            !isDisconnectedRef.current
+          ) {
+            setCallStatus('disconnected');
+          }
+        }
+      );
+
+      // --------------------------------------------------
+      // 13. CONNECT TO ENABLEX
+      // --------------------------------------------------
+      console.log(
+        '[EnableX] 🚀 Connecting to room...'
+      );
+
+      activeRoom.connect({
+        allow_reconnect: true,
+        number_of_attempts: 3,
+        timeout_interval: 5000
+      });
+
+    } catch (err) {
+      console.error(
+        '[EnableX] ❌ Call Setup Exception:',
+        err
+      );
+
+      if (isMountedRef.current) {
+        toast.error(
+          err?.message ||
+          'Call failed to start.'
+        );
+      }
+
+      handleDisconnect();
+    }
+  };
+
+  // ------------------------------------------------------
+  // Socket listener for remote hangup
+  // ------------------------------------------------------
+  const socket = getSocket();
+
+  const handleRemoteCallEnded = () => {
+    toast('Call ended by the other person', {
+      icon: '📞'
+    });
+
+    if (
+      isMountedRef.current &&
+      !isDisconnectedRef.current
+    ) {
+      handleDisconnect();
+    }
+  };
+
+  if (socket) {
+    socket.on(
+      'call_ended',
+      handleRemoteCallEnded
+    );
+  }
+
+  startCall();
+
+  return () => {
+    cancelled = true;
 
     if (socket) {
-      socket.on('call_ended', handleRemoteCallEnded);
+      socket.off(
+        'call_ended',
+        handleRemoteCallEnded
+      );
     }
 
-    startCall();
+    if (activeRoom) {
+      try {
+        activeRoom.disconnect();
+      } catch (e) {
+        console.warn(
+          '[EnableX] Room cleanup error:',
+          e
+        );
+      }
+    }
 
-    return () => {
-      if (socket) socket.off('call_ended', handleRemoteCallEnded);
-      if (roomRef.current) {
-        try { roomRef.current.disconnect(); } catch (e) {}
+    if (activeLocalStream) {
+      try {
+        activeLocalStream.close();
+      } catch (e) {
+        console.warn(
+          '[EnableX] Stream cleanup error:',
+          e
+        );
       }
-      if (activeLocalStream) {
-        try { activeLocalStream.close(); } catch (e) {}
-      }
-    };
-  }, [roomId, initialToken, callType, isCaller, currentUser, handleDisconnect]);
+    }
+
+    if (roomRef.current === activeRoom) {
+      roomRef.current = null;
+    }
+
+    if (
+      localStreamRef.current ===
+      activeLocalStream
+    ) {
+      localStreamRef.current = null;
+    }
+  };
+
+}, [
+  roomId,
+  initialToken,
+  callType,
+  isCaller,
+  currentUser,
+  handleDisconnect
+]);
 
   // ─── Toggle Mic ──────────────────────────────────────────
   const toggleMic = () => {
