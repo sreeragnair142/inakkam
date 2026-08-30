@@ -169,26 +169,17 @@ const Chat = () => {
     try {
       toast.loading('Initializing call...', { id: 'call_init' });
 
-      let roomId = `room_${Date.now()}`;
-      let token = '';
+      let roomId = '';
 
-      // 1. Try Create Room & Token on EnableX (optional service)
-      try {
-        const roomRes = await api.post('/enablex/create-room', {
-          name: `Call with ${activeChat.userName}`
-        });
-        if (roomRes.data?.success && roomRes.data?.room?.room_id) {
-          roomId = roomRes.data.room.room_id;
-          const tokenRes = await api.post('/enablex/get-token', {
-            roomId,
-            role: 'moderator'
-          });
-          if (tokenRes.data?.success) {
-            token = tokenRes.data.token;
-          }
-        }
-      } catch (svcErr) {
-        console.warn('[EnableX Room Init Fallback to WebRTC]', svcErr);
+      // 1. Create Real EnableX Room
+      const roomRes = await api.post('/enablex/create-room', {
+        name: `Call with ${activeChat.userName || 'User'}`
+      });
+
+      if (roomRes.data?.success && roomRes.data?.roomId) {
+        roomId = roomRes.data.roomId;
+      } else {
+        throw new Error(roomRes.data?.message || 'Failed to create call session');
       }
 
       // 2. Emit socket call event
@@ -209,7 +200,6 @@ const Chat = () => {
       // 3. Set Active Call State
       setActiveCall({
         roomId,
-        token,
         remoteUserName: activeChat.userName,
         remoteUserPhoto: activeChat.userImage,
         callType: type,
@@ -219,34 +209,17 @@ const Chat = () => {
 
     } catch (err) {
       toast.dismiss('call_init');
-      toast.error(err.message || 'Failed to start call');
+      toast.error(err.response?.data?.message || err.message || 'Failed to start call');
       console.error('[Start Call Error]', err);
     }
   };
 
   // Accept Incoming Call
-  const handleAcceptCall = async () => {
+  const handleAcceptCall = () => {
     if (!incomingCall) return;
 
     try {
-      toast.loading('Connecting call...', { id: 'call_connect' });
-
-      let token = '';
-      if (incomingCall.roomId) {
-        try {
-          const tokenRes = await api.post('/enablex/get-token', {
-            roomId: incomingCall.roomId,
-            role: 'participant'
-          });
-          if (tokenRes.data?.success) {
-            token = tokenRes.data.token;
-          }
-        } catch (svcErr) {
-          console.warn('[EnableX Token Fallback to WebRTC]', svcErr);
-        }
-      }
-
-      // 2. Emit socket accept
+      // 1. Emit socket accept
       const socket = getSocket();
       if (socket) {
         socket.emit('accept_call', {
@@ -255,12 +228,9 @@ const Chat = () => {
         });
       }
 
-      toast.dismiss('call_connect');
-
-      // 3. Set Active Call State
+      // 2. Set Active Call State immediately
       setActiveCall({
         roomId: incomingCall.roomId,
-        token,
         remoteUserName: incomingCall.callerName,
         remoteUserPhoto: incomingCall.callerPhoto,
         callType: incomingCall.callType,
@@ -272,7 +242,6 @@ const Chat = () => {
       setIncomingCall(null);
 
     } catch (err) {
-      toast.dismiss('call_connect');
       toast.error(err.message || 'Failed to accept call');
       console.error('[Accept Call Error]', err);
     }

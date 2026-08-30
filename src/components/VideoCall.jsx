@@ -224,7 +224,7 @@ const VideoCall = ({
 
   const playRemotePreview = useCallback(() => {
     const stream = remoteStreamRef.current;
-    if (!stream) return;
+    if (!stream || typeof stream.play !== "function") return;
 
     const containerId =
       callType === "video" ? "remote_video_player" : "remote_audio_player";
@@ -260,8 +260,14 @@ const VideoCall = ({
 
   useEffect(() => {
     if (!remoteStreamActive) return;
-    const id = setTimeout(playRemotePreview, 50);
-    return () => clearTimeout(id);
+    const t1 = setTimeout(playRemotePreview, 50);
+    const t2 = setTimeout(playRemotePreview, 250);
+    const t3 = setTimeout(playRemotePreview, 600);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
   }, [remoteStreamActive, playRemotePreview]);
 
   // ─── EnableX SDK Initialization ─────────────────────────
@@ -269,6 +275,46 @@ const VideoCall = ({
     let activeLocalStream = null;
     let activeRoom = null;
     let cancelled = false;
+
+    // Synchronize media access and room connection for reliable publishing
+    let mediaReady = false;
+    let roomConnected = false;
+    let hasPublished = false;
+
+    const tryPublish = () => {
+      if (hasPublished || !mediaReady || !roomConnected || !activeRoom || !activeLocalStream) {
+        return;
+      }
+      hasPublished = true;
+      console.log("[EnableX] 🚀 Publishing local stream now...");
+      try {
+        activeRoom.publish(
+          activeLocalStream,
+          {
+            minVideoBW: 150,
+            maxVideoBW: 1200,
+          },
+          (publishResponse) => {
+            console.log("[EnableX] Publish response:", publishResponse);
+
+            if (
+              publishResponse &&
+              publishResponse.result !== undefined &&
+              publishResponse.result !== 0
+            ) {
+              console.error("[EnableX] ❌ Publish failed:", publishResponse);
+              hasPublished = false;
+              return;
+            }
+
+            setTimeout(() => playLocalPreview(), 50);
+          },
+        );
+      } catch (publishError) {
+        console.error("[EnableX] ❌ Publish exception:", publishError);
+        hasPublished = false;
+      }
+    };
 
     // Every initialization/re-initialization starts as a live call.
     isDisconnectedRef.current = false;
@@ -301,9 +347,6 @@ const VideoCall = ({
         // --------------------------------------------------
         // 2. Get token
         // --------------------------------------------------
-        // Always request a fresh token for THIS participant.
-        // Do not reuse an old token because EnableX tokens are
-        // tied to a room + user + role.
         let token = null;
 
         if (roomId) {
@@ -331,11 +374,6 @@ const VideoCall = ({
               tokenError?.response?.data || tokenError,
             );
 
-            // A 429 here means EnableX itself is rate-limiting this
-            // app id/key (see the backend's isInCooldown/circuit
-            // breaker). Retrying immediately only makes the rate
-            // limit worse, so show a clear message and stop —
-            // do NOT let any reconnect logic re-trigger this call.
             const isRateLimited =
               tokenError?.response?.status === 429 ||
               tokenError?.response?.data?.rateLimited === true;
@@ -386,13 +424,6 @@ const VideoCall = ({
 
         // --------------------------------------------------
         // 4. Create EnableX local stream
-        //
-        // IMPORTANT:
-        // v3.1.10 uses:
-        // EnxRtc.EnxStream(options).init()
-        //
-        // NOT:
-        // EnxRtc.setupStream()
         // --------------------------------------------------
         activeLocalStream = EnxRtc.EnxStream(streamOptions);
 
@@ -406,12 +437,11 @@ const VideoCall = ({
         activeLocalStream.addEventListener("media-access-allowed", (event) => {
           console.log("[EnableX] ✅ Camera/microphone access granted", event);
 
-          if (cancelled) return;
+          if (cancelled || isDisconnectedRef.current) return;
 
-          // The connecting screen and active-call screen use different
-          // DOM containers. Play is also retried by the call-status effect
-          // below so a fast remote subscription cannot leave the PiP black.
+          mediaReady = true;
           setTimeout(() => playLocalPreview(), 0);
+          tryPublish();
         });
 
         // Media permission denied
@@ -422,7 +452,6 @@ const VideoCall = ({
           );
 
           toast.error("Please allow camera and microphone access.");
-
           handleDisconnect();
         });
 
@@ -471,7 +500,6 @@ const VideoCall = ({
               remoteId,
             });
 
-            // VERY IMPORTANT:
             // Never subscribe to our own stream.
             if (localId && remoteId && localId === remoteId) {
               console.log("[EnableX] Ignoring own local stream:", remoteId);
@@ -503,6 +531,7 @@ const VideoCall = ({
             console.error("[EnableX] Remote subscribe exception:", error);
           }
         };
+
         // --------------------------------------------------
         // 7. Room connected
         // --------------------------------------------------
@@ -513,37 +542,13 @@ const VideoCall = ({
             return;
           }
 
+          roomConnected = true;
+
           if (isMountedRef.current) {
             setCallStatus("connected");
           }
 
-          // Publish our local stream
-          try {
-            activeRoom.publish(
-              activeLocalStream,
-              {
-                minVideoBW: 150,
-                maxVideoBW: 1200,
-              },
-              (publishResponse) => {
-                console.log("[EnableX] Publish response:", publishResponse);
-
-                if (
-                  publishResponse &&
-                  publishResponse.result !== undefined &&
-                  publishResponse.result !== 0
-                ) {
-                  console.error("[EnableX] Publish failed:", publishResponse);
-                  return;
-                }
-
-                // The active-call DOM may have just been mounted.
-                setTimeout(() => playLocalPreview(), 50);
-              },
-            );
-          } catch (publishError) {
-            console.error("[EnableX] ❌ Publish error:", publishError);
-          }
+          tryPublish();
 
           // Subscribe to streams already present
           if (event?.streams && Array.isArray(event.streams)) {
@@ -552,19 +557,32 @@ const VideoCall = ({
             });
           }
 
-          // Some SDK versions expose remoteStreams
-          if (
-            activeRoom.remoteStreams &&
-            typeof activeRoom.remoteStreams.forEach === "function"
-          ) {
-            activeRoom.remoteStreams.forEach((stream) => {
-              subscribeToRemoteStream(stream);
-            });
+          if (activeRoom.remoteStreams) {
+            if (activeRoom.remoteStreams instanceof Map) {
+              activeRoom.remoteStreams.forEach((stream) => {
+                subscribeToRemoteStream(stream);
+              });
+            } else if (typeof activeRoom.remoteStreams.forEach === "function") {
+              activeRoom.remoteStreams.forEach((stream) => {
+                subscribeToRemoteStream(stream);
+              });
+            }
           }
         });
 
         // --------------------------------------------------
-        // 8. Remote stream added
+        // 8. Remote user connected
+        // --------------------------------------------------
+        activeRoom.addEventListener("user-connected", (event) => {
+          console.log("[EnableX] 👤 Remote user connected:", event);
+          if (remoteDisconnectTimerRef.current) {
+            clearTimeout(remoteDisconnectTimerRef.current);
+            remoteDisconnectTimerRef.current = null;
+          }
+        });
+
+        // --------------------------------------------------
+        // 9. Remote stream added
         // --------------------------------------------------
         activeRoom.addEventListener("stream-added", (event) => {
           console.log("[EnableX] 📹 STREAM ADDED:", event);
@@ -580,7 +598,7 @@ const VideoCall = ({
         });
 
         // --------------------------------------------------
-        // 9. Remote stream subscribed
+        // 10. Remote stream subscribed
         // --------------------------------------------------
         activeRoom.addEventListener("stream-subscribed", (event) => {
           console.log("[EnableX] ✅ STREAM SUBSCRIBED:", event);
@@ -615,32 +633,29 @@ const VideoCall = ({
 
           remoteStreamRef.current = remoteStream;
 
-          // A stream is only considered usable after stream-subscribed.
-          // Do not call play() here: React may not have mounted the active
-          // call DOM yet. The remote playback effect runs after the DOM
-          // update and retries safely.
           if (isMountedRef.current) {
             setRemoteStreamActive(true);
             setCallStatus("connected");
           }
+
+          setTimeout(() => playRemotePreview(), 50);
+          setTimeout(() => playRemotePreview(), 250);
+          setTimeout(() => playRemotePreview(), 700);
         });
 
         // --------------------------------------------------
-        // 10. Remote user disconnected
+        // 11. Remote user disconnected
         // --------------------------------------------------
-        activeRoom.addEventListener("user-disconnected", (event, user) => {
-          console.warn("[EnableX] Remote user disconnected:", { event, user });
+        activeRoom.addEventListener("user-disconnected", (event) => {
+          console.warn("[EnableX] Remote user disconnected event:", event);
 
-          // Do not immediately destroy our own call. A remote browser can
-          // briefly disconnect during ICE/network recovery. Give it a short
-          // grace period and let stream-added cancel the timer if it returns.
           if (remoteDisconnectTimerRef.current) {
             clearTimeout(remoteDisconnectTimerRef.current);
           }
 
           if (isMountedRef.current && !isDisconnectedRef.current) {
             setRemoteStreamActive(false);
-            toast("Connection to the other person was interrupted. Reconnecting...", {
+            toast("Connection interrupted. Reconnecting...", {
               icon: "📞",
             });
 
@@ -650,12 +665,12 @@ const VideoCall = ({
                 toast("The other person left the call", { icon: "📞" });
                 finishCall({ notifyRemote: false });
               }
-            }, 3000);
+            }, 8000);
           }
         });
 
         // --------------------------------------------------
-        // 11. Room errors + automatic token recovery
+        // 12. Room errors + automatic token recovery
         // --------------------------------------------------
         activeRoom.addEventListener(
           'room-error',
@@ -1393,21 +1408,15 @@ const VideoCall = ({
           ) : (
             /* ── Video call main UI ── */
             <div className="flex-1 h-full bg-[#121212] relative overflow-hidden">
-              {/* EnableX Remote Video Container — fullscreen.
-                  Same fix as the connecting-screen preview: force
-                  every injected descendant element to fill this
-                  container. */}
+              {/* EnableX Remote Video Container — fullscreen */}
               <div
                 id="remote_video_player"
-                className="absolute inset-0 w-full h-full overflow-hidden bg-black [&_*]:!w-full [&_*]:!h-full [&_video]:!object-cover"
-                style={{
-                  display: remoteStreamActive ? "block" : "none",
-                }}
+                className="absolute inset-0 w-full h-full overflow-hidden bg-black [&_*]:!w-full [&_*]:!h-full [&_video]:!object-cover z-0"
               />
 
               {/* Waiting for remote placeholder */}
               {!remoteStreamActive && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#121212]">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#121212] z-10">
                   <img
                     src={remoteUserPhoto || "https://via.placeholder.com/150"}
                     alt={remoteUserName}
