@@ -773,18 +773,21 @@ const VideoCall = ({
                   }
                 );
 
+                const newRoomId =
+                  response.data?.roomId ||
+                  response.data?.room?.room_id ||
+                  response.data?.room?.roomId ||
+                  response.data?.room?._id;
+
                 if (
                   !response.data?.success ||
-                  !response.data?.roomId
+                  !newRoomId
                 ) {
                   throw new Error(
                     response.data?.message ||
                     'Failed to create replacement room'
                   );
                 }
-
-                const newRoomId =
-                  response.data.roomId;
 
                 console.log(
                   '[EnableX] ✅ Replacement room created:',

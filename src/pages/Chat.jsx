@@ -176,8 +176,15 @@ const Chat = () => {
         name: `Call with ${activeChat.userName || 'User'}`
       });
 
-      if (roomRes.data?.success && roomRes.data?.roomId) {
-        roomId = roomRes.data.roomId;
+      const extractedRoomId =
+        roomRes.data?.roomId ||
+        roomRes.data?.room?.room_id ||
+        roomRes.data?.room?.roomId ||
+        roomRes.data?.room?._id ||
+        roomRes.data?.id;
+
+      if (roomRes.data?.success && extractedRoomId) {
+        roomId = extractedRoomId;
       } else {
         throw new Error(roomRes.data?.message || 'Failed to create call session');
       }
