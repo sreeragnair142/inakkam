@@ -53,6 +53,9 @@ const VideoCall = ({
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
 
+  // Normalize targetUserId to string
+  const targetUid = String(targetUserId?._id || targetUserId?.id || targetUserId || '');
+
   // Refs
   const localVideoRef = useRef(null);
   const connectingLocalVideoRef = useRef(null);
@@ -80,7 +83,6 @@ const VideoCall = ({
   }, []);
 
   // ─── Stream Attachment Effect ───────────────────────────
-  // Ensure local and remote streams are immediately bound to video DOM nodes whenever mounted
   useEffect(() => {
     if (connectingLocalVideoRef.current && localStream) {
       connectingLocalVideoRef.current.srcObject = localStream;
@@ -98,7 +100,7 @@ const VideoCall = ({
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
       remoteVideoRef.current.srcObject = remoteStream;
-      remoteVideoRef.current.play().catch(() => {});
+      remoteVideoRef.current.play().catch(e => console.warn('[VideoCall] Remote video play error:', e));
     }
   }, [remoteStream, callStatus]);
 
@@ -117,7 +119,7 @@ const VideoCall = ({
     const coinDeductInterval = setInterval(async () => {
       try {
         const res = await api.post('/coins/deduct-call', {
-          targetUserId,
+          targetUserId: targetUid,
           callType,
           seconds: 20
         });
@@ -128,11 +130,11 @@ const VideoCall = ({
           dispatch(fetchMe());
         }
       } catch (err) {
-        // Ignore API errors silently — don't kill the call
+        // Ignore API errors silently
       }
     }, 20000);
     return () => clearInterval(coinDeductInterval);
-  }, [callStatus, callType, targetUserId, dispatch, onEndCall]);
+  }, [callStatus, callType, targetUid, dispatch, onEndCall]);
 
   // ─── Core disconnect handler ─────────────────────────────
   const onEndCallRef = useRef(onEndCall);
@@ -188,7 +190,7 @@ const VideoCall = ({
         const socket = getSocket();
         if (socket) {
           socket.emit('webrtc_ice_candidate', {
-            targetUserId,
+            targetUserId: targetUid,
             candidate: event.candidate
           });
         }
@@ -198,28 +200,36 @@ const VideoCall = ({
     // When remote adds tracks, display them
     pc.ontrack = (event) => {
       console.log('📹 Remote track received:', event.track.kind);
-      if (event.streams && event.streams[0]) {
-        const stream = event.streams[0];
-        remoteStreamRef.current = stream;
-        if (isMountedRef.current) {
-          setRemoteStream(stream);
-          setRemoteStreamActive(true);
-          setCallStatus('connected');
+      let streamToUse = event.streams && event.streams[0] ? event.streams[0] : null;
+      if (!streamToUse) {
+        if (!remoteStreamRef.current) {
+          remoteStreamRef.current = new MediaStream();
         }
-        if (remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = stream;
-          remoteVideoRef.current.play().catch(() => {});
-        }
+        remoteStreamRef.current.addTrack(event.track);
+        streamToUse = remoteStreamRef.current;
+      } else {
+        remoteStreamRef.current = streamToUse;
+      }
+
+      if (isMountedRef.current) {
+        setRemoteStream(streamToUse);
+        setRemoteStreamActive(true);
+        setCallStatus('connected');
+      }
+
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = streamToUse;
+        remoteVideoRef.current.play().catch(e => console.warn('[WebRTC] Remote play error:', e));
       }
     };
 
     pc.onconnectionstatechange = () => {
       console.log('[WebRTC] Connection state:', pc.connectionState);
-      if (pc.connectionState === 'connected') {
+      if (['connected', 'completed'].includes(pc.connectionState)) {
         if (isMountedRef.current) setCallStatus('connected');
       } else if (['disconnected', 'failed', 'closed'].includes(pc.connectionState)) {
         if (isMountedRef.current && !isDisconnectedRef.current) {
-          toast('Connection lost', { icon: '📞' });
+          toast('Connection ended', { icon: '📞' });
           handleDisconnect();
         }
       }
@@ -227,30 +237,34 @@ const VideoCall = ({
 
     pc.oniceconnectionstatechange = () => {
       console.log('[WebRTC] ICE state:', pc.iceConnectionState);
-      if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+      if (['connected', 'completed'].includes(pc.iceConnectionState)) {
         if (isMountedRef.current) setCallStatus('connected');
       }
     };
 
     return pc;
-  }, [targetUserId, handleDisconnect]);
+  }, [targetUid, handleDisconnect]);
 
   // ─── Main WebRTC Setup ───────────────────────────────────
   useEffect(() => {
     const socket = getSocket();
-    if (!socket || !targetUserId) {
+    if (!socket || !targetUid) {
       console.error('[VideoCall] No socket or targetUserId — cannot start call.');
       return;
     }
 
-    // Refs for async state within this effect
     const pendingOfferRef = { current: null };
     const pcReadyRef = { current: false };
     let pc;
 
-    // ── STEP 1: Register socket listeners IMMEDIATELY (before async getUserMedia) ──
+    // Helper to verify message sender
+    const isMatchingSender = (senderId) => {
+      if (!senderId || !targetUid) return true;
+      return String(senderId) === targetUid;
+    };
+
     const handleOffer = async ({ senderId, offer }) => {
-      if (String(senderId) !== String(targetUserId)) return;
+      if (!isMatchingSender(senderId)) return;
       console.log('[WebRTC] Received offer. PC ready:', pcReadyRef.current);
 
       if (!pcReadyRef.current) {
@@ -270,12 +284,12 @@ const VideoCall = ({
 
       const answer = await pcRef.current.createAnswer();
       await pcRef.current.setLocalDescription(answer);
-      socket.emit('webrtc_answer', { targetUserId, answer });
-      console.log('[WebRTC] ✅ Sent answer');
+      socket.emit('webrtc_answer', { targetUserId: targetUid, answer });
+      console.log('[WebRTC] ✅ Sent answer to target:', targetUid);
     };
 
     const handleAnswer = async ({ senderId, answer }) => {
-      if (String(senderId) !== String(targetUserId)) return;
+      if (!isMatchingSender(senderId)) return;
       console.log('[WebRTC] Received answer');
       if (!pcRef.current) return;
       await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer));
@@ -284,7 +298,7 @@ const VideoCall = ({
     };
 
     const handleIceCandidate = async ({ senderId, candidate }) => {
-      if (String(senderId) !== String(targetUserId)) return;
+      if (!isMatchingSender(senderId)) return;
       if (!hasRemoteDescRef.current || !pcRef.current) {
         iceCandidateQueueRef.current.push(candidate);
         return;
@@ -299,32 +313,31 @@ const VideoCall = ({
     const sendOffer = async () => {
       if (!isCaller || offerSentRef.current || !pcRef.current) return;
       offerSentRef.current = true;
-      console.log('[WebRTC] Creating and sending offer...');
+      console.log('[WebRTC] Creating and sending offer to:', targetUid);
       const offer = await pcRef.current.createOffer();
       await pcRef.current.setLocalDescription(offer);
-      socket.emit('webrtc_offer', { targetUserId, offer });
+      socket.emit('webrtc_offer', { targetUserId: targetUid, offer });
       console.log('[WebRTC] ✅ Sent offer');
     };
 
     const handleRemoteReady = async ({ senderId }) => {
-      if (String(senderId) !== String(targetUserId)) return;
+      if (!isMatchingSender(senderId)) return;
       console.log('[WebRTC] Remote is ready — isCaller:', isCaller, '| PC ready:', pcReadyRef.current);
       if (isCaller && !offerSentRef.current) {
         if (pcReadyRef.current) {
           await sendOffer();
         } else {
           offerSentRef.current = false;
-          console.warn('[WebRTC] Got webrtc_ready before PC ready — will send offer once setup completes');
           pendingOfferRef.current = 'SEND_OFFER_WHEN_READY';
         }
       }
     };
 
     const handleCallerReady = ({ senderId }) => {
-      if (String(senderId) !== String(targetUserId)) return;
+      if (!isMatchingSender(senderId)) return;
       console.log('[WebRTC] Received webrtc_caller_ready. isCaller:', isCaller);
       if (!isCaller) {
-        socket.emit('webrtc_ready', { targetUserId });
+        socket.emit('webrtc_ready', { targetUserId: targetUid });
         console.log('[WebRTC] Callee responding to webrtc_caller_ready with webrtc_ready');
       }
     };
@@ -334,14 +347,14 @@ const VideoCall = ({
       if (isMountedRef.current && !isDisconnectedRef.current) handleDisconnect();
     };
 
-    // Register listeners SYNCHRONOUSLY before any async work
+    // Register listeners SYNCHRONOUSLY
     socket.on('webrtc_offer', handleOffer);
     socket.on('webrtc_answer', handleAnswer);
     socket.on('webrtc_ice_candidate', handleIceCandidate);
     socket.on('webrtc_ready', handleRemoteReady);
     socket.on('webrtc_caller_ready', handleCallerReady);
     socket.on('call_ended', handleCallEnded);
-    console.log('[WebRTC] 📡 Socket listeners registered. isCaller:', isCaller);
+    console.log('[WebRTC] 📡 Socket listeners registered. isCaller:', isCaller, 'targetUid:', targetUid);
 
     // ── STEP 2: Get local media asynchronously ────────────
     const start = async () => {
@@ -358,19 +371,18 @@ const VideoCall = ({
           stream = await navigator.mediaDevices.getUserMedia(constraints);
         } catch (mediaErr) {
           console.error('[VideoCall] Camera/mic error:', mediaErr.name, mediaErr.message);
-          // Try audio-only fallback for video calls
           if (callType === 'video') {
             try {
               stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
               console.warn('[VideoCall] Falling back to audio-only');
               if (isMountedRef.current) setVideoActive(false);
             } catch (audioErr) {
-              toast.error('Camera/microphone access denied. Please allow in browser settings.');
+              toast.error('Camera/microphone access denied.');
               handleDisconnect();
               return;
             }
           } else {
-            toast.error('Microphone access denied. Please allow in browser settings.');
+            toast.error('Microphone access denied.');
             handleDisconnect();
             return;
           }
@@ -383,16 +395,6 @@ const VideoCall = ({
 
         localStreamRef.current = stream;
         setLocalStream(stream);
-
-        // Show local camera preview immediately
-        if (connectingLocalVideoRef.current && stream.getVideoTracks().length > 0) {
-          connectingLocalVideoRef.current.srcObject = stream;
-          connectingLocalVideoRef.current.play().catch(() => {});
-        }
-        if (localVideoRef.current && stream.getVideoTracks().length > 0) {
-          localVideoRef.current.srcObject = stream;
-          localVideoRef.current.play().catch(() => {});
-        }
 
         // 3. Create peer connection and add tracks
         pc = createPeerConnection();
@@ -407,12 +409,12 @@ const VideoCall = ({
             pendingOfferRef.current = null;
             await sendOffer();
           } else {
-            socket.emit('webrtc_caller_ready', { targetUserId });
-            console.log('[WebRTC] Caller: PC ready, sent webrtc_caller_ready. Waiting for callee...');
+            socket.emit('webrtc_caller_ready', { targetUserId: targetUid });
+            console.log('[WebRTC] Caller: PC ready, sent webrtc_caller_ready to:', targetUid);
             // Safety fallback: if we never get webrtc_ready within 2.5s, send offer anyway
             setTimeout(async () => {
               if (isMountedRef.current && !offerSentRef.current && pcRef.current) {
-                console.warn('[WebRTC] Timeout: callee never sent webrtc_ready — sending offer anyway');
+                console.warn('[WebRTC] Timeout: sending offer now');
                 await sendOffer();
               }
             }, 2500);
@@ -424,11 +426,11 @@ const VideoCall = ({
             pendingOfferRef.current = null;
             await processOffer(queuedOffer);
           } else {
-            socket.emit('webrtc_ready', { targetUserId });
-            console.log('[WebRTC] Callee: sent webrtc_ready to caller');
+            socket.emit('webrtc_ready', { targetUserId: targetUid });
+            console.log('[WebRTC] Callee: sent webrtc_ready to caller:', targetUid);
             setTimeout(() => {
               if (isMountedRef.current && !hasRemoteDescRef.current) {
-                socket.emit('webrtc_ready', { targetUserId });
+                socket.emit('webrtc_ready', { targetUserId: targetUid });
                 console.log('[WebRTC] Callee: re-sent webrtc_ready (retry)');
               }
             }, 2000);
@@ -438,7 +440,7 @@ const VideoCall = ({
       } catch (err) {
         console.error('[VideoCall] Setup error:', err);
         if (isMountedRef.current) {
-          toast.error('Failed to set up call. Please try again.');
+          toast.error('Failed to set up call.');
           handleDisconnect();
         }
       }
@@ -455,7 +457,7 @@ const VideoCall = ({
       socket.off('call_ended', handleCallEnded);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [targetUid]);
 
   // ─── Toggle Mic ──────────────────────────────────────────
   const toggleMic = () => {
@@ -497,7 +499,7 @@ const VideoCall = ({
 
     const socket = getSocket();
     if (socket) {
-      socket.emit('webrtc_chat', { targetUserId, message: messageText });
+      socket.emit('webrtc_chat', { targetUserId: targetUid, message: messageText });
     }
   };
 
@@ -507,7 +509,7 @@ const VideoCall = ({
     if (!socket) return;
 
     const handleChatMsg = ({ senderId, message }) => {
-      if (String(senderId) !== String(targetUserId)) return;
+      if (targetUid && senderId && String(senderId) !== targetUid) return;
       if (!isMountedRef.current) return;
       setChatMessages(prev => [
         ...prev,
@@ -523,7 +525,7 @@ const VideoCall = ({
 
     socket.on('webrtc_chat', handleChatMsg);
     return () => socket.off('webrtc_chat', handleChatMsg);
-  }, [targetUserId, remoteUserName]);
+  }, [targetUid, remoteUserName]);
 
   return (
     <div
@@ -559,7 +561,6 @@ const VideoCall = ({
               <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-black/80 pointer-events-none" />
             </div>
           ) : (
-            /* Audio call connecting background */
             <div className="absolute inset-0 bg-gradient-to-b from-[#150A1A] via-[#0A0A0A] to-[#1A0A15]" />
           )}
 
