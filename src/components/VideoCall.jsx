@@ -163,7 +163,6 @@ const VideoCall = ({
   }, [roomId, targetUid]);
 
   // ─── EnableX SDK Initialization ─────────────────────────
-  // ─── EnableX SDK Initialization ─────────────────────────
   useEffect(() => {
     let activeLocalStream = null;
     let activeRoom = null;
@@ -299,8 +298,22 @@ const VideoCall = ({
                 activeLocalStream &&
                 callType === "video"
               ) {
+                // Clear any stale content before (re)playing, otherwise
+                // EnableX can stack duplicate video elements and the
+                // preview renders as a small/duplicated box instead of
+                // filling the container.
+                connectingContainer.innerHTML = "";
+
                 activeLocalStream.play("connecting_local_video", {
                   player: {
+                    // EnableX applies these as explicit inline
+                    // width/height on the video element it injects.
+                    // Without them it falls back to the stream's
+                    // native pixel size (e.g. 320x180), which is why
+                    // the preview showed up as a small box instead of
+                    // filling the screen.
+                    width: "100%",
+                    height: "100%",
                     autoplay: true,
                     playsinline: true,
                     muted: true,
@@ -611,342 +624,355 @@ const VideoCall = ({
         });
 
         // --------------------------------------------------
-        // 11. Room errors
+        // 11. Room errors + automatic token recovery
         // --------------------------------------------------
-        // --------------------------------------------------
-// 11. Room errors + automatic token recovery
-// --------------------------------------------------
-activeRoom.addEventListener(
-  'room-error',
-  async (error) => {
-    console.error('[EnableX] ❌ ROOM ERROR:', error);
+        activeRoom.addEventListener(
+          'room-error',
+          async (error) => {
+            console.error('[EnableX] ❌ ROOM ERROR (raw):', error);
 
-    // Ignore errors from an old room that is already being
-    // cleaned up during a reconnect.
-    if (
-      cancelled ||
-      !isMountedRef.current ||
-      intentionalDisconnectRef.current
-    ) {
-      return;
-    }
-
-    const errorText = String(
-      error?.msg ||
-      error?.message ||
-      error?.desc ||
-      error?.error ||
-      ''
-    ).toLowerCase();
-
-    console.error('[EnableX] Room error details:', {
-      error,
-      errorText,
-      roomId,
-      reconnectAttempts: reconnectAttemptsRef.current
-    });
-
-    // --------------------------------------------------
-    // Detect EnableX token/authentication errors
-    // --------------------------------------------------
-    const enablexErrorCode =
-    Number(
-        error?.error ??
-        error?.code ??
-        error?.result
-    );
-
-const isRoomDeletedError =
-    enablexErrorCode === 4118 ||
-    errorText.includes('room has been deleted') ||
-    errorText.includes('room deleted');
-
-    const isTokenError =
-      errorText.includes('invalid token') ||
-      errorText.includes('invalid_token') ||
-      errorText.includes('invalid token/param') ||
-      errorText.includes('token/param') ||
-      errorText.includes('token param') ||
-      errorText.includes('token') ||
-      errorText.includes('unauthorized') ||
-      errorText.includes('authentication') ||
-      errorText.includes('401');
-
-
-      if (isRoomDeletedError) {
-    console.warn(
-        '[EnableX] 🚨 ROOM 4118: room has been deleted'
-    );
-
-    // Do NOT try to reconnect to the old room.
-    // A completely NEW room is required.
-
-    if (reconnectingRef.current) {
-        console.warn(
-            '[EnableX] Room recreation already in progress'
-        );
-        return;
-    }
-
-    reconnectingRef.current = true;
-
-    if (isMountedRef.current) {
-        setCallStatus('connecting');
-        setRemoteStreamActive(false);
-    }
-
-    try {
-        const response = await api.post(
-            '/enablex/create-room',
-            {
-                name:
-                    `Inakkam Call ${Date.now()}`
+            // Ignore errors from an old room that is already being
+            // cleaned up during a reconnect.
+            if (
+              cancelled ||
+              !isMountedRef.current ||
+              intentionalDisconnectRef.current
+            ) {
+              return;
             }
-        );
 
-        if (
-            !response.data?.success ||
-            !response.data?.roomId
-        ) {
-            throw new Error(
-                response.data?.message ||
-                'Failed to create replacement room'
+            const errorText = String(
+              error?.msg ||
+              error?.message ||
+              error?.desc ||
+              error?.error ||
+              ''
+            ).toLowerCase();
+
+            const enablexErrorCode = Number(
+              error?.error ??
+              error?.code ??
+              error?.result
             );
-        }
 
-        const newRoomId =
-            response.data.roomId;
+            console.error('[EnableX] Room error details:', {
+              error,
+              errorText,
+              enablexErrorCode,
+              roomId,
+              reconnectAttempts: reconnectAttemptsRef.current
+            });
 
-        console.log(
-            '[EnableX] ✅ Replacement room created:',
-            newRoomId
-        );
+            // --------------------------------------------------
+            // Detect "room deleted" (needs a brand new room)
+            // --------------------------------------------------
+            const isRoomDeletedError =
+              enablexErrorCode === 4118 ||
+              errorText.includes('room has been deleted') ||
+              errorText.includes('room deleted');
 
-        const socket = getSocket();
+            // --------------------------------------------------
+            // Detect EnableX token/authentication errors.
+            //
+            // IMPORTANT: this used to include a bare
+            // errorText.includes('token') check, which matched
+            // almost any EnableX message that merely *mentions*
+            // "token" (rate limit notices, ICE renegotiation
+            // messages, etc). That falsely triggered a full
+            // room/token rebuild mid-call, which looked like the
+            // other person "left" even though nothing was
+            // actually wrong. We now require a specific,
+            // unambiguous phrase or a real auth-related HTTP/
+            // EnableX status code.
+            // --------------------------------------------------
+            const isTokenError =
+              errorText.includes('invalid token') ||
+              errorText.includes('invalid_token') ||
+              errorText.includes('token expired') ||
+              errorText.includes('token has expired') ||
+              errorText.includes('invalid token/param') ||
+              errorText.includes('token/param') ||
+              errorText.includes('token param') ||
+              enablexErrorCode === 401 ||
+              enablexErrorCode === 4011; // EnableX auth-failure code — verify against EnableX docs/logs for your account
 
-        // Tell the other participant.
-        if (socket && targetUid) {
-            socket.emit(
-                'enablex_room_recreated',
-                {
-                    targetUserId: targetUid,
-                    conversationId: roomId,
-                    roomId: newRoomId,
-                    callType
+            if (isRoomDeletedError) {
+              console.warn(
+                '[EnableX] 🚨 ROOM 4118: room has been deleted'
+              );
+
+              // Do NOT try to reconnect to the old room.
+              // A completely NEW room is required.
+
+              if (reconnectingRef.current) {
+                console.warn(
+                  '[EnableX] Room recreation already in progress'
+                );
+                return;
+              }
+
+              reconnectingRef.current = true;
+
+              if (isMountedRef.current) {
+                setCallStatus('connecting');
+                setRemoteStreamActive(false);
+              }
+
+              try {
+                const response = await api.post(
+                  '/enablex/create-room',
+                  {
+                    name:
+                      `Inakkam Call ${Date.now()}`
+                  }
+                );
+
+                if (
+                  !response.data?.success ||
+                  !response.data?.roomId
+                ) {
+                  throw new Error(
+                    response.data?.message ||
+                    'Failed to create replacement room'
+                  );
                 }
-            );
-        }
 
-        /*
-         * IMPORTANT:
-         *
-         * We cannot simply change the local `roomId` prop.
-         * The parent needs to pass the new roomId back
-         * into VideoCall.
-         *
-         * So emit an event / callback to the parent here.
-         */
-        if (
-            typeof window !== 'undefined'
-        ) {
-            window.dispatchEvent(
-                new CustomEvent(
-                    'enablex-room-recreated',
+                const newRoomId =
+                  response.data.roomId;
+
+                console.log(
+                  '[EnableX] ✅ Replacement room created:',
+                  newRoomId
+                );
+
+                const socket = getSocket();
+
+                // Tell the other participant.
+                if (socket && targetUid) {
+                  socket.emit(
+                    'enablex_room_recreated',
                     {
-                        detail: {
-                            roomId: newRoomId
-                        }
+                      targetUserId: targetUid,
+                      conversationId: roomId,
+                      roomId: newRoomId,
+                      callType
                     }
-                )
+                  );
+                }
+
+                /*
+                 * IMPORTANT:
+                 *
+                 * We cannot simply change the local `roomId` prop.
+                 * The parent needs to pass the new roomId back
+                 * into VideoCall.
+                 *
+                 * So emit an event / callback to the parent here.
+                 */
+                if (
+                  typeof window !== 'undefined'
+                ) {
+                  window.dispatchEvent(
+                    new CustomEvent(
+                      'enablex-room-recreated',
+                      {
+                        detail: {
+                          roomId: newRoomId
+                        }
+                      }
+                    )
+                  );
+                }
+
+              } catch (recreateError) {
+
+                console.error(
+                  '[EnableX] ❌ Failed to recreate room:',
+                  recreateError?.response?.data ||
+                  recreateError
+                );
+
+                toast.error(
+                  'Unable to reconnect the video call.'
+                );
+
+              } finally {
+                reconnectingRef.current = false;
+              }
+
+              return;
+            }
+            if (isTokenError) {
+              // Prevent multiple room-error events from triggering
+              // multiple simultaneous reconnects.
+              if (reconnectingRef.current) {
+                console.warn(
+                  '[EnableX] Token recovery already in progress.'
+                );
+                return;
+              }
+
+              reconnectingRef.current = true;
+
+              console.warn(
+                '[EnableX] 🔄 INVALID TOKEN DETECTED — starting full token recovery'
+              );
+
+              if (isMountedRef.current) {
+                setCallStatus('connecting');
+                setRemoteStreamActive(false);
+              }
+
+              toast.error(
+                'Video connection expired. Reconnecting...'
+              );
+
+              // Allow the old room to finish disconnecting.
+              try {
+                if (activeRoom) {
+                  activeRoom.disconnect();
+                }
+              } catch (disconnectError) {
+                console.warn(
+                  '[EnableX] Old room disconnect during token recovery:',
+                  disconnectError
+                );
+              }
+
+              // Close old local stream.
+              try {
+                if (activeLocalStream) {
+                  activeLocalStream.close();
+                }
+              } catch (streamError) {
+                console.warn(
+                  '[EnableX] Old stream close during token recovery:',
+                  streamError
+                );
+              }
+
+              // Clear current references.
+              if (roomRef.current === activeRoom) {
+                roomRef.current = null;
+              }
+
+              if (localStreamRef.current === activeLocalStream) {
+                localStreamRef.current = null;
+              }
+
+              remoteStreamRef.current = null;
+              tokenRef.current = null;
+
+              // Reset retry counter because we're doing a complete
+              // token refresh rather than a normal reconnect.
+              reconnectAttemptsRef.current = 0;
+
+              // Force the EnableX initialization useEffect to run again.
+              if (isMountedRef.current) {
+                setTimeout(() => {
+                  if (!isMountedRef.current) return;
+
+                  reconnectingRef.current = false;
+
+                  setReconnectKey(prev => prev + 1);
+                }, 500);
+              }
+
+              return;
+            }
+
+            // --------------------------------------------------
+            // Temporary connection errors — DO NOT tear the room
+            // down for these; the SDK's own allow_reconnect logic
+            // (see room.connect below) handles brief network blips.
+            // --------------------------------------------------
+            if (reconnectAttemptsRef.current < 3) {
+              reconnectAttemptsRef.current += 1;
+
+              console.warn(
+                `[EnableX] Temporary room error. ` +
+                `Reconnect attempt ${reconnectAttemptsRef.current}/3`
+              );
+
+              toast(
+                `Connection interrupted. Reconnecting ` +
+                `(${reconnectAttemptsRef.current}/3)...`
+              );
+
+              return;
+            }
+
+            // --------------------------------------------------
+            // Final failure
+            // --------------------------------------------------
+            toast.error(
+              'Unable to reconnect the video call.'
             );
-        }
 
-    } catch (recreateError) {
-
-        console.error(
-            '[EnableX] ❌ Failed to recreate room:',
-            recreateError?.response?.data ||
-            recreateError
+            if (
+              isMountedRef.current &&
+              !intentionalDisconnectRef.current
+            ) {
+              handleDisconnect();
+            }
+          }
         );
 
-        toast.error(
-            'Unable to reconnect the video call.'
-        );
-
-    } finally {
-        reconnectingRef.current = false;
-    }
-
-    return;
-}
-    if (isTokenError) {
-      // Prevent multiple room-error events from triggering
-      // multiple simultaneous reconnects.
-      if (reconnectingRef.current) {
-        console.warn(
-          '[EnableX] Token recovery already in progress.'
-        );
-        return;
-      }
-
-      reconnectingRef.current = true;
-
-      console.warn(
-        '[EnableX] 🔄 INVALID TOKEN DETECTED — starting full token recovery'
-      );
-
-      if (isMountedRef.current) {
-        setCallStatus('connecting');
-        setRemoteStreamActive(false);
-      }
-
-      toast.error(
-        'Video connection expired. Reconnecting...'
-      );
-
-      // Allow the old room to finish disconnecting.
-      try {
-        if (activeRoom) {
-          activeRoom.disconnect();
-        }
-      } catch (disconnectError) {
-        console.warn(
-          '[EnableX] Old room disconnect during token recovery:',
-          disconnectError
-        );
-      }
-
-      // Close old local stream.
-      try {
-        if (activeLocalStream) {
-          activeLocalStream.close();
-        }
-      } catch (streamError) {
-        console.warn(
-          '[EnableX] Old stream close during token recovery:',
-          streamError
-        );
-      }
-
-      // Clear current references.
-      if (roomRef.current === activeRoom) {
-        roomRef.current = null;
-      }
-
-      if (localStreamRef.current === activeLocalStream) {
-        localStreamRef.current = null;
-      }
-
-      remoteStreamRef.current = null;
-      tokenRef.current = null;
-
-      // Reset retry counter because we're doing a complete
-      // token refresh rather than a normal reconnect.
-      reconnectAttemptsRef.current = 0;
-
-      // Force the EnableX initialization useEffect to run again.
-      if (isMountedRef.current) {
-        setTimeout(() => {
-          if (!isMountedRef.current) return;
-
-          reconnectingRef.current = false;
-
-          setReconnectKey(prev => prev + 1);
-        }, 500);
-      }
-
-      return;
-    }
-
-    // --------------------------------------------------
-    // Temporary connection errors
-    // --------------------------------------------------
-    if (reconnectAttemptsRef.current < 3) {
-      reconnectAttemptsRef.current += 1;
-
-      console.warn(
-        `[EnableX] Temporary room error. ` +
-        `Reconnect attempt ${reconnectAttemptsRef.current}/3`
-      );
-
-      toast(
-        `Connection interrupted. Reconnecting ` +
-        `(${reconnectAttemptsRef.current}/3)...`
-      );
-
-      return;
-    }
-
-    // --------------------------------------------------
-    // Final failure
-    // --------------------------------------------------
-    toast.error(
-      'Unable to reconnect the video call.'
-    );
-
-    if (
-      isMountedRef.current &&
-      !intentionalDisconnectRef.current
-    ) {
-      handleDisconnect();
-    }
-  }
-);
         // --------------------------------------------------
         // 12. Room disconnected
         // --------------------------------------------------
+        activeRoom.addEventListener(
+          'room-disconnected',
+          (event) => {
+            console.log(
+              '[EnableX] Room disconnected:',
+              event
+            );
+
+            // User intentionally ended the call.
+            if (
+              intentionalDisconnectRef.current ||
+              isDisconnectedRef.current ||
+              cancelled
+            ) {
+              console.log(
+                '[EnableX] Intentional/cleanup disconnect.'
+              );
+              return;
+            }
+
+            // If token recovery / room recreation is already
+            // happening, do not start another recovery — this
+            // room-disconnected event almost certainly belongs to
+            // the room we're already tearing down on purpose.
+            if (reconnectingRef.current) {
+              console.log(
+                '[EnableX] Disconnect belongs to an in-progress recovery.'
+              );
+              return;
+            }
+
+            console.warn(
+              '[EnableX] Unexpected room disconnect.'
+            );
+
+            if (isMountedRef.current) {
+              setCallStatus('connecting');
+              setRemoteStreamActive(false);
+            }
+
+            // Rebuild the EnableX session.
+            reconnectingRef.current = true;
+
+            setTimeout(() => {
+              if (!isMountedRef.current) return;
+
+              reconnectingRef.current = false;
+              setReconnectKey(prev => prev + 1);
+            }, 500);
+          }
+        );
         // --------------------------------------------------
-// 12. Room disconnected
-// --------------------------------------------------
-activeRoom.addEventListener(
-  'room-disconnected',
-  (event) => {
-    console.log(
-      '[EnableX] Room disconnected:',
-      event
-    );
-
-    // User intentionally ended the call.
-    if (
-      intentionalDisconnectRef.current ||
-      isDisconnectedRef.current ||
-      cancelled
-    ) {
-      console.log(
-        '[EnableX] Intentional/cleanup disconnect.'
-      );
-      return;
-    }
-
-    // If token recovery is already happening,
-    // do not start another recovery.
-    if (reconnectingRef.current) {
-      console.log(
-        '[EnableX] Disconnect belongs to token recovery.'
-      );
-      return;
-    }
-
-    console.warn(
-      '[EnableX] Unexpected room disconnect.'
-    );
-
-    if (isMountedRef.current) {
-      setCallStatus('connecting');
-      setRemoteStreamActive(false);
-    }
-
-    // Rebuild the EnableX session.
-    reconnectingRef.current = true;
-
-    setTimeout(() => {
-      if (!isMountedRef.current) return;
-
-      reconnectingRef.current = false;
-      setReconnectKey(prev => prev + 1);
-    }, 500);
-  }
-);        // --------------------------------------------------
         // 13. CONNECT TO ENABLEX
         // --------------------------------------------------
         console.log("[EnableX] 🚀 Connecting to room...");
@@ -989,46 +1015,50 @@ activeRoom.addEventListener(
     startCall();
 
     return () => {
-  cancelled = true;
+      cancelled = true;
 
-  // Mark this room as being intentionally cleaned up by React.
-  // This prevents room-error / room-disconnected from triggering
-  // another recovery while the old room is being destroyed.
-  const cleanupRoom = activeRoom;
+      // Mark this room as being intentionally cleaned up by React.
+      // This prevents room-error / room-disconnected from triggering
+      // another recovery while the old room is being destroyed.
+      const cleanupRoom = activeRoom;
 
-  if (cleanupRoom) {
-    try {
-      cleanupRoom.disconnect();
-    } catch (e) {
-      console.warn(
-        '[EnableX] Room cleanup error:',
-        e
-      );
-    }
-  }
+      if (cleanupRoom) {
+        try {
+          cleanupRoom.disconnect();
+        } catch (e) {
+          console.warn(
+            '[EnableX] Room cleanup error:',
+            e
+          );
+        }
+      }
 
-  if (activeLocalStream) {
-    try {
-      activeLocalStream.close();
-    } catch (e) {
-      console.warn(
-        '[EnableX] Stream cleanup error:',
-        e
-      );
-    }
-  }
+      if (activeLocalStream) {
+        try {
+          activeLocalStream.close();
+        } catch (e) {
+          console.warn(
+            '[EnableX] Stream cleanup error:',
+            e
+          );
+        }
+      }
 
-  if (roomRef.current === activeRoom) {
-    roomRef.current = null;
-  }
+      if (roomRef.current === activeRoom) {
+        roomRef.current = null;
+      }
 
-  if (
-    localStreamRef.current ===
-    activeLocalStream
-  ) {
-    localStreamRef.current = null;
-  }
-};
+      if (
+        localStreamRef.current ===
+        activeLocalStream
+      ) {
+        localStreamRef.current = null;
+      }
+
+      if (socket) {
+        socket.off("call_ended", handleRemoteCallEnded);
+      }
+    };
   }, [roomId, callType, isCaller, currentUser, handleDisconnect, reconnectKey]);
 
   // ─── Toggle Mic ──────────────────────────────────────────
@@ -1136,10 +1166,18 @@ activeRoom.addEventListener(
           {/* If video call, show live camera preview fullscreen */}
           {callType === "video" ? (
             <div className="absolute inset-0 z-0 bg-[#121212]">
-              {/* EnableX Local Preview Container */}
+              {/* EnableX Local Preview Container.
+                  NOTE: EnableX injects its own wrapper element(s)
+                  here, not a bare <video>. The `[&_*]:!w-full
+                  [&_*]:!h-full` rule (with !important) forces every
+                  injected descendant to fill this container instead
+                  of falling back to EnableX's own inline
+                  width/height, which is what previously produced a
+                  small fixed-size box instead of a fullscreen
+                  preview. */}
               <div
                 id="connecting_local_video"
-                className="w-full h-full object-cover scale-x-[-1] flex items-center justify-center [&_video]:w-full [&_video]:h-full [&_video]:object-cover [&_video]:scale-x-[-1]"
+                className="absolute inset-0 w-full h-full [&_*]:!w-full [&_*]:!h-full [&_video]:!object-cover [&_video]:scale-x-[-1]"
               />
               {/* Subtle dark vignette overlay */}
               <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-black/80 pointer-events-none" />
@@ -1292,10 +1330,13 @@ activeRoom.addEventListener(
           ) : (
             /* ── Video call main UI ── */
             <div className="flex-1 h-full bg-[#121212] relative overflow-hidden">
-              {/* EnableX Remote Video Container — fullscreen */}
+              {/* EnableX Remote Video Container — fullscreen.
+                  Same fix as the connecting-screen preview: force
+                  every injected descendant element to fill this
+                  container. */}
               <div
                 id="remote_video_player"
-                className="absolute inset-0 w-full h-full overflow-hidden bg-black"
+                className="absolute inset-0 w-full h-full overflow-hidden bg-black [&_*]:!w-full [&_*]:!h-full [&_video]:!object-cover"
                 style={{
                   display: remoteStreamActive ? "block" : "none",
                 }}
@@ -1322,7 +1363,7 @@ activeRoom.addEventListener(
               >
                 <div
                   id="local_pip_video"
-                  className="w-full h-full object-cover [&_video]:w-full [&_video]:h-full [&_video]:object-cover [&_video]:scale-x-[-1]"
+                  className="w-full h-full [&_*]:!w-full [&_*]:!h-full [&_video]:!object-cover [&_video]:scale-x-[-1]"
                 />
                 <div className="absolute bottom-2 left-2 text-[9px] font-semibold bg-black/65 px-1.5 py-0.5 rounded text-slate-300">
                   You
