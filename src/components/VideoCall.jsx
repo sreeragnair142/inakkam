@@ -10,7 +10,8 @@ import {
   X,
   Volume2,
   VolumeX,
-  Sparkles
+  Sparkles,
+  User
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDispatch } from 'react-redux';
@@ -49,12 +50,16 @@ const VideoCall = ({
   const [chatInput, setChatInput] = useState('');
   const [isMutedSound, setIsMutedSound] = useState(false);
   const [remoteStreamActive, setRemoteStreamActive] = useState(false);
+  const [localStream, setLocalStream] = useState(null);
+  const [remoteStream, setRemoteStream] = useState(null);
 
   // Refs
   const localVideoRef = useRef(null);
+  const connectingLocalVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const pcRef = useRef(null);              // RTCPeerConnection
   const localStreamRef = useRef(null);    // Local MediaStream
+  const remoteStreamRef = useRef(null);   // Remote MediaStream
   const isDisconnectedRef = useRef(false);
   const isMountedRef = useRef(true);
   const iceCandidateQueueRef = useRef([]); // Queue ICE candidates until remote desc is set
@@ -73,6 +78,29 @@ const VideoCall = ({
     isMountedRef.current = true;
     return () => { isMountedRef.current = false; };
   }, []);
+
+  // ─── Stream Attachment Effect ───────────────────────────
+  // Ensure local and remote streams are immediately bound to video DOM nodes whenever mounted
+  useEffect(() => {
+    if (connectingLocalVideoRef.current && localStream) {
+      connectingLocalVideoRef.current.srcObject = localStream;
+      connectingLocalVideoRef.current.play().catch(() => {});
+    }
+  }, [localStream, callStatus, videoActive]);
+
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+      localVideoRef.current.play().catch(() => {});
+    }
+  }, [localStream, callStatus, videoActive]);
+
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteStream) {
+      remoteVideoRef.current.srcObject = remoteStream;
+      remoteVideoRef.current.play().catch(() => {});
+    }
+  }, [remoteStream, callStatus]);
 
   // ─── Call timer ─────────────────────────────────────────
   useEffect(() => {
@@ -125,7 +153,11 @@ const VideoCall = ({
       localStreamRef.current = null;
     }
 
-    if (isMountedRef.current) setCallStatus('disconnected');
+    if (isMountedRef.current) {
+      setLocalStream(null);
+      setRemoteStream(null);
+      setCallStatus('disconnected');
+    }
 
     if (onEndCallRef.current) {
       setTimeout(() => onEndCallRef.current(), 50);
@@ -166,11 +198,17 @@ const VideoCall = ({
     // When remote adds tracks, display them
     pc.ontrack = (event) => {
       console.log('📹 Remote track received:', event.track.kind);
-      if (remoteVideoRef.current && event.streams[0]) {
-        remoteVideoRef.current.srcObject = event.streams[0];
+      if (event.streams && event.streams[0]) {
+        const stream = event.streams[0];
+        remoteStreamRef.current = stream;
         if (isMountedRef.current) {
+          setRemoteStream(stream);
           setRemoteStreamActive(true);
           setCallStatus('connected');
+        }
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = stream;
+          remoteVideoRef.current.play().catch(() => {});
         }
       }
     };
@@ -206,20 +244,16 @@ const VideoCall = ({
     }
 
     // Refs for async state within this effect
-    const pendingOfferRef = { current: null }; // Offer received before PC was ready
-    const pcReadyRef = { current: false };       // PC and tracks are added
+    const pendingOfferRef = { current: null };
+    const pcReadyRef = { current: false };
     let pc;
 
     // ── STEP 1: Register socket listeners IMMEDIATELY (before async getUserMedia) ──
-    // This prevents race conditions where callee emits 'webrtc_ready' before
-    // caller's async setup completes.
-
     const handleOffer = async ({ senderId, offer }) => {
       if (String(senderId) !== String(targetUserId)) return;
       console.log('[WebRTC] Received offer. PC ready:', pcReadyRef.current);
 
       if (!pcReadyRef.current) {
-        // PC not ready yet — queue the offer to be processed after setup
         pendingOfferRef.current = offer;
         console.warn('[WebRTC] PC not ready — queuing offer for later processing');
         return;
@@ -279,10 +313,8 @@ const VideoCall = ({
         if (pcReadyRef.current) {
           await sendOffer();
         } else {
-          // PC setup is still in progress (getUserMedia slow) — signal it to send offer when ready
-          offerSentRef.current = false; // Will be set to true in sendOffer
+          offerSentRef.current = false;
           console.warn('[WebRTC] Got webrtc_ready before PC ready — will send offer once setup completes');
-          // Set flag so setup completion knows to send the offer
           pendingOfferRef.current = 'SEND_OFFER_WHEN_READY';
         }
       }
@@ -350,10 +382,16 @@ const VideoCall = ({
         }
 
         localStreamRef.current = stream;
+        setLocalStream(stream);
 
-        // Show local camera preview
+        // Show local camera preview immediately
+        if (connectingLocalVideoRef.current && stream.getVideoTracks().length > 0) {
+          connectingLocalVideoRef.current.srcObject = stream;
+          connectingLocalVideoRef.current.play().catch(() => {});
+        }
         if (localVideoRef.current && stream.getVideoTracks().length > 0) {
           localVideoRef.current.srcObject = stream;
+          localVideoRef.current.play().catch(() => {});
         }
 
         // 3. Create peer connection and add tracks
@@ -363,24 +401,21 @@ const VideoCall = ({
         pcReadyRef.current = true;
         console.log('[WebRTC] ✅ PC ready with', stream.getTracks().length, 'tracks');
 
-        // 4. Now that PC is ready, start signaling handshake
+        // 4. Start signaling handshake
         if (isCaller) {
-          // Check if we already received webrtc_ready before PC was ready
           if (pendingOfferRef.current === 'SEND_OFFER_WHEN_READY') {
             pendingOfferRef.current = null;
             await sendOffer();
           } else {
-            // Caller waits for callee's webrtc_ready
-            // Also emit a 'caller_ready' so callee knows to send webrtc_ready
             socket.emit('webrtc_caller_ready', { targetUserId });
             console.log('[WebRTC] Caller: PC ready, sent webrtc_caller_ready. Waiting for callee...');
-            // Safety fallback: if we never get webrtc_ready within 4s, send offer anyway
+            // Safety fallback: if we never get webrtc_ready within 2.5s, send offer anyway
             setTimeout(async () => {
               if (isMountedRef.current && !offerSentRef.current && pcRef.current) {
                 console.warn('[WebRTC] Timeout: callee never sent webrtc_ready — sending offer anyway');
                 await sendOffer();
               }
-            }, 4000);
+            }, 2500);
           }
         } else {
           // Callee: process any offer that arrived before PC was ready
@@ -389,16 +424,14 @@ const VideoCall = ({
             pendingOfferRef.current = null;
             await processOffer(queuedOffer);
           } else {
-            // Send webrtc_ready — caller will respond with an offer
             socket.emit('webrtc_ready', { targetUserId });
             console.log('[WebRTC] Callee: sent webrtc_ready to caller');
-            // Re-send after 2s in case caller's socket listener missed it
             setTimeout(() => {
               if (isMountedRef.current && !hasRemoteDescRef.current) {
                 socket.emit('webrtc_ready', { targetUserId });
                 console.log('[WebRTC] Callee: re-sent webrtc_ready (retry)');
               }
-            }, 2500);
+            }, 2000);
           }
         }
 
@@ -424,7 +457,6 @@ const VideoCall = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-
   // ─── Toggle Mic ──────────────────────────────────────────
   const toggleMic = () => {
     const next = !micActive;
@@ -443,7 +475,7 @@ const VideoCall = ({
     }
   };
 
-  // ─── Send In-Room Chat Message (via socket data channel fallback) ─
+  // ─── Send In-Room Chat Message ───────────────────────────
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
@@ -463,7 +495,6 @@ const VideoCall = ({
     ]);
     setChatInput('');
 
-    // Try sending via socket
     const socket = getSocket();
     if (socket) {
       socket.emit('webrtc_chat', { targetUserId, message: messageText });
@@ -504,10 +535,109 @@ const VideoCall = ({
 
       {/* ─── Connecting screen ─────────────────────────────── */}
       {callStatus === 'connecting' && (
-        <div className="flex-1 flex flex-col items-center justify-center p-6 z-10">
-          <div className="relative w-16 h-16 border-4 border-purple-500/20 border-t-[#D51659] rounded-full animate-spin mb-6" />
-          <h3 className="text-lg font-semibold">Connecting...</h3>
-          <p className="text-sm text-slate-400 mt-1.5">Waiting for the other person to join</p>
+        <div className="flex-1 h-full w-full relative flex flex-col justify-between overflow-hidden">
+          {/* If video call, show live camera preview fullscreen */}
+          {callType === 'video' ? (
+            <div className="absolute inset-0 z-0 bg-[#121212]">
+              {videoActive && localStream ? (
+                <video
+                  ref={connectingLocalVideoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover scale-x-[-1]"
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-[#180d19] to-[#0A0A0A]">
+                  <div className="w-28 h-28 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-3">
+                    <VideoOff className="w-10 h-10 text-slate-500" />
+                  </div>
+                  <p className="text-slate-400 text-xs">Camera is off</p>
+                </div>
+              )}
+              {/* Subtle dark vignette overlay */}
+              <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-black/80 pointer-events-none" />
+            </div>
+          ) : (
+            /* Audio call connecting background */
+            <div className="absolute inset-0 bg-gradient-to-b from-[#150A1A] via-[#0A0A0A] to-[#1A0A15]" />
+          )}
+
+          {/* Top header on connecting screen */}
+          <div className="relative z-10 p-6 flex items-center justify-between">
+            <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10">
+              <span className="w-2 h-2 rounded-full bg-[#D51659] animate-ping" />
+              <span className="text-xs font-bold text-white tracking-wide">
+                {isCaller ? 'Calling...' : 'Connecting...'}
+              </span>
+            </div>
+            <span className="text-xs font-semibold text-slate-300 bg-black/30 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
+              {callType === 'video' ? 'Video Call' : 'Voice Call'}
+            </span>
+          </div>
+
+          {/* Center Glass Card with Remote User Info & Status */}
+          <div className="relative z-10 flex flex-col items-center justify-center px-6">
+            <div className="bg-black/50 backdrop-blur-xl border border-white/15 p-6 sm:p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-full">
+              {/* Pulsing Avatar */}
+              <div className="relative mb-5 flex items-center justify-center">
+                <span className="absolute w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-[#D51659]/30 blur-xl animate-pulse" />
+                <span className="absolute w-24 h-24 sm:w-28 sm:h-28 rounded-full border-2 border-[#D51659]/60 animate-ping" style={{ animationDuration: '2.5s' }} />
+                <img
+                  src={remoteUserPhoto || "https://via.placeholder.com/150"}
+                  alt={remoteUserName}
+                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-white/20 shadow-2xl relative z-10"
+                />
+              </div>
+
+              <h3 className="text-xl font-black text-white text-center drop-shadow-md">
+                {remoteUserName}
+              </h3>
+              
+              <div className="flex items-center gap-2 mt-3 text-slate-300 text-xs font-medium bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
+                <div className="w-3.5 h-3.5 border-2 border-[#D51659] border-t-transparent rounded-full animate-spin" />
+                <span>{isCaller ? 'Waiting for answer...' : 'Establishing connection...'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Controls Bar on Connecting Screen */}
+          <div className="relative z-10 p-6 pb-10 flex items-center justify-center gap-6">
+            {/* Mic toggle */}
+            <button
+              onClick={toggleMic}
+              className={`p-3.5 rounded-full transition-all duration-300 backdrop-blur-md ${micActive
+                ? 'bg-black/50 text-white border border-white/15 hover:bg-black/70'
+                : 'bg-[#D51659]/40 text-[#D51659] border border-[#D51659] hover:bg-[#D51659]/50'
+                }`}
+              title={micActive ? 'Mute Microphone' : 'Unmute Microphone'}
+            >
+              {micActive ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+            </button>
+
+            {/* Video toggle (for video call) */}
+            {callType === 'video' && (
+              <button
+                onClick={toggleVideo}
+                className={`p-3.5 rounded-full transition-all duration-300 backdrop-blur-md ${videoActive
+                  ? 'bg-black/50 text-white border border-white/15 hover:bg-black/70'
+                  : 'bg-[#D51659]/40 text-[#D51659] border border-[#D51659] hover:bg-[#D51659]/50'
+                  }`}
+                title={videoActive ? 'Turn Camera Off' : 'Turn Camera On'}
+              >
+                {videoActive ? <VideoIcon className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
+              </button>
+            )}
+
+            {/* Cancel / End Call Button */}
+            <button
+              onClick={handleDisconnect}
+              className="p-4 rounded-full bg-[#D51659] hover:bg-[#D51659]/90 text-white hover:scale-105 active:scale-95 transition-all shadow-[0_4px_20px_rgba(213,22,89,0.5)] flex items-center justify-center cursor-pointer"
+              title="Cancel Call"
+            >
+              <PhoneOff className="w-6 h-6" />
+            </button>
+          </div>
         </div>
       )}
 
@@ -572,7 +702,7 @@ const VideoCall = ({
                     alt={remoteUserName}
                     className="w-24 h-24 rounded-full object-cover border-2 border-white/10 mb-3 opacity-50"
                   />
-                  <p className="text-slate-500 text-sm">Waiting for {remoteUserName} camera...</p>
+                  <p className="text-slate-500 text-sm">Waiting for {remoteUserName}'s camera...</p>
                 </div>
               )}
 
@@ -581,13 +711,20 @@ const VideoCall = ({
                 className="absolute top-6 right-6 w-28 md:w-36 rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-[#1a1a1a] z-20"
                 style={{ aspectRatio: '9/16' }}
               >
-                <video
-                  ref={localVideoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover scale-x-[-1]"
-                />
+                {videoActive && localStream ? (
+                  <video
+                    ref={localVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover scale-x-[-1]"
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-[#222]">
+                    <VideoOff className="w-6 h-6 text-slate-500 mb-1" />
+                    <span className="text-[9px] text-slate-400">Off</span>
+                  </div>
+                )}
                 <div className="absolute bottom-2 left-2 text-[9px] font-semibold bg-black/65 px-1.5 py-0.5 rounded text-slate-300">
                   You
                 </div>
