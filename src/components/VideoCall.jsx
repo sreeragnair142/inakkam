@@ -198,7 +198,23 @@ const VideoCall = ({
     if (!container) return;
 
     try {
-      // 1. Direct native MediaStream attachment
+      container.innerHTML = "";
+      if (typeof stream.play === "function") {
+        stream.play(container.id, {
+          player: {
+            width: "100%",
+            height: "100%",
+            autoplay: true,
+            playsinline: true,
+            muted: true,
+          },
+          toolbar: {
+            displayMode: false,
+            branding: { display: false },
+          },
+        });
+      }
+
       const nativeMediaStream =
         stream.stream ||
         stream.mediaStream ||
@@ -216,27 +232,10 @@ const VideoCall = ({
           videoEl.muted = true;
           container.appendChild(videoEl);
         }
-        if (videoEl.srcObject !== nativeMediaStream) {
+        if (!videoEl.srcObject) {
           videoEl.srcObject = nativeMediaStream;
         }
         videoEl.play().catch(() => {});
-      }
-
-      // 2. Also invoke EnableX play if available
-      if (typeof stream.play === "function" && !container.querySelector(".enx-video-player")) {
-        stream.play(container.id, {
-          player: {
-            width: "100%",
-            height: "100%",
-            autoplay: true,
-            playsinline: true,
-            muted: true,
-          },
-          toolbar: {
-            displayMode: false,
-            branding: { display: false },
-          },
-        });
       }
       console.log("[EnableX] Local video attached to", container.id);
     } catch (error) {
@@ -254,7 +253,22 @@ const VideoCall = ({
     if (!container) return;
 
     try {
-      // 1. Direct native MediaStream attachment
+      container.innerHTML = "";
+      if (typeof stream.play === "function") {
+        stream.play(containerId, {
+          player: {
+            width: "100%",
+            height: "100%",
+            autoplay: true,
+            playsinline: true,
+          },
+          toolbar: {
+            displayMode: false,
+            branding: { display: false },
+          },
+        });
+      }
+
       const nativeMediaStream =
         stream.stream ||
         stream.mediaStream ||
@@ -272,26 +286,10 @@ const VideoCall = ({
           videoEl.muted = false;
           container.appendChild(videoEl);
         }
-        if (videoEl.srcObject !== nativeMediaStream) {
+        if (!videoEl.srcObject) {
           videoEl.srcObject = nativeMediaStream;
         }
         videoEl.play().catch(() => {});
-      }
-
-      // 2. Also invoke EnableX play if available
-      if (typeof stream.play === "function" && !container.querySelector(".enx-video-player")) {
-        stream.play(containerId, {
-          player: {
-            width: "100%",
-            height: "100%",
-            autoplay: true,
-            playsinline: true,
-          },
-          toolbar: {
-            displayMode: false,
-            branding: { display: false },
-          },
-        });
       }
       console.log("[EnableX] Remote media attached to", containerId);
     } catch (error) {
@@ -554,27 +552,28 @@ const VideoCall = ({
               return;
             }
 
-            console.log("[EnableX] 📹 Remote stream detected:", remoteId);
+            console.log("[EnableX] 📹 Subscribing to remote stream:", remoteId);
 
-            activeRoom.subscribe(
-              stream,
-              {
-                audio: true,
-                video: callType === "video",
-                data: true,
-              },
-              (response) => {
-                console.log("[EnableX] Subscribe response:", response);
+            activeRoom.subscribe(stream, (response) => {
+              console.log("[EnableX] Subscribe callback response:", response);
 
-                if (
-                  response &&
-                  response.result !== undefined &&
-                  response.result !== 0
-                ) {
-                  console.error("[EnableX] Subscribe failed:", response);
-                }
-              },
-            );
+              if (
+                response &&
+                response.result !== undefined &&
+                response.result !== 0
+              ) {
+                console.error("[EnableX] Subscribe failed:", response);
+                return;
+              }
+
+              remoteStreamRef.current = stream;
+              if (isMountedRef.current) {
+                setRemoteStreamActive(true);
+                setCallStatus("connected");
+              }
+              setTimeout(() => playRemotePreview(), 50);
+              setTimeout(() => playRemotePreview(), 250);
+            });
           } catch (error) {
             console.error("[EnableX] Remote subscribe exception:", error);
           }
