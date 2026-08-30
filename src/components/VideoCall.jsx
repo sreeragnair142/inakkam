@@ -20,37 +20,9 @@ import toast from 'react-hot-toast';
 import { fetchMe } from '../redux/slices/authSlice';
 import { getSocket } from '../utils/socket';
 
-// ─── STUN + TURN relay servers ───────────────────────────────
-const ICE_SERVERS = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun3.l.google.com:19302' },
-    { urls: 'stun:stun4.l.google.com:19302' },
-    { urls: 'stun:stun.relay.metered.ca:80' },
-    {
-      urls: 'turn:openrelay.metered.ca:80',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    }
-  ],
-  iceCandidatePoolSize: 10
-};
-
 const VideoCall = ({
   roomId,
-  token,
+  token: initialToken,
   remoteUserName,
   remoteUserPhoto,
   callType = 'video',
@@ -69,23 +41,16 @@ const VideoCall = ({
   const [chatInput, setChatInput] = useState('');
   const [isMutedSound, setIsMutedSound] = useState(false);
   const [remoteStreamActive, setRemoteStreamActive] = useState(false);
-  const [localStream, setLocalStream] = useState(null);
-  const [remoteStream, setRemoteStream] = useState(null);
 
-  // Normalize targetUserId to string
+  // Normalize targetUserId
   const targetUid = String(targetUserId?._id || targetUserId?.id || targetUserId || '');
 
-  // Refs
-  const localVideoRef = useRef(null);
-  const connectingLocalVideoRef = useRef(null);
-  const remoteVideoRef = useRef(null);
-  const pcRef = useRef(null);              // RTCPeerConnection
-  const localStreamRef = useRef(null);    // Local MediaStream
-  const remoteStreamRef = useRef(null);   // Remote MediaStream
+  // EnableX Refs
+  const roomRef = useRef(null);
+  const localStreamRef = useRef(null);
+  const remoteStreamRef = useRef(null);
   const isDisconnectedRef = useRef(false);
   const isMountedRef = useRef(true);
-  const iceCandidateQueueRef = useRef([]); // Queue ICE candidates until remote desc is set
-  const hasRemoteDescRef = useRef(false);
 
   // ─── Format call duration ───────────────────────────────
   const formatTime = (secs) => {
@@ -99,28 +64,6 @@ const VideoCall = ({
     isMountedRef.current = true;
     return () => { isMountedRef.current = false; };
   }, []);
-
-  // ─── Stream Attachment Effect ───────────────────────────
-  useEffect(() => {
-    if (connectingLocalVideoRef.current && localStream) {
-      connectingLocalVideoRef.current.srcObject = localStream;
-      connectingLocalVideoRef.current.play().catch(() => {});
-    }
-  }, [localStream, callStatus, videoActive]);
-
-  useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
-      localVideoRef.current.play().catch(() => {});
-    }
-  }, [localStream, callStatus, videoActive]);
-
-  useEffect(() => {
-    if (remoteVideoRef.current && remoteStream) {
-      remoteVideoRef.current.srcObject = remoteStream;
-      remoteVideoRef.current.play().catch(e => console.warn('[VideoCall] Remote video play error:', e));
-    }
-  }, [remoteStream, callStatus]);
 
   // ─── Call timer ─────────────────────────────────────────
   useEffect(() => {
@@ -154,7 +97,7 @@ const VideoCall = ({
     return () => clearInterval(coinDeductInterval);
   }, [callStatus, callType, targetUid, dispatch, onEndCall]);
 
-  // ─── Core disconnect handler ─────────────────────────────
+  // ─── Core Disconnect / Hang Up Handler ───────────────────
   const onEndCallRef = useRef(onEndCall);
   useEffect(() => { onEndCallRef.current = onEndCall; }, [onEndCall]);
 
@@ -162,393 +105,255 @@ const VideoCall = ({
     if (isDisconnectedRef.current) return;
     isDisconnectedRef.current = true;
 
-    // Close peer connection
-    if (pcRef.current) {
-      try { pcRef.current.close(); } catch (e) { }
-      pcRef.current = null;
+    // Disconnect EnableX Room
+    if (roomRef.current) {
+      try {
+        roomRef.current.disconnect();
+      } catch (e) {
+        console.warn('Error disconnecting EnableX room:', e);
+      }
+      roomRef.current = null;
     }
-    // Stop all local media tracks
+
+    // Stop and close local stream
     if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(t => t.stop());
+      try {
+        localStreamRef.current.close();
+      } catch (e) {
+        console.warn('Error closing local stream:', e);
+      }
       localStreamRef.current = null;
     }
 
+    // Notify socket of call end
+    const socket = getSocket();
+    if (socket && targetUid) {
+      socket.emit('end_call', { targetUserId: targetUid, conversationId: roomId });
+    }
+
     if (isMountedRef.current) {
-      setLocalStream(null);
-      setRemoteStream(null);
       setCallStatus('disconnected');
     }
 
     if (onEndCallRef.current) {
       setTimeout(() => onEndCallRef.current(), 50);
     }
-  }, []);
+  }, [roomId, targetUid]);
 
-  // ─── Attach ICE candidates from queue ───────────────────
-  const flushIceCandidateQueue = useCallback(async () => {
-    const pc = pcRef.current;
-    if (!pc || !pc.remoteDescription) return;
-    while (iceCandidateQueueRef.current.length > 0) {
-      const candidate = iceCandidateQueueRef.current.shift();
-      try {
-        await pc.addIceCandidate(new RTCIceCandidate(candidate));
-        console.log('[WebRTC] ✅ Added queued ICE candidate');
-      } catch (e) {
-        console.warn('[WebRTC] Failed to add queued ICE candidate', e);
-      }
-    }
-  }, []);
-
-  // ─── Create RTCPeerConnection ────────────────────────────
-  const createPeerConnection = useCallback(() => {
-    const pc = new RTCPeerConnection(ICE_SERVERS);
-
-    // Send ICE candidates to the remote peer via socket
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        const socket = getSocket();
-        if (socket) {
-          socket.emit('webrtc_ice_candidate', {
-            targetUserId: targetUid,
-            candidate: event.candidate
-          });
-        }
-      }
-    };
-
-    // When remote adds tracks, display them
-    pc.ontrack = (event) => {
-      console.log('📹 Remote track received:', event.track.kind);
-      let streamToUse = event.streams && event.streams[0] ? event.streams[0] : null;
-      if (!streamToUse) {
-        if (!remoteStreamRef.current) {
-          remoteStreamRef.current = new MediaStream();
-        }
-        remoteStreamRef.current.addTrack(event.track);
-        streamToUse = remoteStreamRef.current;
-      } else {
-        remoteStreamRef.current = streamToUse;
-      }
-
-      if (isMountedRef.current) {
-        setRemoteStream(streamToUse);
-        setRemoteStreamActive(true);
-        setCallStatus('connected');
-      }
-
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = streamToUse;
-        remoteVideoRef.current.play().catch(e => console.warn('[WebRTC] Remote play error:', e));
-      }
-    };
-
-    pc.oniceconnectionstatechange = () => {
-      console.log('[WebRTC] ICE:', pc.iceConnectionState, 'Connection:', pc.connectionState, 'Signaling:', pc.signalingState);
-      if (['connected', 'completed'].includes(pc.iceConnectionState)) {
-        if (isMountedRef.current) setCallStatus('connected');
-      } else if (pc.iceConnectionState === 'failed') {
-        console.warn('[WebRTC] ICE connection failed — attempting ICE restart if caller');
-        if (isCaller && pc.restartIce) {
-          pc.restartIce();
-        }
-      }
-    };
-
-    pc.onicegatheringstatechange = () => {
-      console.log('[WebRTC] ICE gathering:', pc.iceGatheringState);
-    };
-
-    pc.onconnectionstatechange = () => {
-      console.log('[WebRTC] Connection state:', pc.connectionState);
-      if (['connected', 'completed'].includes(pc.connectionState)) {
-        if (isMountedRef.current) setCallStatus('connected');
-      } else if (['disconnected', 'failed', 'closed'].includes(pc.connectionState)) {
-        if (isMountedRef.current && !isDisconnectedRef.current) {
-          toast('Connection ended', { icon: '📞' });
-          handleDisconnect();
-        }
-      }
-    };
-
-    return pc;
-  }, [targetUid, isCaller, handleDisconnect]);
-
-  // ─── Main WebRTC Setup ───────────────────────────────────
+  // ─── EnableX SDK Initialization ─────────────────────────
   useEffect(() => {
-    const socket = getSocket();
-    if (!socket || !targetUid) {
-      console.error('[VideoCall] No socket or targetUserId — cannot start call.');
-      return;
-    }
+    let activeLocalStream = null;
 
-    const pendingOfferRef = { current: null };
-    const pcReadyRef = { current: false };
-    let pc;
-    let offerInterval = null;
-    let readyInterval = null;
-
-    // Helper to verify message sender
-    const isMatchingSender = (senderId) => {
-      if (!senderId || !targetUid) return true;
-      const sId = String(senderId?._id || senderId?.id || senderId || '');
-      const tId = String(targetUid?._id || targetUid?.id || targetUid || '');
-      if (!sId || !tId) return true;
-      return sId === tId;
-    };
-
-    const sendOffer = async () => {
-      if (!pcRef.current) return;
-      if (hasRemoteDescRef.current) {
-        console.log('[WebRTC] Remote description already set, skipping offer.');
-        return;
-      }
-      console.log('🔥 WEBRTC GENERATING & SENDING OFFER', { targetUid, isCaller });
+    const startCall = async () => {
       try {
-        const offer = await pcRef.current.createOffer({
-          offerToReceiveAudio: true,
-          offerToReceiveVideo: callType === 'video'
-        });
-        await pcRef.current.setLocalDescription(offer);
-        socket.emit('webrtc_offer', { targetUserId: targetUid, offer });
-        console.log('✅ WEBRTC OFFER EMITTED TO:', targetUid);
-      } catch (err) {
-        console.error('❌ WEBRTC OFFER CREATION ERROR:', err);
-      }
-    };
-
-    const handleOffer = async ({ senderId, offer }) => {
-      console.log('🔥🔥 WEBRTC OFFER RECEIVED', {
-        senderId,
-        targetUid,
-        pcReady: pcReadyRef.current,
-        hasOffer: !!offer
-      });
-
-      if (!isMatchingSender(senderId)) {
-        console.warn('❌ Offer rejected - sender mismatch', { senderId, targetUid });
-        return;
-      }
-
-      if (!pcReadyRef.current || !pcRef.current) {
-        pendingOfferRef.current = offer;
-        console.warn('⏳ PC not ready yet — queued offer for post-setup processing');
-        return;
-      }
-      await processOffer(offer);
-    };
-
-    const processOffer = async (offer) => {
-      if (!pcRef.current) return;
-      try {
-        console.log('🔥 PROCESSING OFFER & GENERATING ANSWER...');
-        await pcRef.current.setRemoteDescription(new RTCSessionDescription(offer));
-        hasRemoteDescRef.current = true;
-        await flushIceCandidateQueue();
-
-        const answer = await pcRef.current.createAnswer();
-        await pcRef.current.setLocalDescription(answer);
-        socket.emit('webrtc_answer', { targetUserId: targetUid, answer });
-        console.log('✅ WEBRTC ANSWER SENT TO TARGET:', targetUid);
-      } catch (err) {
-        console.error('❌ ERROR PROCESSING OFFER / CREATING ANSWER:', err);
-      }
-    };
-
-    const handleAnswer = async ({ senderId, answer }) => {
-      console.log('🔥🔥 WEBRTC ANSWER RECEIVED', { senderId, targetUid, hasAnswer: !!answer });
-      if (!isMatchingSender(senderId)) return;
-      if (!pcRef.current) return;
-      try {
-        if (pcRef.current.signalingState === 'have-local-offer') {
-          await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer));
-          hasRemoteDescRef.current = true;
-          await flushIceCandidateQueue();
-          console.log('✅ REMOTE DESCRIPTION SET FROM ANSWER');
-          if (offerInterval) clearInterval(offerInterval);
-        } else {
-          console.warn('[WebRTC] Answer ignored because signalingState is:', pcRef.current.signalingState);
-        }
-      } catch (err) {
-        console.error('❌ ERROR SETTING REMOTE DESCRIPTION FROM ANSWER:', err);
-      }
-    };
-
-    const handleIceCandidate = async ({ senderId, candidate }) => {
-      if (!isMatchingSender(senderId)) return;
-      if (!candidate) return;
-
-      if (!hasRemoteDescRef.current || !pcRef.current || !pcRef.current.remoteDescription) {
-        iceCandidateQueueRef.current.push(candidate);
-        return;
-      }
-      try {
-        await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
-      } catch (e) {
-        console.warn('[WebRTC] Failed to add ICE candidate', e);
-      }
-    };
-
-    // When callee signals ready
-    const handleRemoteReady = async ({ senderId }) => {
-      console.log('📞 WEBRTC READY SIGNAL RECEIVED FROM:', senderId);
-      if (!isMatchingSender(senderId)) return;
-      if (isCaller) {
-        if (pcReadyRef.current) {
-          await sendOffer();
-        } else {
-          pendingOfferRef.current = 'SEND_OFFER_WHEN_READY';
-        }
-      }
-    };
-
-    const handleCallerReady = ({ senderId }) => {
-      if (!isMatchingSender(senderId)) return;
-      console.log('[WebRTC] Received webrtc_caller_ready from:', senderId);
-      if (!isCaller) {
-        socket.emit('webrtc_ready', { targetUserId: targetUid });
-      }
-    };
-
-    const handleCallAccepted = async () => {
-      console.log('📞 CALL ACCEPTED EVENT RECEIVED — isCaller:', isCaller);
-      if (isCaller) {
-        if (pcReadyRef.current) {
-          await sendOffer();
-        } else {
-          pendingOfferRef.current = 'SEND_OFFER_WHEN_READY';
-        }
-      }
-    };
-
-    const handleCallEnded = () => {
-      toast('Call ended by the other person', { icon: '📞' });
-      if (isMountedRef.current && !isDisconnectedRef.current) handleDisconnect();
-    };
-
-    // Register socket listeners SYNCHRONOUSLY
-    socket.on('webrtc_offer', handleOffer);
-    socket.on('webrtc_answer', handleAnswer);
-    socket.on('webrtc_ice_candidate', handleIceCandidate);
-    socket.on('webrtc_ready', handleRemoteReady);
-    socket.on('webrtc_caller_ready', handleCallerReady);
-    socket.on('call_accepted', handleCallAccepted);
-    socket.on('call_ended', handleCallEnded);
-    console.log('📡 WebRTC Socket Listeners Registered. isCaller:', isCaller, 'targetUid:', targetUid);
-
-    // ── STEP 2: Get local media asynchronously ────────────
-    const start = async () => {
-      try {
-        const constraints = {
-          audio: true,
-          video: callType === 'video'
-            ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }
-            : false
-        };
-
-        let stream;
-        try {
-          stream = await navigator.mediaDevices.getUserMedia(constraints);
-        } catch (mediaErr) {
-          console.error('[VideoCall] Camera/mic error:', mediaErr.name, mediaErr.message);
-          if (callType === 'video') {
-            try {
-              stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-              console.warn('[VideoCall] Falling back to audio-only');
-              if (isMountedRef.current) setVideoActive(false);
-            } catch (audioErr) {
-              toast.error('Camera/microphone access denied.');
-              handleDisconnect();
-              return;
-            }
-          } else {
-            toast.error('Microphone access denied.');
-            handleDisconnect();
-            return;
-          }
-        }
-
-        if (!isMountedRef.current) {
-          stream.getTracks().forEach(t => t.stop());
+        const EnxRtc = window.EnxRtc;
+        if (!EnxRtc) {
+          console.error('❌ EnableX EnxRtc SDK not loaded on window.');
+          toast.error('Video service initialization failed.');
+          handleDisconnect();
           return;
         }
 
-        localStreamRef.current = stream;
-        setLocalStream(stream);
-
-        // 3. Create peer connection and add tracks
-        pc = createPeerConnection();
-        pcRef.current = pc;
-        stream.getTracks().forEach(track => pc.addTrack(track, stream));
-        pcReadyRef.current = true;
-        console.log('✅ PC ready with', stream.getTracks().length, 'tracks');
-
-        // 4. Start signaling handshake
-        if (isCaller) {
-          // Caller generates offer immediately
-          await sendOffer();
-
-          // Continuous retry every 2s until callee answer is processed
-          offerInterval = setInterval(() => {
-            if (isMountedRef.current && !hasRemoteDescRef.current && pcRef.current) {
-              console.log('[WebRTC] Caller: re-sending offer to:', targetUid);
-              sendOffer();
-            } else {
-              clearInterval(offerInterval);
+        // 1. Obtain Room Token
+        let token = initialToken;
+        if (!token && roomId) {
+          try {
+            const tokenRes = await api.post('/enablex/get-token', {
+              roomId,
+              role: isCaller ? 'moderator' : 'participant'
+            });
+            if (tokenRes.data?.success) {
+              token = tokenRes.data.token;
             }
-          }, 2000);
-        } else {
-          // Callee: process any offer that arrived while media was starting
-          if (pendingOfferRef.current && typeof pendingOfferRef.current === 'object') {
-            const queuedOffer = pendingOfferRef.current;
-            pendingOfferRef.current = null;
-            await processOffer(queuedOffer);
-          } else {
-            // Callee announces readiness
-            socket.emit('webrtc_ready', { targetUserId: targetUid });
-            console.log('✅ Callee sent webrtc_ready to caller:', targetUid);
-
-            // Re-announce ready every 2s until offer is received
-            readyInterval = setInterval(() => {
-              if (isMountedRef.current && !hasRemoteDescRef.current && pcRef.current) {
-                socket.emit('webrtc_ready', { targetUserId: targetUid });
-                console.log('🔁 Callee re-sending webrtc_ready to:', targetUid);
-              } else {
-                clearInterval(readyInterval);
-              }
-            }, 2000);
+          } catch (tokErr) {
+            console.error('[EnableX] Error obtaining token:', tokErr);
           }
         }
 
+        if (!token) {
+          toast.error('Unable to retrieve session token.');
+          handleDisconnect();
+          return;
+        }
+
+        // 2. Setup Local Stream
+        const streamConfig = {
+          audio: true,
+          video: callType === 'video',
+          data: true,
+          videoSize: [640, 480, 1280, 720],
+          attributes: { name: currentUser?.name || 'Me' },
+          maxVideoBW: 1500,
+          minVideoBW: 300
+        };
+
+        console.log('🎥 [EnableX] Setting up local stream with config:', streamConfig);
+
+        activeLocalStream = EnxRtc.setupStream(streamConfig, (setupEvent) => {
+          if (setupEvent.result === 0) {
+            localStreamRef.current = activeLocalStream;
+
+            // Play local stream preview
+            setTimeout(() => {
+              try {
+                const connectingContainer = document.getElementById('connecting_local_video');
+                if (connectingContainer) {
+                  activeLocalStream.play('connecting_local_video', {
+                    player: { autoplay: true, playsinline: true, muted: true }
+                  });
+                }
+              } catch (playErr) {
+                console.warn('Local preview play warning:', playErr);
+              }
+            }, 100);
+
+            // 3. Join EnableX Room
+            const roomOptions = {
+              player: { autoplay: true, playsinline: true }
+            };
+
+            console.log('🚀 [EnableX] Joining room with token...');
+
+            EnxRtc.joinRoom(token, roomOptions, (room, user) => {
+              if (!isMountedRef.current || isDisconnectedRef.current) {
+                if (room) room.disconnect();
+                return;
+              }
+
+              roomRef.current = room;
+
+              // Event: Room Connected
+              room.addEventListener('room-connected', (roomEvent) => {
+                console.log('✅ [EnableX] Room Connected successfully:', roomEvent);
+                // Publish local stream to the room
+                room.publish(activeLocalStream);
+
+                // Subscribe to any existing streams in the room
+                if (roomEvent.streams && Array.isArray(roomEvent.streams)) {
+                  roomEvent.streams.forEach((st) => {
+                    console.log('📹 [EnableX] Subscribing to existing stream:', st.getID());
+                    room.subscribe(st);
+                  });
+                }
+              });
+
+              // Event: Stream Added (Remote participant joined and published stream)
+              room.addEventListener('stream-added', (streamEvent) => {
+                const stream = streamEvent.stream;
+                console.log('📹 [EnableX] Stream Added by remote peer:', stream.getID());
+                room.subscribe(stream);
+              });
+
+              // Event: Stream Subscribed (Remote video/audio is ready to render)
+              room.addEventListener('stream-subscribed', (streamEvent) => {
+                console.log('✅ [EnableX] Stream Subscribed successfully:', streamEvent.stream.getID());
+                const remoteStream = streamEvent.stream;
+                remoteStreamRef.current = remoteStream;
+
+                if (isMountedRef.current) {
+                  setRemoteStreamActive(true);
+                  setCallStatus('connected');
+                }
+
+                setTimeout(() => {
+                  try {
+                    // Play remote stream fullscreen
+                    const remoteContainer = document.getElementById('remote_video_player');
+                    if (remoteContainer) {
+                      remoteStream.play('remote_video_player', {
+                        player: { autoplay: true, playsinline: true }
+                      });
+                    }
+                    // Play local stream in PiP
+                    const localPipContainer = document.getElementById('local_pip_video');
+                    if (localPipContainer && activeLocalStream) {
+                      activeLocalStream.play('local_pip_video', {
+                        player: { autoplay: true, playsinline: true, muted: true }
+                      });
+                    }
+                  } catch (e) {
+                    console.warn('Error playing subscribed streams:', e);
+                  }
+                }, 100);
+              });
+
+              // Event: User Disconnected
+              room.addEventListener('user-disconnected', (userEvent) => {
+                console.log('📞 [EnableX] User disconnected:', userEvent);
+                toast('User left the call', { icon: '📞' });
+                if (isMountedRef.current && !isDisconnectedRef.current) {
+                  handleDisconnect();
+                }
+              });
+
+              // Connect to the room
+              room.connect();
+            }, (joinError) => {
+              console.error('❌ [EnableX] joinRoom Error:', joinError);
+              if (isMountedRef.current) {
+                toast.error('Failed to connect to video room.');
+                handleDisconnect();
+              }
+            });
+
+          } else {
+            console.error('❌ [EnableX] setupStream failed:', setupEvent);
+            if (isMountedRef.current) {
+              toast.error('Unable to access camera or microphone.');
+              handleDisconnect();
+            }
+          }
+        });
+
       } catch (err) {
-        console.error('[VideoCall] Setup error:', err);
+        console.error('❌ [EnableX] Call Setup Exception:', err);
         if (isMountedRef.current) {
-          toast.error('Failed to set up call.');
+          toast.error('Call failed to start.');
           handleDisconnect();
         }
       }
     };
 
-    start();
+    // Socket listener for remote hangup
+    const socket = getSocket();
+    const handleRemoteCallEnded = () => {
+      toast('Call ended by the other person', { icon: '📞' });
+      if (isMountedRef.current && !isDisconnectedRef.current) {
+        handleDisconnect();
+      }
+    };
+
+    if (socket) {
+      socket.on('call_ended', handleRemoteCallEnded);
+    }
+
+    startCall();
 
     return () => {
-      if (offerInterval) clearInterval(offerInterval);
-      if (readyInterval) clearInterval(readyInterval);
-      socket.off('webrtc_offer', handleOffer);
-      socket.off('webrtc_answer', handleAnswer);
-      socket.off('webrtc_ice_candidate', handleIceCandidate);
-      socket.off('webrtc_ready', handleRemoteReady);
-      socket.off('webrtc_caller_ready', handleCallerReady);
-      socket.off('call_accepted', handleCallAccepted);
-      socket.off('call_ended', handleCallEnded);
+      if (socket) socket.off('call_ended', handleRemoteCallEnded);
+      if (roomRef.current) {
+        try { roomRef.current.disconnect(); } catch (e) {}
+      }
+      if (activeLocalStream) {
+        try { activeLocalStream.close(); } catch (e) {}
+      }
     };
-  }, [targetUid, isCaller, callType, createPeerConnection, handleDisconnect]);
+  }, [roomId, initialToken, callType, isCaller, currentUser, handleDisconnect]);
 
   // ─── Toggle Mic ──────────────────────────────────────────
   const toggleMic = () => {
     const next = !micActive;
     setMicActive(next);
     if (localStreamRef.current) {
-      localStreamRef.current.getAudioTracks().forEach(t => { t.enabled = next; });
+      try {
+        if (next) {
+          localStreamRef.current.unmuteAudio();
+        } else {
+          localStreamRef.current.muteAudio();
+        }
+      } catch (e) {
+        console.warn('EnableX muteAudio toggle error:', e);
+      }
     }
   };
 
@@ -557,7 +362,15 @@ const VideoCall = ({
     const next = !videoActive;
     setVideoActive(next);
     if (localStreamRef.current) {
-      localStreamRef.current.getVideoTracks().forEach(t => { t.enabled = next; });
+      try {
+        if (next) {
+          localStreamRef.current.unmuteVideo();
+        } else {
+          localStreamRef.current.muteVideo();
+        }
+      } catch (e) {
+        console.warn('EnableX muteVideo toggle error:', e);
+      }
     }
   };
 
@@ -582,12 +395,12 @@ const VideoCall = ({
     setChatInput('');
 
     const socket = getSocket();
-    if (socket) {
+    if (socket && targetUid) {
       socket.emit('webrtc_chat', { targetUserId: targetUid, message: messageText });
     }
   };
 
-  // ─── Receive in-call chat messages ──────────────────────
+  // ─── Receive In-Room Chat Messages ──────────────────────
   useEffect(() => {
     const socket = getSocket();
     if (!socket) return;
@@ -625,22 +438,11 @@ const VideoCall = ({
           {/* If video call, show live camera preview fullscreen */}
           {callType === 'video' ? (
             <div className="absolute inset-0 z-0 bg-[#121212]">
-              {videoActive && localStream ? (
-                <video
-                  ref={connectingLocalVideoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover scale-x-[-1]"
-                />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-[#180d19] to-[#0A0A0A]">
-                  <div className="w-28 h-28 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-3">
-                    <VideoOff className="w-10 h-10 text-slate-500" />
-                  </div>
-                  <p className="text-slate-400 text-xs">Camera is off</p>
-                </div>
-              )}
+              {/* EnableX Local Preview Container */}
+              <div
+                id="connecting_local_video"
+                className="w-full h-full object-cover scale-x-[-1] flex items-center justify-center [&_video]:w-full [&_video]:h-full [&_video]:object-cover [&_video]:scale-x-[-1]"
+              />
               {/* Subtle dark vignette overlay */}
               <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-black/80 pointer-events-none" />
             </div>
@@ -681,7 +483,7 @@ const VideoCall = ({
               
               <div className="flex items-center gap-2 mt-3 text-slate-300 text-xs font-medium bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
                 <div className="w-3.5 h-3.5 border-2 border-[#D51659] border-t-transparent rounded-full animate-spin" />
-                <span>{isCaller ? 'Waiting for answer...' : 'Establishing connection...'}</span>
+                <span>{isCaller ? 'Waiting for answer...' : 'Connecting to session...'}</span>
               </div>
             </div>
           </div>
@@ -750,7 +552,7 @@ const VideoCall = ({
                 Voice Call Connected ({formatTime(duration)})
               </p>
               {/* Hidden audio player for remote */}
-              <video ref={remoteVideoRef} autoPlay playsInline style={{ display: 'none' }} />
+              <div id="remote_audio_player" style={{ display: 'none' }} />
               {/* Animated Soundwave */}
               <div className="flex items-center gap-1.5 mt-8 h-10">
                 {[40, 75, 30, 90, 50, 85, 45, 65, 100, 55, 80, 35, 70, 45].map((h, i) => (
@@ -769,13 +571,10 @@ const VideoCall = ({
           ) : (
             /* ── Video call main UI ── */
             <div className="flex-1 h-full bg-[#121212] relative overflow-hidden">
-              {/* Remote video — fullscreen */}
-              <video
-                ref={remoteVideoRef}
-                autoPlay
-                playsInline
-                muted={isMutedSound}
-                className="w-full h-full object-cover"
+              {/* EnableX Remote Video Container — fullscreen */}
+              <div
+                id="remote_video_player"
+                className="w-full h-full object-cover [&_video]:w-full [&_video]:h-full [&_video]:object-cover"
                 style={{ display: remoteStreamActive ? 'block' : 'none' }}
               />
 
@@ -787,29 +586,19 @@ const VideoCall = ({
                     alt={remoteUserName}
                     className="w-24 h-24 rounded-full object-cover border-2 border-white/10 mb-3 opacity-50"
                   />
-                  <p className="text-slate-500 text-sm">Waiting for {remoteUserName}'s camera...</p>
+                  <p className="text-slate-500 text-sm">Connecting video stream with {remoteUserName}...</p>
                 </div>
               )}
 
-              {/* Local camera PiP — top-right corner */}
+              {/* EnableX Local camera PiP — top-right corner */}
               <div
                 className="absolute top-6 right-6 w-28 md:w-36 rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-[#1a1a1a] z-20"
                 style={{ aspectRatio: '9/16' }}
               >
-                {videoActive && localStream ? (
-                  <video
-                    ref={localVideoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-full object-cover scale-x-[-1]"
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center bg-[#222]">
-                    <VideoOff className="w-6 h-6 text-slate-500 mb-1" />
-                    <span className="text-[9px] text-slate-400">Off</span>
-                  </div>
-                )}
+                <div
+                  id="local_pip_video"
+                  className="w-full h-full object-cover [&_video]:w-full [&_video]:h-full [&_video]:object-cover [&_video]:scale-x-[-1]"
+                />
                 <div className="absolute bottom-2 left-2 text-[9px] font-semibold bg-black/65 px-1.5 py-0.5 rounded text-slate-300">
                   You
                 </div>
