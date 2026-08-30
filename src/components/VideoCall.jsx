@@ -62,6 +62,13 @@ const VideoCall = ({
   const [reconnectKey, setReconnectKey] = useState(0);
 
   const reconnectingRef = useRef(false);
+  const remoteDisconnectTimerRef = useRef(null);
+  const currentUserNameRef = useRef(currentUser?.name || "Inakkam User");
+
+  useEffect(() => {
+    currentUserNameRef.current = currentUser?.name || "Inakkam User";
+  }, [currentUser?.name]);
+
   // ─── Format call duration ───────────────────────────────
   const formatTime = (secs) => {
     const m = Math.floor(secs / 60)
@@ -98,43 +105,51 @@ const VideoCall = ({
     onEndCallRef.current = onEndCall;
   }, [onEndCall]);
 
-  const handleDisconnect = useCallback(() => {
+  const finishCall = useCallback(({ notifyRemote = true } = {}) => {
     if (isDisconnectedRef.current) return;
 
-    // This is a REAL user/app hangup.
-    intentionalDisconnectRef.current = true;
     isDisconnectedRef.current = true;
+    intentionalDisconnectRef.current = true;
 
-    if (roomRef.current) {
+    if (remoteDisconnectTimerRef.current) {
+      clearTimeout(remoteDisconnectTimerRef.current);
+      remoteDisconnectTimerRef.current = null;
+    }
+
+    const room = roomRef.current;
+    roomRef.current = null;
+    if (room) {
       try {
-        roomRef.current.disconnect();
+        room.disconnect();
       } catch (e) {
         console.warn("Error disconnecting EnableX room:", e);
       }
-
-      roomRef.current = null;
     }
 
-    if (localStreamRef.current) {
+    const localStream = localStreamRef.current;
+    localStreamRef.current = null;
+    remoteStreamRef.current = null;
+
+    if (localStream) {
       try {
-        localStreamRef.current.close();
+        localStream.close();
       } catch (e) {
         console.warn("Error closing local stream:", e);
       }
-
-      localStreamRef.current = null;
     }
 
-    const socket = getSocket();
-
-    if (socket && targetUid) {
-      socket.emit("end_call", {
-        targetUserId: targetUid,
-        conversationId: roomId,
-      });
+    if (notifyRemote) {
+      const socket = getSocket();
+      if (socket && targetUid) {
+        socket.emit("end_call", {
+          targetUserId: targetUid,
+          conversationId: roomId,
+        });
+      }
     }
 
     if (isMountedRef.current) {
+      setRemoteStreamActive(false);
       setCallStatus("disconnected");
     }
 
@@ -142,6 +157,10 @@ const VideoCall = ({
       setTimeout(() => onEndCallRef.current(), 50);
     }
   }, [roomId, targetUid]);
+
+  const handleDisconnect = useCallback(() => {
+    finishCall({ notifyRemote: true });
+  }, [finishCall]);
 
   // ─── Periodic Coin Deduction (every 20s while connected) ─
   useEffect(() => {
@@ -169,6 +188,81 @@ const VideoCall = ({
     }, 20000);
     return () => clearInterval(coinDeductInterval);
   }, [callStatus, callType, targetUid, dispatch, handleDisconnect]);
+
+  // ─── Reliable local/remote playback helpers ─────────────────
+  const playLocalPreview = useCallback(() => {
+    if (callType !== "video") return;
+    const stream = localStreamRef.current;
+    if (!stream || typeof stream.play !== "function") return;
+
+    const container =
+      document.getElementById("local_pip_video") ||
+      document.getElementById("connecting_local_video");
+
+    if (!container) return;
+
+    try {
+      container.innerHTML = "";
+      stream.play(container.id, {
+        player: {
+          width: "100%",
+          height: "100%",
+          autoplay: true,
+          playsinline: true,
+          muted: true,
+        },
+        toolbar: {
+          displayMode: false,
+          branding: { display: false },
+        },
+      });
+      console.log("[EnableX] Local video playing in", container.id);
+    } catch (error) {
+      console.error("[EnableX] Local video playback failed:", error);
+    }
+  }, [callType]);
+
+  const playRemotePreview = useCallback(() => {
+    const stream = remoteStreamRef.current;
+    if (!stream) return;
+
+    const containerId =
+      callType === "video" ? "remote_video_player" : "remote_audio_player";
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    try {
+      container.innerHTML = "";
+      stream.play(containerId, {
+        player: {
+          width: "100%",
+          height: "100%",
+          autoplay: true,
+          playsinline: true,
+        },
+        toolbar: {
+          displayMode: false,
+          branding: { display: false },
+        },
+      });
+      console.log("[EnableX] Remote media playing in", containerId);
+    } catch (error) {
+      console.error("[EnableX] Remote playback failed:", error);
+    }
+  }, [callType]);
+
+  useEffect(() => {
+    if (callStatus === "connecting" || callStatus === "connected") {
+      const id = setTimeout(playLocalPreview, 50);
+      return () => clearTimeout(id);
+    }
+  }, [callStatus, playLocalPreview]);
+
+  useEffect(() => {
+    if (!remoteStreamActive) return;
+    const id = setTimeout(playRemotePreview, 50);
+    return () => clearTimeout(id);
+  }, [remoteStreamActive, playRemotePreview]);
 
   // ─── EnableX SDK Initialization ─────────────────────────
   useEffect(() => {
@@ -284,7 +378,7 @@ const VideoCall = ({
           videoSize: [320, 180, 1280, 720],
 
           attributes: {
-            name: currentUser?.name || "Inakkam User",
+            name: currentUserNameRef.current,
           },
         };
 
@@ -314,50 +408,10 @@ const VideoCall = ({
 
           if (cancelled) return;
 
-          // Show local preview
-          setTimeout(() => {
-            try {
-              const connectingContainer = document.getElementById(
-                "connecting_local_video",
-              );
-
-              if (
-                connectingContainer &&
-                activeLocalStream &&
-                callType === "video"
-              ) {
-                // Clear any stale content before (re)playing, otherwise
-                // EnableX can stack duplicate video elements and the
-                // preview renders as a small/duplicated box instead of
-                // filling the container.
-                connectingContainer.innerHTML = "";
-
-                activeLocalStream.play("connecting_local_video", {
-                  player: {
-                    // EnableX applies these as explicit inline
-                    // width/height on the video element it injects.
-                    // Without them it falls back to the stream's
-                    // native pixel size (e.g. 320x180), which is why
-                    // the preview showed up as a small box instead of
-                    // filling the screen.
-                    width: "100%",
-                    height: "100%",
-                    autoplay: true,
-                    playsinline: true,
-                    muted: true,
-                  },
-                  toolbar: {
-                    displayMode: false,
-                    branding: {
-                      display: false,
-                    },
-                  },
-                });
-              }
-            } catch (previewError) {
-              console.warn("[EnableX] Local preview error:", previewError);
-            }
-          }, 300);
+          // The connecting screen and active-call screen use different
+          // DOM containers. Play is also retried by the call-status effect
+          // below so a fast remote subscription cannot leave the PiP black.
+          setTimeout(() => playLocalPreview(), 0);
         });
 
         // Media permission denied
@@ -459,6 +513,10 @@ const VideoCall = ({
             return;
           }
 
+          if (isMountedRef.current) {
+            setCallStatus("connected");
+          }
+
           // Publish our local stream
           try {
             activeRoom.publish(
@@ -479,42 +537,8 @@ const VideoCall = ({
                   return;
                 }
 
-                // Show our own camera in the PiP.
-                if (callType === "video") {
-                  setTimeout(() => {
-                    try {
-                      const localContainer =
-                        document.getElementById("local_pip_video");
-
-                      if (localContainer && activeLocalStream) {
-                        localContainer.innerHTML = "";
-
-                        activeLocalStream.play("local_pip_video", {
-                          player: {
-                            width: "100%",
-                            height: "100%",
-                            autoplay: true,
-                            playsinline: true,
-                            muted: true,
-                          },
-                          toolbar: {
-                            displayMode: false,
-                            branding: {
-                              display: false,
-                            },
-                          },
-                        });
-
-                        console.log("[EnableX] ✅ Local PiP video started");
-                      }
-                    } catch (error) {
-                      console.error(
-                        "[EnableX] Local PiP playback failed:",
-                        error,
-                      );
-                    }
-                  }, 300);
-                }
+                // The active-call DOM may have just been mounted.
+                setTimeout(() => playLocalPreview(), 50);
               },
             );
           } catch (publishError) {
@@ -546,6 +570,11 @@ const VideoCall = ({
           console.log("[EnableX] 📹 STREAM ADDED:", event);
 
           const stream = event?.stream || event;
+
+          if (remoteDisconnectTimerRef.current) {
+            clearTimeout(remoteDisconnectTimerRef.current);
+            remoteDisconnectTimerRef.current = null;
+          }
 
           subscribeToRemoteStream(stream);
         });
@@ -579,75 +608,49 @@ const VideoCall = ({
             return;
           }
 
+          if (remoteDisconnectTimerRef.current) {
+            clearTimeout(remoteDisconnectTimerRef.current);
+            remoteDisconnectTimerRef.current = null;
+          }
+
           remoteStreamRef.current = remoteStream;
 
+          // A stream is only considered usable after stream-subscribed.
+          // Do not call play() here: React may not have mounted the active
+          // call DOM yet. The remote playback effect runs after the DOM
+          // update and retries safely.
           if (isMountedRef.current) {
             setRemoteStreamActive(true);
             setCallStatus("connected");
           }
-
-          setTimeout(() => {
-            try {
-              if (callType === "video") {
-                const remoteContainer = document.getElementById(
-                  "remote_video_player",
-                );
-
-                if (!remoteContainer) {
-                  console.error("[EnableX] Remote video container not found");
-                  return;
-                }
-
-                remoteContainer.innerHTML = "";
-
-                remoteStream.play("remote_video_player", {
-                  player: {
-                    width: "100%",
-                    height: "100%",
-                    autoplay: true,
-                    playsinline: true,
-                  },
-                  toolbar: {
-                    displayMode: false,
-                    branding: {
-                      display: false,
-                    },
-                  },
-                });
-
-                console.log("[EnableX] ✅ Remote video playing fullscreen");
-              } else {
-                const audioContainer = document.getElementById(
-                  "remote_audio_player",
-                );
-
-                if (audioContainer) {
-                  remoteStream.play("remote_audio_player", {
-                    player: {
-                      autoplay: true,
-                      playsinline: true,
-                    },
-                  });
-                }
-              }
-            } catch (error) {
-              console.error("[EnableX] Remote playback failed:", error);
-            }
-          }, 300);
         });
 
         // --------------------------------------------------
         // 10. Remote user disconnected
         // --------------------------------------------------
-        activeRoom.addEventListener("user-disconnected", (event) => {
-          console.log("[EnableX] User disconnected:", event);
+        activeRoom.addEventListener("user-disconnected", (event, user) => {
+          console.warn("[EnableX] Remote user disconnected:", { event, user });
 
-          toast("User left the call", {
-            icon: "📞",
-          });
+          // Do not immediately destroy our own call. A remote browser can
+          // briefly disconnect during ICE/network recovery. Give it a short
+          // grace period and let stream-added cancel the timer if it returns.
+          if (remoteDisconnectTimerRef.current) {
+            clearTimeout(remoteDisconnectTimerRef.current);
+          }
 
           if (isMountedRef.current && !isDisconnectedRef.current) {
-            handleDisconnect();
+            setRemoteStreamActive(false);
+            toast("Connection to the other person was interrupted. Reconnecting...", {
+              icon: "📞",
+            });
+
+            remoteDisconnectTimerRef.current = setTimeout(() => {
+              remoteDisconnectTimerRef.current = null;
+              if (isMountedRef.current && !isDisconnectedRef.current) {
+                toast("The other person left the call", { icon: "📞" });
+                finishCall({ notifyRemote: false });
+              }
+            }, 3000);
           }
         });
 
@@ -1060,7 +1063,7 @@ const VideoCall = ({
       });
 
       if (isMountedRef.current && !isDisconnectedRef.current) {
-        handleDisconnect();
+        finishCall({ notifyRemote: false });
       }
     };
 
@@ -1072,6 +1075,10 @@ const VideoCall = ({
 
     return () => {
       cancelled = true;
+      if (remoteDisconnectTimerRef.current) {
+        clearTimeout(remoteDisconnectTimerRef.current);
+        remoteDisconnectTimerRef.current = null;
+      }
 
       // Mark this room as being intentionally cleaned up by React.
       // This prevents room-error / room-disconnected from triggering
@@ -1115,7 +1122,7 @@ const VideoCall = ({
         socket.off("call_ended", handleRemoteCallEnded);
       }
     };
-  }, [roomId, callType, isCaller, currentUser, handleDisconnect, reconnectKey]);
+  }, [roomId, callType, isCaller, handleDisconnect, finishCall, reconnectKey]);
 
   // ─── Toggle Mic ──────────────────────────────────────────
   const toggleMic = () => {
