@@ -209,7 +209,8 @@ const Chat = () => {
 
     } catch (err) {
       toast.dismiss('call_init');
-      toast.error(err.response?.data?.message || err.message || 'Failed to start call');
+      const errMsg = typeof err === 'string' ? err : (err.response?.data?.message || err.message || 'Failed to start call');
+      toast.error(errMsg);
       console.error('[Start Call Error]', err);
     }
   };
