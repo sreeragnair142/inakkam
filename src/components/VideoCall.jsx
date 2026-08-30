@@ -237,10 +237,30 @@ const VideoCall = ({
               tokenError?.response?.data || tokenError,
             );
 
-            toast.error(
-              tokenError?.response?.data?.message ||
-                "Unable to create video session token.",
-            );
+            // A 429 here means EnableX itself is rate-limiting this
+            // app id/key (see the backend's isInCooldown/circuit
+            // breaker). Retrying immediately only makes the rate
+            // limit worse, so show a clear message and stop —
+            // do NOT let any reconnect logic re-trigger this call.
+            const isRateLimited =
+              tokenError?.response?.status === 429 ||
+              tokenError?.response?.data?.rateLimited === true;
+
+            if (isRateLimited) {
+              const retryAfterSeconds =
+                tokenError?.response?.data?.retryAfterSeconds;
+
+              toast.error(
+                retryAfterSeconds
+                  ? `Video service is busy. Please try again in ${retryAfterSeconds}s.`
+                  : "Video service is busy. Please try again in a moment.",
+              );
+            } else {
+              toast.error(
+                tokenError?.response?.data?.message ||
+                  "Unable to create video session token.",
+              );
+            }
 
             handleDisconnect();
             return;
@@ -799,6 +819,34 @@ const VideoCall = ({
                   recreateError?.response?.data ||
                   recreateError
                 );
+
+                // If EnableX is rate-limiting us (429), do NOT leave
+                // the call sitting in "connecting" waiting for
+                // another room-error to retry — that just fires
+                // create-room again and deepens the rate limit.
+                // End the call cleanly instead.
+                const isRateLimited =
+                  recreateError?.response?.status === 429 ||
+                  recreateError?.response?.data?.rateLimited === true;
+
+                if (isRateLimited) {
+                  const retryAfterSeconds =
+                    recreateError?.response?.data?.retryAfterSeconds;
+
+                  toast.error(
+                    retryAfterSeconds
+                      ? `Video service is busy. Please try again in ${retryAfterSeconds}s.`
+                      : "Video service is busy. Please try again in a moment.",
+                  );
+
+                  reconnectingRef.current = false;
+
+                  if (isMountedRef.current && !intentionalDisconnectRef.current) {
+                    handleDisconnect();
+                  }
+
+                  return;
+                }
 
                 toast.error(
                   'Unable to reconnect the video call.'
