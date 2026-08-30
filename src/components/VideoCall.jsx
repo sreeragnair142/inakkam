@@ -50,6 +50,8 @@ const VideoCall = ({
   const roomRef = useRef(null);
   const localStreamRef = useRef(null);
   const remoteStreamRef = useRef(null);
+  const playedLocalContainerRef = useRef("");
+  const playedRemoteContainerRef = useRef("");
   const isDisconnectedRef = useRef(false);
   const isMountedRef = useRef(true);
 
@@ -198,21 +200,35 @@ const VideoCall = ({
     if (!container) return;
 
     try {
-      if (typeof stream.play === "function") {
-        stream.play(container.id, {
-          player: {
-            width: "100%",
-            height: "100%",
-            autoplay: true,
-            playsinline: true,
-            muted: true,
-          },
-          toolbar: {
-            displayMode: false,
-            branding: { display: false },
-          },
-        });
+      const streamId = (typeof stream.getID === "function" ? stream.getID() : "local") || "local";
+      const key = `${streamId}_${container.id}`;
+
+      if (playedLocalContainerRef.current !== key) {
+        playedLocalContainerRef.current = key;
+        if (typeof stream.play === "function") {
+          stream.play(container.id, {
+            player: {
+              width: "100%",
+              height: "100%",
+              autoplay: true,
+              playsinline: true,
+              muted: true,
+            },
+            toolbar: {
+              displayMode: false,
+              branding: { display: false },
+            },
+          });
+        }
       }
+
+      const videoEls = container.querySelectorAll("video");
+      videoEls.forEach((v) => {
+        v.setAttribute("playsinline", "true");
+        v.setAttribute("webkit-playsinline", "true");
+        v.muted = true;
+        v.play().catch(() => {});
+      });
 
       const nativeMediaStream =
         stream.stream ||
@@ -221,27 +237,16 @@ const VideoCall = ({
           ? stream.getMediaStream()
           : null);
 
-      let videoEl = container.querySelector("video");
-      if (videoEl) {
+      if (videoEls.length === 0 && nativeMediaStream && typeof nativeMediaStream.getTracks === "function") {
+        let videoEl = document.createElement("video");
+        videoEl.className = "w-full h-full object-cover scale-x-[-1]";
+        videoEl.autoplay = true;
+        videoEl.playsInline = true;
         videoEl.setAttribute("playsinline", "true");
         videoEl.setAttribute("webkit-playsinline", "true");
         videoEl.muted = true;
-      }
-
-      if (nativeMediaStream && typeof nativeMediaStream.getTracks === "function") {
-        if (!videoEl) {
-          videoEl = document.createElement("video");
-          videoEl.className = "w-full h-full object-cover scale-x-[-1]";
-          videoEl.autoplay = true;
-          videoEl.playsInline = true;
-          videoEl.setAttribute("playsinline", "true");
-          videoEl.setAttribute("webkit-playsinline", "true");
-          videoEl.muted = true;
-          container.appendChild(videoEl);
-        }
-        if (!videoEl.srcObject) {
-          videoEl.srcObject = nativeMediaStream;
-        }
+        videoEl.srcObject = nativeMediaStream;
+        container.appendChild(videoEl);
         videoEl.play().catch(() => {});
       }
       console.log("[EnableX] Local video attached to", container.id);
@@ -260,20 +265,36 @@ const VideoCall = ({
     if (!container) return;
 
     try {
-      if (typeof stream.play === "function") {
-        stream.play(containerId, {
-          player: {
-            width: "100%",
-            height: "100%",
-            autoplay: true,
-            playsinline: true,
-          },
-          toolbar: {
-            displayMode: false,
-            branding: { display: false },
-          },
-        });
+      const streamId = (typeof stream.getID === "function" ? stream.getID() : "remote") || "remote";
+      const key = `${streamId}_${containerId}`;
+
+      if (playedRemoteContainerRef.current !== key) {
+        playedRemoteContainerRef.current = key;
+        if (typeof stream.play === "function") {
+          stream.play(containerId, {
+            player: {
+              width: "100%",
+              height: "100%",
+              autoplay: true,
+              playsinline: true,
+            },
+            toolbar: {
+              displayMode: false,
+              branding: { display: false },
+            },
+          });
+        }
       }
+
+      const mediaEls = container.querySelectorAll("video, audio");
+      mediaEls.forEach((v) => {
+        v.setAttribute("playsinline", "true");
+        v.setAttribute("webkit-playsinline", "true");
+        v.muted = false;
+        v.play().catch((err) => {
+          console.warn("[EnableX] Remote autoplay waiting user interaction:", err);
+        });
+      });
 
       const nativeMediaStream =
         stream.stream ||
@@ -282,30 +303,18 @@ const VideoCall = ({
           ? stream.getMediaStream()
           : null);
 
-      let videoEl = container.querySelector("video");
-      if (videoEl) {
-        videoEl.setAttribute("playsinline", "true");
-        videoEl.setAttribute("webkit-playsinline", "true");
-        videoEl.muted = false;
-        videoEl.play().catch(() => {});
-      }
-
-      if (nativeMediaStream && typeof nativeMediaStream.getTracks === "function") {
-        if (!videoEl) {
-          videoEl = document.createElement("video");
-          videoEl.className = "w-full h-full object-cover";
-          videoEl.autoplay = true;
-          videoEl.playsInline = true;
-          videoEl.setAttribute("playsinline", "true");
-          videoEl.setAttribute("webkit-playsinline", "true");
-          videoEl.muted = false;
-          container.appendChild(videoEl);
-        }
-        if (!videoEl.srcObject) {
-          videoEl.srcObject = nativeMediaStream;
-        }
-        videoEl.play().catch((err) => {
-          console.warn("[EnableX] Remote autoplay retry:", err);
+      if (mediaEls.length === 0 && nativeMediaStream && typeof nativeMediaStream.getTracks === "function") {
+        let mediaEl = document.createElement(callType === "video" ? "video" : "audio");
+        mediaEl.className = "w-full h-full object-cover";
+        mediaEl.autoplay = true;
+        mediaEl.playsInline = true;
+        mediaEl.setAttribute("playsinline", "true");
+        mediaEl.setAttribute("webkit-playsinline", "true");
+        mediaEl.muted = false;
+        mediaEl.srcObject = nativeMediaStream;
+        container.appendChild(mediaEl);
+        mediaEl.play().catch((err) => {
+          console.warn("[EnableX] Fallback remote media play:", err);
         });
       }
       console.log("[EnableX] Remote media attached to", containerId);
@@ -1330,9 +1339,25 @@ const VideoCall = ({
     socket.on("webrtc_chat", handleChatMsg);
     return () => socket.off("webrtc_chat", handleChatMsg);
   }, [targetUid, remoteUserName]);
+  const handleUnlockAudio = useCallback(() => {
+    const remoteContainer =
+      document.getElementById("remote_video_player") ||
+      document.getElementById("remote_audio_player");
+    if (remoteContainer) {
+      const mediaEls = remoteContainer.querySelectorAll("video, audio");
+      mediaEls.forEach((el) => {
+        el.muted = false;
+        el.play().catch(() => {});
+      });
+    }
+  }, []);
 
   return (
-    <div className="fixed inset-0 z-[1000] flex bg-[#0A0A0A] text-white overflow-hidden font-sans select-none">
+    <div
+      onClick={handleUnlockAudio}
+      onTouchStart={handleUnlockAudio}
+      className="fixed inset-0 z-[1000] flex bg-[#0A0A0A] text-white overflow-hidden font-sans select-none"
+    >
       {/* Radial glow backgrounds */}
       <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] rounded-full bg-[#D51659]/10 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] rounded-full bg-[#B44DDC]/10 blur-[120px] pointer-events-none" />
@@ -1485,8 +1510,8 @@ const VideoCall = ({
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                 Voice Call Connected ({formatTime(duration)})
               </p>
-              {/* Hidden audio player for remote */}
-              <div id="remote_audio_player" style={{ display: "none" }} />
+              {/* Audio player container for remote (must remain in DOM layout, not display:none) */}
+              <div id="remote_audio_player" className="absolute w-0 h-0 overflow-hidden opacity-0 pointer-events-none" />
               {/* Animated Soundwave */}
               <div className="flex items-center gap-1.5 mt-8 h-10">
                 {[40, 75, 30, 90, 50, 85, 45, 65, 100, 55, 80, 35, 70, 45].map(
