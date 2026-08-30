@@ -336,10 +336,7 @@ const VideoCall = ({
       try {
         activeRoom.publish(
           activeLocalStream,
-          {
-            minVideoBW: 150,
-            maxVideoBW: 1200,
-          },
+          {},
           (publishResponse) => {
             console.log("[EnableX] Publish response:", publishResponse);
 
@@ -458,8 +455,6 @@ const VideoCall = ({
 
           audioMuted: false,
           videoMuted: callType !== "video",
-
-          videoSize: [320, 180, 1280, 720],
 
           attributes: {
             name: currentUserNameRef.current,
