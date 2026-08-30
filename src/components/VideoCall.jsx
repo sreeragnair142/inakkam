@@ -198,7 +198,6 @@ const VideoCall = ({
     if (!container) return;
 
     try {
-      container.innerHTML = "";
       if (typeof stream.play === "function") {
         stream.play(container.id, {
           player: {
@@ -222,13 +221,21 @@ const VideoCall = ({
           ? stream.getMediaStream()
           : null);
 
+      let videoEl = container.querySelector("video");
+      if (videoEl) {
+        videoEl.setAttribute("playsinline", "true");
+        videoEl.setAttribute("webkit-playsinline", "true");
+        videoEl.muted = true;
+      }
+
       if (nativeMediaStream && typeof nativeMediaStream.getTracks === "function") {
-        let videoEl = container.querySelector("video");
         if (!videoEl) {
           videoEl = document.createElement("video");
           videoEl.className = "w-full h-full object-cover scale-x-[-1]";
           videoEl.autoplay = true;
           videoEl.playsInline = true;
+          videoEl.setAttribute("playsinline", "true");
+          videoEl.setAttribute("webkit-playsinline", "true");
           videoEl.muted = true;
           container.appendChild(videoEl);
         }
@@ -253,7 +260,6 @@ const VideoCall = ({
     if (!container) return;
 
     try {
-      container.innerHTML = "";
       if (typeof stream.play === "function") {
         stream.play(containerId, {
           player: {
@@ -276,20 +282,31 @@ const VideoCall = ({
           ? stream.getMediaStream()
           : null);
 
+      let videoEl = container.querySelector("video");
+      if (videoEl) {
+        videoEl.setAttribute("playsinline", "true");
+        videoEl.setAttribute("webkit-playsinline", "true");
+        videoEl.muted = false;
+        videoEl.play().catch(() => {});
+      }
+
       if (nativeMediaStream && typeof nativeMediaStream.getTracks === "function") {
-        let videoEl = container.querySelector("video");
         if (!videoEl) {
           videoEl = document.createElement("video");
           videoEl.className = "w-full h-full object-cover";
           videoEl.autoplay = true;
           videoEl.playsInline = true;
+          videoEl.setAttribute("playsinline", "true");
+          videoEl.setAttribute("webkit-playsinline", "true");
           videoEl.muted = false;
           container.appendChild(videoEl);
         }
         if (!videoEl.srcObject) {
           videoEl.srcObject = nativeMediaStream;
         }
-        videoEl.play().catch(() => {});
+        videoEl.play().catch((err) => {
+          console.warn("[EnableX] Remote autoplay retry:", err);
+        });
       }
       console.log("[EnableX] Remote media attached to", containerId);
     } catch (error) {
@@ -549,6 +566,13 @@ const VideoCall = ({
 
             console.log("[EnableX] 📹 Subscribing to remote stream:", remoteId);
 
+            remoteStreamRef.current = stream;
+            if (isMountedRef.current) {
+              setRemoteStreamActive(true);
+              setCallStatus("connected");
+            }
+            setTimeout(() => playRemotePreview(), 50);
+
             activeRoom.subscribe(stream, (response) => {
               console.log("[EnableX] Subscribe callback response:", response);
 
@@ -568,6 +592,7 @@ const VideoCall = ({
               }
               setTimeout(() => playRemotePreview(), 50);
               setTimeout(() => playRemotePreview(), 250);
+              setTimeout(() => playRemotePreview(), 500);
             });
           } catch (error) {
             console.error("[EnableX] Remote subscribe exception:", error);
@@ -1490,7 +1515,7 @@ const VideoCall = ({
 
               {/* Waiting for remote placeholder */}
               {!remoteStreamActive && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#121212] z-10">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#121212] z-10 pointer-events-none">
                   <img
                     src={remoteUserPhoto || "https://via.placeholder.com/150"}
                     alt={remoteUserName}

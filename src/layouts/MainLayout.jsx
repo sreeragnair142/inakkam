@@ -484,7 +484,8 @@ const MainLayout = ({ children }) => {
       </div>
 
       {/* Elevated Premium Floating Bottom Nav Bar on Mobile */}
-      <div className="fixed bottom-4 left-3 right-3 sm:left-6 sm:right-6 lg:hidden z-40">
+      {location.pathname !== '/chat' && (
+        <div className="fixed bottom-4 left-3 right-3 sm:left-6 sm:right-6 lg:hidden z-40">
         <nav className="bg-[#D51659]/95 backdrop-blur-xl border border-white/20 shadow-2xl shadow-[#D51659]/30 rounded-full px-2 py-2 flex items-center justify-around">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
@@ -512,6 +513,7 @@ const MainLayout = ({ children }) => {
           })}
         </nav>
       </div>
+      )}
 
 
     </>
