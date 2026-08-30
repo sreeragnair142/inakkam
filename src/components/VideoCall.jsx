@@ -649,6 +649,18 @@ activeRoom.addEventListener(
     // --------------------------------------------------
     // Detect EnableX token/authentication errors
     // --------------------------------------------------
+    const enablexErrorCode =
+    Number(
+        error?.error ??
+        error?.code ??
+        error?.result
+    );
+
+const isRoomDeletedError =
+    enablexErrorCode === 4118 ||
+    errorText.includes('room has been deleted') ||
+    errorText.includes('room deleted');
+
     const isTokenError =
       errorText.includes('invalid token') ||
       errorText.includes('invalid_token') ||
@@ -660,6 +672,113 @@ activeRoom.addEventListener(
       errorText.includes('authentication') ||
       errorText.includes('401');
 
+
+      if (isRoomDeletedError) {
+    console.warn(
+        '[EnableX] 🚨 ROOM 4118: room has been deleted'
+    );
+
+    // Do NOT try to reconnect to the old room.
+    // A completely NEW room is required.
+
+    if (reconnectingRef.current) {
+        console.warn(
+            '[EnableX] Room recreation already in progress'
+        );
+        return;
+    }
+
+    reconnectingRef.current = true;
+
+    if (isMountedRef.current) {
+        setCallStatus('connecting');
+        setRemoteStreamActive(false);
+    }
+
+    try {
+        const response = await api.post(
+            '/enablex/create-room',
+            {
+                name:
+                    `Inakkam Call ${Date.now()}`
+            }
+        );
+
+        if (
+            !response.data?.success ||
+            !response.data?.roomId
+        ) {
+            throw new Error(
+                response.data?.message ||
+                'Failed to create replacement room'
+            );
+        }
+
+        const newRoomId =
+            response.data.roomId;
+
+        console.log(
+            '[EnableX] ✅ Replacement room created:',
+            newRoomId
+        );
+
+        const socket = getSocket();
+
+        // Tell the other participant.
+        if (socket && targetUid) {
+            socket.emit(
+                'enablex_room_recreated',
+                {
+                    targetUserId: targetUid,
+                    conversationId: roomId,
+                    roomId: newRoomId,
+                    callType
+                }
+            );
+        }
+
+        /*
+         * IMPORTANT:
+         *
+         * We cannot simply change the local `roomId` prop.
+         * The parent needs to pass the new roomId back
+         * into VideoCall.
+         *
+         * So emit an event / callback to the parent here.
+         */
+        if (
+            typeof window !== 'undefined'
+        ) {
+            window.dispatchEvent(
+                new CustomEvent(
+                    'enablex-room-recreated',
+                    {
+                        detail: {
+                            roomId: newRoomId
+                        }
+                    }
+                )
+            );
+        }
+
+    } catch (recreateError) {
+
+        console.error(
+            '[EnableX] ❌ Failed to recreate room:',
+            recreateError?.response?.data ||
+            recreateError
+        );
+
+        toast.error(
+            'Unable to reconnect the video call.'
+        );
+
+    } finally {
+        reconnectingRef.current = false;
+    }
+
+    return;
+}
     if (isTokenError) {
       // Prevent multiple room-error events from triggering
       // multiple simultaneous reconnects.
