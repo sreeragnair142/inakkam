@@ -162,9 +162,9 @@ const VideoCall = ({
     finishCall({ notifyRemote: true });
   }, [finishCall]);
 
-  // ─── Periodic Coin Deduction (every 20s while connected) ─
+  // ─── Periodic Coin Deduction (every 20s while connected - CALLER ONLY) ─
   useEffect(() => {
-    if (callStatus !== "connected") return;
+    if (callStatus !== "connected" || !isCaller) return;
     const coinDeductInterval = setInterval(async () => {
       try {
         const res = await api.post("/coins/deduct-call", {
@@ -174,10 +174,6 @@ const VideoCall = ({
         });
         if (!res.data.success && res.data.insufficientCoins) {
           toast.error("Insufficient coin balance to continue call");
-          // Use handleDisconnect (not onEndCall directly) so the
-          // EnableX room is closed cleanly and the other participant
-          // gets a proper `end_call` socket event instead of their
-          // SDK timing out and reporting a spurious "user left".
           if (isMountedRef.current) handleDisconnect();
         } else {
           dispatch(fetchMe());
@@ -187,13 +183,13 @@ const VideoCall = ({
       }
     }, 20000);
     return () => clearInterval(coinDeductInterval);
-  }, [callStatus, callType, targetUid, dispatch, handleDisconnect]);
+  }, [callStatus, callType, targetUid, dispatch, handleDisconnect, isCaller]);
 
   // ─── Reliable local/remote playback helpers ─────────────────
   const playLocalPreview = useCallback(() => {
     if (callType !== "video") return;
     const stream = localStreamRef.current;
-    if (!stream || typeof stream.play !== "function") return;
+    if (!stream) return;
 
     const container =
       document.getElementById("local_pip_video") ||
@@ -202,21 +198,47 @@ const VideoCall = ({
     if (!container) return;
 
     try {
-      container.innerHTML = "";
-      stream.play(container.id, {
-        player: {
-          width: "100%",
-          height: "100%",
-          autoplay: true,
-          playsinline: true,
-          muted: true,
-        },
-        toolbar: {
-          displayMode: false,
-          branding: { display: false },
-        },
-      });
-      console.log("[EnableX] Local video playing in", container.id);
+      // 1. Direct native MediaStream attachment
+      const nativeMediaStream =
+        stream.stream ||
+        stream.mediaStream ||
+        (typeof stream.getMediaStream === "function"
+          ? stream.getMediaStream()
+          : null);
+
+      if (nativeMediaStream && typeof nativeMediaStream.getTracks === "function") {
+        let videoEl = container.querySelector("video");
+        if (!videoEl) {
+          videoEl = document.createElement("video");
+          videoEl.className = "w-full h-full object-cover scale-x-[-1]";
+          videoEl.autoplay = true;
+          videoEl.playsInline = true;
+          videoEl.muted = true;
+          container.appendChild(videoEl);
+        }
+        if (videoEl.srcObject !== nativeMediaStream) {
+          videoEl.srcObject = nativeMediaStream;
+        }
+        videoEl.play().catch(() => {});
+      }
+
+      // 2. Also invoke EnableX play if available
+      if (typeof stream.play === "function" && !container.querySelector(".enx-video-player")) {
+        stream.play(container.id, {
+          player: {
+            width: "100%",
+            height: "100%",
+            autoplay: true,
+            playsinline: true,
+            muted: true,
+          },
+          toolbar: {
+            displayMode: false,
+            branding: { display: false },
+          },
+        });
+      }
+      console.log("[EnableX] Local video attached to", container.id);
     } catch (error) {
       console.error("[EnableX] Local video playback failed:", error);
     }
@@ -224,7 +246,7 @@ const VideoCall = ({
 
   const playRemotePreview = useCallback(() => {
     const stream = remoteStreamRef.current;
-    if (!stream || typeof stream.play !== "function") return;
+    if (!stream) return;
 
     const containerId =
       callType === "video" ? "remote_video_player" : "remote_audio_player";
@@ -232,20 +254,46 @@ const VideoCall = ({
     if (!container) return;
 
     try {
-      container.innerHTML = "";
-      stream.play(containerId, {
-        player: {
-          width: "100%",
-          height: "100%",
-          autoplay: true,
-          playsinline: true,
-        },
-        toolbar: {
-          displayMode: false,
-          branding: { display: false },
-        },
-      });
-      console.log("[EnableX] Remote media playing in", containerId);
+      // 1. Direct native MediaStream attachment
+      const nativeMediaStream =
+        stream.stream ||
+        stream.mediaStream ||
+        (typeof stream.getMediaStream === "function"
+          ? stream.getMediaStream()
+          : null);
+
+      if (nativeMediaStream && typeof nativeMediaStream.getTracks === "function") {
+        let videoEl = container.querySelector("video");
+        if (!videoEl) {
+          videoEl = document.createElement("video");
+          videoEl.className = "w-full h-full object-cover";
+          videoEl.autoplay = true;
+          videoEl.playsInline = true;
+          videoEl.muted = false;
+          container.appendChild(videoEl);
+        }
+        if (videoEl.srcObject !== nativeMediaStream) {
+          videoEl.srcObject = nativeMediaStream;
+        }
+        videoEl.play().catch(() => {});
+      }
+
+      // 2. Also invoke EnableX play if available
+      if (typeof stream.play === "function" && !container.querySelector(".enx-video-player")) {
+        stream.play(containerId, {
+          player: {
+            width: "100%",
+            height: "100%",
+            autoplay: true,
+            playsinline: true,
+          },
+          toolbar: {
+            displayMode: false,
+            branding: { display: false },
+          },
+        });
+      }
+      console.log("[EnableX] Remote media attached to", containerId);
     } catch (error) {
       console.error("[EnableX] Remote playback failed:", error);
     }
@@ -641,6 +689,35 @@ const VideoCall = ({
           setTimeout(() => playRemotePreview(), 50);
           setTimeout(() => playRemotePreview(), 250);
           setTimeout(() => playRemotePreview(), 700);
+        });
+
+        // --------------------------------------------------
+        // Active talkers updated (EnableX Group Mode)
+        // --------------------------------------------------
+        activeRoom.addEventListener("active-talkers-updated", (event) => {
+          console.log("[EnableX] 🗣️ ACTIVE TALKERS UPDATED:", event);
+          const activeList = event?.message?.activeList || event?.activeList;
+          if (Array.isArray(activeList) && activeList.length > 0) {
+            for (const item of activeList) {
+              const streamId = item.streamId || item.id || item;
+              const localId = activeLocalStream?.getID?.();
+              if (streamId && String(streamId) !== String(localId)) {
+                let stream = null;
+                if (activeRoom.remoteStreams instanceof Map) {
+                  stream = activeRoom.remoteStreams.get(streamId);
+                } else if (activeRoom.remoteStreams) {
+                  stream = activeRoom.remoteStreams[streamId];
+                }
+                if (stream) {
+                  remoteStreamRef.current = stream;
+                  if (isMountedRef.current) {
+                    setRemoteStreamActive(true);
+                  }
+                  setTimeout(() => playRemotePreview(), 50);
+                }
+              }
+            }
+          }
         });
 
         // --------------------------------------------------
