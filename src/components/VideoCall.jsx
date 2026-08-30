@@ -88,30 +88,11 @@ const VideoCall = ({
     return () => clearInterval(timer);
   }, [callStatus]);
 
-  // ─── Periodic Coin Deduction (every 20s while connected) ─
-  useEffect(() => {
-    if (callStatus !== "connected") return;
-    const coinDeductInterval = setInterval(async () => {
-      try {
-        const res = await api.post("/coins/deduct-call", {
-          targetUserId: targetUid,
-          callType,
-          seconds: 20,
-        });
-        if (!res.data.success && res.data.insufficientCoins) {
-          toast.error("Insufficient coin balance to continue call");
-          if (onEndCall && isMountedRef.current) onEndCall();
-        } else {
-          dispatch(fetchMe());
-        }
-      } catch (err) {
-        // Ignore API errors silently
-      }
-    }, 20000);
-    return () => clearInterval(coinDeductInterval);
-  }, [callStatus, callType, targetUid, dispatch, onEndCall]);
-
   // ─── Core Disconnect / Hang Up Handler ───────────────────
+  // (Declared above the coin-deduction effect below, since that
+  // effect now calls handleDisconnect() and needs it defined
+  // first — referencing a later `const` in the same component
+  // scope throws "Cannot access before initialization".)
   const onEndCallRef = useRef(onEndCall);
   useEffect(() => {
     onEndCallRef.current = onEndCall;
@@ -161,6 +142,33 @@ const VideoCall = ({
       setTimeout(() => onEndCallRef.current(), 50);
     }
   }, [roomId, targetUid]);
+
+  // ─── Periodic Coin Deduction (every 20s while connected) ─
+  useEffect(() => {
+    if (callStatus !== "connected") return;
+    const coinDeductInterval = setInterval(async () => {
+      try {
+        const res = await api.post("/coins/deduct-call", {
+          targetUserId: targetUid,
+          callType,
+          seconds: 20,
+        });
+        if (!res.data.success && res.data.insufficientCoins) {
+          toast.error("Insufficient coin balance to continue call");
+          // Use handleDisconnect (not onEndCall directly) so the
+          // EnableX room is closed cleanly and the other participant
+          // gets a proper `end_call` socket event instead of their
+          // SDK timing out and reporting a spurious "user left".
+          if (isMountedRef.current) handleDisconnect();
+        } else {
+          dispatch(fetchMe());
+        }
+      } catch (err) {
+        // Ignore API errors silently
+      }
+    }, 20000);
+    return () => clearInterval(coinDeductInterval);
+  }, [callStatus, callType, targetUid, dispatch, handleDisconnect]);
 
   // ─── EnableX SDK Initialization ─────────────────────────
   useEffect(() => {
