@@ -770,7 +770,9 @@ const VideoCall = ({
             setCallStatus("connected");
           }
 
+          playedRemoteContainerRef.current = "";
           setTimeout(() => playRemotePreview(), 50);
+          setTimeout(() => playRemotePreview(), 250);
         });
 
         // --------------------------------------------------
@@ -795,6 +797,7 @@ const VideoCall = ({
                   if (isMountedRef.current) {
                     setRemoteStreamActive(true);
                   }
+                  playedRemoteContainerRef.current = "";
                   setTimeout(() => playRemotePreview(), 50);
                 }
               }
