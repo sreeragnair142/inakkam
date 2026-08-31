@@ -568,22 +568,17 @@ const VideoCall = ({
 
           tryPublish();
 
-          // Subscribe to streams already present
-          if (event?.streams && Array.isArray(event.streams)) {
-            event.streams.forEach((stream) => {
-              subscribeToRemoteStream(stream);
+          // Subscribe only to the latest remote stream (avoid subscribing to stale streams from previous sessions)
+          if (event?.streams && Array.isArray(event.streams) && event.streams.length > 0) {
+            const remoteStreams = event.streams.filter((s) => {
+              const localId = activeLocalStream && typeof activeLocalStream.getID === "function" ? activeLocalStream.getID() : null;
+              const sId = s && typeof s.getID === "function" ? s.getID() : null;
+              return s && (!localId || String(localId) !== String(sId));
             });
-          }
-
-          if (activeRoom.remoteStreams) {
-            if (activeRoom.remoteStreams instanceof Map) {
-              activeRoom.remoteStreams.forEach((stream) => {
-                subscribeToRemoteStream(stream);
-              });
-            } else if (typeof activeRoom.remoteStreams.forEach === "function") {
-              activeRoom.remoteStreams.forEach((stream) => {
-                subscribeToRemoteStream(stream);
-              });
+            if (remoteStreams.length > 0) {
+              const latestStream = remoteStreams[remoteStreams.length - 1];
+              console.log("[EnableX] Subscribing to latest remote stream from room:", latestStream?.getID?.());
+              subscribeToRemoteStream(latestStream);
             }
           }
         });
