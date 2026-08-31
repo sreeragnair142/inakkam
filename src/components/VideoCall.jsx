@@ -200,6 +200,13 @@ const VideoCall = ({
     if (!container) return;
 
     try {
+      const nativeMediaStream =
+        stream.stream ||
+        stream.mediaStream ||
+        (typeof stream.getMediaStream === "function"
+          ? stream.getMediaStream()
+          : null);
+
       const streamId = (typeof stream.getID === "function" ? stream.getID() : "local") || "local";
       const key = `${streamId}_${container.id}`;
 
@@ -227,15 +234,11 @@ const VideoCall = ({
         v.setAttribute("playsinline", "true");
         v.setAttribute("webkit-playsinline", "true");
         v.muted = true;
+        if (!v.srcObject && nativeMediaStream) {
+          v.srcObject = nativeMediaStream;
+        }
         v.play().catch(() => {});
       });
-
-      const nativeMediaStream =
-        stream.stream ||
-        stream.mediaStream ||
-        (typeof stream.getMediaStream === "function"
-          ? stream.getMediaStream()
-          : null);
 
       if (videoEls.length === 0 && nativeMediaStream && typeof nativeMediaStream.getTracks === "function") {
         let videoEl = document.createElement("video");
@@ -265,6 +268,13 @@ const VideoCall = ({
     if (!container) return;
 
     try {
+      const nativeMediaStream =
+        stream.stream ||
+        stream.mediaStream ||
+        (typeof stream.getMediaStream === "function"
+          ? stream.getMediaStream()
+          : null);
+
       const streamId = (typeof stream.getID === "function" ? stream.getID() : "remote") || "remote";
       const key = `${streamId}_${containerId}`;
 
@@ -298,13 +308,6 @@ const VideoCall = ({
           console.warn("[EnableX] Remote autoplay waiting user interaction:", err);
         });
       });
-
-      const nativeMediaStream =
-        stream.stream ||
-        stream.mediaStream ||
-        (typeof stream.getMediaStream === "function"
-          ? stream.getMediaStream()
-          : null);
 
       if (mediaEls.length === 0 && nativeMediaStream && typeof nativeMediaStream.getTracks === "function") {
         let mediaEl = document.createElement(callType === "video" ? "video" : "audio");
