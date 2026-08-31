@@ -675,15 +675,24 @@ const VideoCall = ({
 
           tryPublish();
 
-          // Do NOT subscribe to pre-existing streams here.
-          // They are stale streams from previous sessions and subscribing
-          // to them causes InvalidAccessError (SDP negotiation failure).
-          // We only subscribe when stream-added fires for genuinely live streams.
-          console.log(
-            "[EnableX] room-connected streams count:",
-            event?.streams?.length ?? 0,
-            "— skipping pre-existing, waiting for stream-added events.",
-          );
+          // Subscribe to all pre-existing remote streams in the room
+          if (event?.streams && Array.isArray(event.streams)) {
+            event.streams.forEach((stream) => {
+              subscribeToRemoteStream(stream);
+            });
+          }
+
+          if (activeRoom.remoteStreams) {
+            if (activeRoom.remoteStreams instanceof Map) {
+              activeRoom.remoteStreams.forEach((stream) => {
+                subscribeToRemoteStream(stream);
+              });
+            } else if (typeof activeRoom.remoteStreams.forEach === "function") {
+              activeRoom.remoteStreams.forEach((stream) => {
+                subscribeToRemoteStream(stream);
+              });
+            }
+          }
         });
 
         // --------------------------------------------------
@@ -770,6 +779,7 @@ const VideoCall = ({
                   stream = activeRoom.remoteStreams[streamId];
                 }
                 if (stream) {
+                  subscribeToRemoteStream(stream);
                   remoteStreamRef.current = stream;
                   if (isMountedRef.current) {
                     setRemoteStreamActive(true);
