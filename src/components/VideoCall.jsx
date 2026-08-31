@@ -424,13 +424,6 @@ const VideoCall = ({
     }
   }, [callStatus, playLocalPreview]);
 
-  useEffect(() => {
-    if (remoteStreamActive || callStatus === "connected") {
-      const t = setTimeout(playRemotePreview, 50);
-      return () => clearTimeout(t);
-    }
-  }, [remoteStreamActive, callStatus, playRemotePreview]);
-
   // ─── EnableX SDK Initialization ─────────────────────────
   useEffect(() => {
     let activeLocalStream = null;
@@ -777,28 +770,71 @@ const VideoCall = ({
         });
 
         // --------------------------------------------------
-        // 10. Stream subscribed — media is negotiated & ready to render
+        // 10. Stream subscribed
         // --------------------------------------------------
         activeRoom.addEventListener("stream-subscribed", (event) => {
           console.log("[EnableX] ✅ STREAM SUBSCRIBED:", event);
+
           const remoteStream = event?.stream;
 
           if (!remoteStream) {
-            console.warn("[EnableX] stream-subscribed: no stream in event");
+            console.warn("[EnableX] ❌ stream-subscribed has no stream");
             return;
           }
 
-          const localId =
-            activeLocalStream && typeof activeLocalStream.getID === "function"
-              ? String(activeLocalStream.getID())
-              : null;
           const remoteId =
             typeof remoteStream.getID === "function"
               ? String(remoteStream.getID())
               : null;
 
+          const localId =
+            activeLocalStream &&
+            typeof activeLocalStream.getID === "function"
+              ? String(activeLocalStream.getID())
+              : null;
+
+          console.log("[EnableX] 🔎 STREAM CHECK:", {
+            localId,
+            remoteId,
+            sameStream: localId === remoteId,
+            hasVideo:
+              typeof remoteStream.ifVideo === "function"
+                ? remoteStream.ifVideo()
+                : "unknown",
+            isScreen:
+              typeof remoteStream.ifScreen === "function"
+                ? remoteStream.ifScreen()
+                : "unknown",
+          });
+
+          // Never render our own stream as remote
           if (localId && remoteId && localId === remoteId) {
-            console.log("[EnableX] Ignoring own stream in stream-subscribed");
+            console.log("[EnableX] ⏭️ Ignoring local stream:", remoteId);
+            return;
+          }
+
+          // Ignore reserved EnableX streams
+          if (remoteId === "101" || remoteId === "102") {
+            console.log("[EnableX] ⏭️ Ignoring reserved stream:", remoteId);
+            return;
+          }
+
+          // Must contain video for a video call
+          if (
+            callType === "video" &&
+            typeof remoteStream.ifVideo === "function" &&
+            !remoteStream.ifVideo()
+          ) {
+            console.log("[EnableX] ⏭️ Remote stream has no video:", remoteId);
+            return;
+          }
+
+          // Ignore screen share
+          if (
+            typeof remoteStream.ifScreen === "function" &&
+            remoteStream.ifScreen()
+          ) {
+            console.log("[EnableX] ⏭️ Ignoring screen share:", remoteId);
             return;
           }
 
@@ -807,162 +843,46 @@ const VideoCall = ({
             remoteDisconnectTimerRef.current = null;
           }
 
-         // Only use an actual participant camera stream.
-// Do NOT allow screen-share (101), canvas (102),
-// audio-only or dummy streams to replace the camera.
-if (!isParticipantVideoStream(remoteStream)) {
-  console.log(
-    "[EnableX] ⏭️ Ignoring non-camera remote stream:",
-    remoteId
-  );
-  return;
-}
+          console.log("[EnableX] 🎥 REMOTE CAMERA SELECTED:", remoteId);
 
-console.log(
-  "[EnableX] 🎥 PARTICIPANT CAMERA STREAM READY:",
-  remoteId
-);
+          remoteStreamRef.current = remoteStream;
 
-remoteStreamRef.current = remoteStream;
+          if (isMountedRef.current) {
+            setRemoteStreamActive(true);
+            setCallStatus("connected");
+          }
 
-if (isMountedRef.current) {
-  setRemoteStreamActive(true);
-  setCallStatus("connected");
-}
+          playedRemoteContainerRef.current = "";
 
-playedRemoteContainerRef.current = "";
+          // Give EnableX a moment to finish attaching
+          setTimeout(() => {
+            playRemotePreview(remoteStream);
+          }, 100);
 
-setTimeout(() => playRemotePreview(remoteStream), 50);
-setTimeout(() => playRemotePreview(remoteStream), 300);
-setTimeout(() => playRemotePreview(remoteStream), 1000);
+          setTimeout(() => {
+            playRemotePreview(remoteStream);
+          }, 500);
         });
 
         // --------------------------------------------------
         // Active talkers updated (EnableX Group Mode)
         // --------------------------------------------------
-        activeRoom.addEventListener(
-  "active-talkers-updated",
-  (event) => {
-    console.log(
-      "[EnableX] 🗣️ ACTIVE TALKERS UPDATED:",
-      event
-    );
+        activeRoom.addEventListener("active-talkers-updated", (event) => {
+          console.log("[EnableX] 🗣️ ACTIVE TALKERS UPDATED:", event);
 
-    const activeList =
-      event?.message?.activeList ||
-      event?.activeList ||
-      [];
+          // For a 1-to-1 call, DO NOT switch the main video
+          // based on active talkers.
+          //
+          // The remote camera is selected from stream-subscribed.
+          // Active talkers are only useful for speaker indication.
 
-    if (!Array.isArray(activeList)) return;
+          const activeList =
+            event?.message?.activeList ||
+            event?.activeList ||
+            [];
 
-    console.log(
-      "[EnableX] Active talkers:",
-      activeList
-    );
-
-    const localId =
-      activeLocalStream?.getID?.() != null
-        ? String(activeLocalStream.getID())
-        : null;
-
-    // Find an actual participant video
-    const videoTalker = activeList.find((item) => {
-      const streamId = String(
-        item?.streamId ?? item?.id ?? ""
-      );
-
-      if (!streamId) return false;
-
-      // Never choose screen share / canvas
-      if (streamId === "101" || streamId === "102") {
-        return false;
-      }
-
-      // Never choose our own stream
-      if (localId && streamId === localId) {
-        return false;
-      }
-
-      // For video calls, prefer actual audio+video talkers
-      if (
-        callType === "video" &&
-        item?.mediatype &&
-        item.mediatype !== "audiovideo"
-      ) {
-        return false;
-      }
-
-      // Camera must not be muted
-      if (
-        callType === "video" &&
-        item?.videomuted === true
-      ) {
-        return false;
-      }
-
-      return true;
-    });
-
-    if (!videoTalker) {
-      console.log(
-        "[EnableX] No active participant video found"
-      );
-      return;
-    }
-
-    const streamId = String(videoTalker.streamId);
-
-    let stream = null;
-
-    if (activeRoom.remoteStreams) {
-      if (typeof activeRoom.remoteStreams.get === "function") {
-        stream =
-          activeRoom.remoteStreams.get(
-            videoTalker.streamId
-          ) ||
-          activeRoom.remoteStreams.get(streamId);
-      }
-
-      if (!stream) {
-        stream =
-          activeRoom.remoteStreams[videoTalker.streamId] ||
-          activeRoom.remoteStreams[streamId];
-      }
-    }
-
-    if (!stream) {
-      console.warn(
-        "[EnableX] ❌ Active talker stream not found:",
-        streamId
-      );
-      return;
-    }
-
-    if (!isParticipantVideoStream(stream)) {
-      console.warn(
-        "[EnableX] ❌ Active stream is not participant video:",
-        streamId
-      );
-      return;
-    }
-
-    console.log(
-      "[EnableX] 🎥 Active participant video:",
-      streamId,
-      videoTalker
-    );
-
-    remoteStreamRef.current = stream;
-
-    if (isMountedRef.current) {
-      setRemoteStreamActive(true);
-    }
-
-    setTimeout(() => {
-      playRemotePreview(stream);
-    }, 50);
-  }
-);
+          console.log("[EnableX] Active talkers:", activeList);
+        });
 
         // --------------------------------------------------
         // 11. Remote user disconnected
