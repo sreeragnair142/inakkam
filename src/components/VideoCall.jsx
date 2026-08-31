@@ -66,6 +66,9 @@ const VideoCall = ({
   const reconnectingRef = useRef(false);
   const remoteDisconnectTimerRef = useRef(null);
   const currentUserNameRef = useRef(currentUser?.name || "Inakkam User");
+  // MutationObserver to catch EnableX-injected <video>/<audio> elements
+  // and force playsinline + play() — critical for iOS Safari and mobile PWA.
+  const mediaObserverRef = useRef(null);
 
   useEffect(() => {
     currentUserNameRef.current = currentUser?.name || "Inakkam User";
@@ -186,6 +189,94 @@ const VideoCall = ({
     }, 20000);
     return () => clearInterval(coinDeductInterval);
   }, [callStatus, callType, targetUid, dispatch, handleDisconnect, isCaller]);
+
+  // ─── MutationObserver: auto-fix EnableX-injected media elements ────────
+  // EnableX injects <video>/<audio> elements asynchronously into its
+  // containers. On iOS/Safari and Android Chrome, these elements need
+  // playsinline + an explicit play() call — otherwise they stay black/silent.
+  // We watch all call containers and fix any injected element immediately.
+  const startMediaObserver = useCallback(() => {
+    // Disconnect any existing observer first
+    if (mediaObserverRef.current) {
+      mediaObserverRef.current.disconnect();
+      mediaObserverRef.current = null;
+    }
+
+    const applyToEl = (el, muted = false) => {
+      if (!el || (el._enxFixed)) return;
+      el._enxFixed = true;
+      el.setAttribute("playsinline", "true");
+      el.setAttribute("webkit-playsinline", "true");
+      el.muted = muted;
+      el.autoplay = true;
+      el.playsInline = true;
+      el.play().catch(() => {});
+    };
+
+    const fixContainer = (container, muted = false) => {
+      if (!container) return;
+      container.querySelectorAll("video, audio").forEach((el) => applyToEl(el, muted));
+    };
+
+    const containerIds = [
+      { id: "remote_video_player", muted: false },
+      { id: "remote_audio_player", muted: false },
+      { id: "local_pip_video", muted: true },
+      { id: "connecting_local_video", muted: true },
+    ];
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType !== 1) return;
+          // Find which container this node is in
+          const entry = containerIds.find(({ id }) => {
+            const c = document.getElementById(id);
+            return c && (c === node || c.contains(node));
+          });
+          if (!entry) return;
+          if (node.tagName === "VIDEO" || node.tagName === "AUDIO") {
+            applyToEl(node, entry.muted);
+          } else {
+            node.querySelectorAll("video, audio").forEach((el) => applyToEl(el, entry.muted));
+          }
+        });
+      });
+    });
+
+    // Observe all containers that exist right now, and fix any existing elements
+    containerIds.forEach(({ id, muted }) => {
+      const container = document.getElementById(id);
+      if (container) {
+        fixContainer(container, muted);
+        observer.observe(container, { childList: true, subtree: true });
+      }
+    });
+
+    mediaObserverRef.current = observer;
+    console.log("[EnableX] 🔭 MutationObserver started for media containers");
+  }, []);
+
+  const stopMediaObserver = useCallback(() => {
+    if (mediaObserverRef.current) {
+      mediaObserverRef.current.disconnect();
+      mediaObserverRef.current = null;
+      console.log("[EnableX] 🔭 MutationObserver stopped");
+    }
+  }, []);
+
+  // Start observer when call begins; stop on unmount
+  useEffect(() => {
+    if (callStatus === "connecting" || callStatus === "connected") {
+      // Small delay to ensure containers are in the DOM
+      const t = setTimeout(startMediaObserver, 100);
+      return () => clearTimeout(t);
+    }
+  }, [callStatus, startMediaObserver]);
+
+  useEffect(() => {
+    return () => stopMediaObserver();
+  }, [stopMediaObserver]);
 
   // ─── Reliable local/remote playback helpers ─────────────────
   const playLocalPreview = useCallback(() => {
@@ -422,9 +513,14 @@ const VideoCall = ({
           console.log("[EnableX] Requesting fresh token for room:", roomId);
 
           try {
+            // Pass name + user_ref — required fields in the EnableX token API.
+            // Without these the EnableX REST call returns an error and the
+            // backend may silently return null/undefined as the token.
             const tokenRes = await api.post("/enablex/get-token", {
               roomId,
               role: isCaller ? "moderator" : "participant",
+              name: currentUserNameRef.current || "Inakkam User",
+              userRef: currentUser?._id || currentUser?.id || "unknown",
             });
 
             console.log("[EnableX] Fresh token response:", tokenRes.data);
@@ -532,9 +628,12 @@ const VideoCall = ({
         // --------------------------------------------------
         // 5. Create EnableX room
         // --------------------------------------------------
-        activeRoom = EnxRtc.EnxRoom({
-          token,
-        });
+        // IMPORTANT: EnxRoom() accepts the raw JWT token STRING,
+        // NOT a wrapped object like { token }. Passing an object
+        // causes the SDK to partially connect (signalling works)
+        // but streams remain black/silent because authentication
+        // of the media channel fails silently.
+        activeRoom = EnxRtc.EnxRoom(token);
 
         if (!activeRoom) {
           throw new Error("EnableX EnxRoom() did not return a room");
@@ -1510,8 +1609,23 @@ const VideoCall = ({
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                 Voice Call Connected ({formatTime(duration)})
               </p>
-              {/* Audio player container for remote (must remain in DOM layout, not display:none) */}
-              <div id="remote_audio_player" className="absolute w-0 h-0 overflow-hidden opacity-0 pointer-events-none" />
+              {/* Audio player container for remote.
+                  Must be in the DOM but NOT zero-sized — zero-size blocks
+                  autoplay on some browsers/mobile. Position it far off-screen
+                  so it's invisible but still "rendered" by the browser. */}
+              <div
+                id="remote_audio_player"
+                className="pointer-events-none"
+                style={{
+                  position: "absolute",
+                  left: "-9999px",
+                  top: "-9999px",
+                  width: "1px",
+                  height: "1px",
+                  overflow: "hidden",
+                  opacity: 0,
+                }}
+              />
               {/* Animated Soundwave */}
               <div className="flex items-center gap-1.5 mt-8 h-10">
                 {[40, 75, 30, 90, 50, 85, 45, 65, 100, 55, 80, 35, 70, 45].map(
