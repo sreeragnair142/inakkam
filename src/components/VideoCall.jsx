@@ -205,7 +205,6 @@ const VideoCall = ({
 
       if (playedLocalContainerRef.current !== key) {
         playedLocalContainerRef.current = key;
-        container.innerHTML = "";
         if (typeof stream.play === "function") {
           stream.play(container.id, {
             player: {
@@ -238,12 +237,17 @@ const VideoCall = ({
     if (!container) return;
 
     try {
-      const streamId = (typeof stream.getID === "function" ? stream.getID() : "remote") || "remote";
+      const streamId =
+        (typeof stream.getID === "function" ? stream.getID() : "remote") ||
+        "remote";
       const key = `${streamId}_${containerId}`;
 
+      // Only call stream.play() once per stream-container pair.
+      // NEVER wipe container.innerHTML — EnableX's own reloadPlayer
+      // looks up DOM elements by id (e.g. stream2) and fails with
+      // "ID selector - stream2 null" if they were deleted.
       if (playedRemoteContainerRef.current !== key) {
         playedRemoteContainerRef.current = key;
-        container.innerHTML = "";
         if (typeof stream.play === "function") {
           stream.play(containerId, {
             player: {
@@ -541,7 +545,6 @@ const VideoCall = ({
                   setRemoteStreamActive(true);
                   setCallStatus("connected");
                 }
-                playedRemoteContainerRef.current = null;
                 setTimeout(() => playRemotePreview(), 50);
               },
             );
@@ -651,7 +654,6 @@ const VideoCall = ({
             setCallStatus("connected");
           }
 
-          playedRemoteContainerRef.current = null;
           setTimeout(() => playRemotePreview(), 50);
         });
 
