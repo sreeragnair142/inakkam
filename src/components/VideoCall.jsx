@@ -486,9 +486,10 @@ const VideoCall = ({
         // --------------------------------------------------
         // 6. Remote stream handler
         // --------------------------------------------------
+        const subscribedStreamIds = new Set();
+
         const subscribeToRemoteStream = (stream) => {
           if (!stream || !activeRoom) {
-            console.warn("[EnableX] Invalid stream received");
             return;
           }
 
@@ -501,15 +502,17 @@ const VideoCall = ({
             const remoteId =
               typeof stream.getID === "function" ? stream.getID() : null;
 
-            console.log("[EnableX] Stream check:", {
-              localId,
-              remoteId,
-            });
-
             // Never subscribe to our own stream.
-            if (localId && remoteId && localId === remoteId) {
-              console.log("[EnableX] Ignoring own local stream:", remoteId);
+            if (localId && remoteId && String(localId) === String(remoteId)) {
               return;
+            }
+
+            if (remoteId && subscribedStreamIds.has(String(remoteId))) {
+              return;
+            }
+
+            if (remoteId) {
+              subscribedStreamIds.add(String(remoteId));
             }
 
             console.log("[EnableX] 📹 Subscribing to remote stream:", remoteId);
@@ -538,9 +541,8 @@ const VideoCall = ({
                   setRemoteStreamActive(true);
                   setCallStatus("connected");
                 }
+                playedRemoteContainerRef.current = null;
                 setTimeout(() => playRemotePreview(), 50);
-                setTimeout(() => playRemotePreview(), 250);
-                setTimeout(() => playRemotePreview(), 500);
               },
             );
           } catch (error) {
@@ -637,7 +639,7 @@ const VideoCall = ({
               : null;
 
           // Never display our own stream as remote.
-          if (localId && remoteId && localId === remoteId) {
+          if (localId && remoteId && String(localId) === String(remoteId)) {
             console.log("[EnableX] Ignoring own stream in stream-subscribed");
             return;
           }
@@ -654,9 +656,8 @@ const VideoCall = ({
             setCallStatus("connected");
           }
 
+          playedRemoteContainerRef.current = null;
           setTimeout(() => playRemotePreview(), 50);
-          setTimeout(() => playRemotePreview(), 250);
-          setTimeout(() => playRemotePreview(), 700);
         });
 
         // --------------------------------------------------
