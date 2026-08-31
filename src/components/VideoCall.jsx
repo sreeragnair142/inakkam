@@ -509,15 +509,30 @@ const VideoCall = ({
         }
 
         // --------------------------------------------------
-        // 3. Stream configuration
+        // 3. Stream configuration (Detect camera presence)
         // --------------------------------------------------
+        let hasCamera = false;
+        try {
+          if (navigator.mediaDevices && typeof navigator.mediaDevices.enumerateDevices === "function") {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            hasCamera = devices.some((device) => device.kind === "videoinput");
+            console.log("[EnableX] Camera check result:", hasCamera, "Devices:", devices);
+          }
+        } catch (deviceError) {
+          console.warn("[EnableX] Device enumeration failed:", deviceError);
+        }
+
+        if (callType === "video" && !hasCamera) {
+          toast("No camera found. Starting call with audio only.", { icon: "🎙️" });
+        }
+
         const streamOptions = {
           audio: true,
-          video: callType === "video",
+          video: callType === "video" && hasCamera,
           data: true,
 
           audioMuted: false,
-          videoMuted: callType !== "video",
+          videoMuted: callType !== "video" || !hasCamera,
 
           videoSize: [320, 180, 1280, 720],
 
