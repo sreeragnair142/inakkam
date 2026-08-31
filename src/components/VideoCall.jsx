@@ -571,12 +571,13 @@ const VideoCall = ({
         // --------------------------------------------------
         // 5. Create EnableX room
         // --------------------------------------------------
-        // IMPORTANT: EnxRoom() accepts the raw JWT token STRING,
-        // NOT a wrapped object like { token }. Passing an object
-        // causes the SDK to partially connect (signalling works)
-        // but streams remain black/silent because authentication
-        // of the media channel fails silently.
-        activeRoom = EnxRtc.EnxRoom(token);
+        // 5. Create EnableX room.
+        // NOTE: EnxRtc.EnxRoom() for Web SDK v3.x expects a
+        // CONFIG OBJECT with a `token` property — NOT the raw
+        // JWT string directly. Passing the raw string causes the
+        // SDK's internal JSON.parse to throw
+        // "Unexpected end of JSON input".
+        activeRoom = EnxRtc.EnxRoom({ token });
 
         if (!activeRoom) {
           throw new Error("EnableX EnxRoom() did not return a room");
