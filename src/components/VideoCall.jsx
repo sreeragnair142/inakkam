@@ -584,8 +584,6 @@ const VideoCall = ({
         console.log("[EnableX] Local stream initialized:", activeLocalStream);
 
         // --------------------------------------------------
-        // 5. Create EnableX room
-        // --------------------------------------------------
         // 5. Create EnableX room.
         // NOTE: EnxRtc.EnxRoom() for Web SDK v3.x expects a
         // CONFIG OBJECT with a `token` property — NOT the raw
@@ -606,66 +604,61 @@ const VideoCall = ({
         // --------------------------------------------------
         // 6. Remote stream handler
         // --------------------------------------------------
+        // Track only the one remote stream we are currently playing.
+        // In a 2-person call there should only ever be one remote stream.
         const subscribedStreamIds = new Set();
 
         const subscribeToRemoteStream = (stream) => {
-          if (!stream || !activeRoom) {
+          if (!stream || !activeRoom) return;
+
+          const remoteId =
+            typeof stream.getID === "function" ? String(stream.getID()) : null;
+          const localId =
+            activeLocalStream && typeof activeLocalStream.getID === "function"
+              ? String(activeLocalStream.getID())
+              : null;
+
+          // Skip own stream
+          if (localId && remoteId && localId === remoteId) return;
+
+          // Skip already-subscribed streams
+          if (remoteId && subscribedStreamIds.has(remoteId)) {
+            console.log("[EnableX] Already subscribed to stream:", remoteId);
             return;
           }
 
+          if (remoteId) subscribedStreamIds.add(remoteId);
+
+          console.log("[EnableX] 📹 Subscribing to remote stream:", remoteId);
+
           try {
-            const localId =
-              activeLocalStream && typeof activeLocalStream.getID === "function"
-                ? activeLocalStream.getID()
-                : null;
-
-            const remoteId =
-              typeof stream.getID === "function" ? stream.getID() : null;
-
-            // Never subscribe to our own stream.
-            if (localId && remoteId && String(localId) === String(remoteId)) {
-              return;
-            }
-
-            if (remoteId && subscribedStreamIds.has(String(remoteId))) {
-              return;
-            }
-
-            if (remoteId) {
-              subscribedStreamIds.add(String(remoteId));
-            }
-
-            console.log("[EnableX] 📹 Subscribing to remote stream:", remoteId);
-
             activeRoom.subscribe(
               stream,
-              {
-                audio: true,
-                video: callType === "video",
-                data: true,
-              },
+              { audio: true, video: callType === "video", data: true },
               (response) => {
-                console.log("[EnableX] Subscribe callback response:", response);
+                // EnableX v3 SDK may return true/false or {result:0}
+                const failed =
+                  response === false ||
+                  (response &&
+                    typeof response === "object" &&
+                    response.result !== undefined &&
+                    response.result !== 0);
 
-                if (
-                  response &&
-                  response.result !== undefined &&
-                  response.result !== 0
-                ) {
+                if (failed) {
                   console.error("[EnableX] Subscribe failed:", response);
+                  if (remoteId) subscribedStreamIds.delete(remoteId);
                   return;
                 }
 
-                remoteStreamRef.current = stream;
-                if (isMountedRef.current) {
-                  setRemoteStreamActive(true);
-                  setCallStatus("connected");
-                }
-                setTimeout(() => playRemotePreview(), 50);
+                console.log("[EnableX] Subscribe acknowledged:", response);
+                // NOTE: Do NOT call stream.play() here.
+                // Wait for the 'stream-subscribed' event which fires when
+                // media is fully negotiated and ready to render.
               },
             );
           } catch (error) {
             console.error("[EnableX] Remote subscribe exception:", error);
+            if (remoteId) subscribedStreamIds.delete(remoteId);
           }
         };
 
@@ -675,31 +668,22 @@ const VideoCall = ({
         activeRoom.addEventListener("room-connected", (event) => {
           console.log("[EnableX] ✅ ROOM CONNECTED:", event);
 
-          if (cancelled || isDisconnectedRef.current) {
-            return;
-          }
+          if (cancelled || isDisconnectedRef.current) return;
 
           roomConnected = true;
-
-          if (isMountedRef.current) {
-            setCallStatus("connected");
-          }
+          if (isMountedRef.current) setCallStatus("connected");
 
           tryPublish();
 
-          // Subscribe only to the latest remote stream (avoid subscribing to stale streams from previous sessions)
-          if (event?.streams && Array.isArray(event.streams) && event.streams.length > 0) {
-            const remoteStreams = event.streams.filter((s) => {
-              const localId = activeLocalStream && typeof activeLocalStream.getID === "function" ? activeLocalStream.getID() : null;
-              const sId = s && typeof s.getID === "function" ? s.getID() : null;
-              return s && (!localId || String(localId) !== String(sId));
-            });
-            if (remoteStreams.length > 0) {
-              const latestStream = remoteStreams[remoteStreams.length - 1];
-              console.log("[EnableX] Subscribing to latest remote stream from room:", latestStream?.getID?.());
-              subscribeToRemoteStream(latestStream);
-            }
-          }
+          // Do NOT subscribe to pre-existing streams here.
+          // They are stale streams from previous sessions and subscribing
+          // to them causes InvalidAccessError (SDP negotiation failure).
+          // We only subscribe when stream-added fires for genuinely live streams.
+          console.log(
+            "[EnableX] room-connected streams count:",
+            event?.streams?.length ?? 0,
+            "— skipping pre-existing, waiting for stream-added events.",
+          );
         });
 
         // --------------------------------------------------
@@ -714,46 +698,40 @@ const VideoCall = ({
         });
 
         // --------------------------------------------------
-        // 9. Remote stream added
+        // 9. Remote stream added — triggered when participant publishes
         // --------------------------------------------------
         activeRoom.addEventListener("stream-added", (event) => {
           console.log("[EnableX] 📹 STREAM ADDED:", event);
-
           const stream = event?.stream || event;
-
           if (remoteDisconnectTimerRef.current) {
             clearTimeout(remoteDisconnectTimerRef.current);
             remoteDisconnectTimerRef.current = null;
           }
-
           subscribeToRemoteStream(stream);
         });
 
         // --------------------------------------------------
-        // 10. Remote stream subscribed
+        // 10. Stream subscribed — media is negotiated & ready to render
         // --------------------------------------------------
         activeRoom.addEventListener("stream-subscribed", (event) => {
           console.log("[EnableX] ✅ STREAM SUBSCRIBED:", event);
-
           const remoteStream = event?.stream;
 
           if (!remoteStream) {
-            console.warn("[EnableX] stream-subscribed without stream");
+            console.warn("[EnableX] stream-subscribed: no stream in event");
             return;
           }
 
           const localId =
             activeLocalStream && typeof activeLocalStream.getID === "function"
-              ? activeLocalStream.getID()
+              ? String(activeLocalStream.getID())
               : null;
-
           const remoteId =
             typeof remoteStream.getID === "function"
-              ? remoteStream.getID()
+              ? String(remoteStream.getID())
               : null;
 
-          // Never display our own stream as remote.
-          if (localId && remoteId && String(localId) === String(remoteId)) {
+          if (localId && remoteId && localId === remoteId) {
             console.log("[EnableX] Ignoring own stream in stream-subscribed");
             return;
           }
@@ -764,7 +742,6 @@ const VideoCall = ({
           }
 
           remoteStreamRef.current = remoteStream;
-
           if (isMountedRef.current) {
             setRemoteStreamActive(true);
             setCallStatus("connected");
