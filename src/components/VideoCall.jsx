@@ -291,6 +291,9 @@ const VideoCall = ({
         v.setAttribute("playsinline", "true");
         v.setAttribute("webkit-playsinline", "true");
         v.muted = false;
+        if (!v.srcObject && nativeMediaStream) {
+          v.srcObject = nativeMediaStream;
+        }
         v.play().catch((err) => {
           console.warn("[EnableX] Remote autoplay waiting user interaction:", err);
         });
@@ -331,16 +334,20 @@ const VideoCall = ({
   }, [callStatus, playLocalPreview]);
 
   useEffect(() => {
-    if (!remoteStreamActive) return;
+    if (!remoteStreamActive && callStatus !== "connected") return;
     const t1 = setTimeout(playRemotePreview, 50);
     const t2 = setTimeout(playRemotePreview, 250);
     const t3 = setTimeout(playRemotePreview, 600);
+    const t4 = setTimeout(playRemotePreview, 1200);
+    const t5 = setTimeout(playRemotePreview, 2500);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
+      clearTimeout(t4);
+      clearTimeout(t5);
     };
-  }, [remoteStreamActive, playRemotePreview]);
+  }, [remoteStreamActive, callStatus, playRemotePreview]);
 
   // ─── EnableX SDK Initialization ─────────────────────────
   useEffect(() => {
@@ -404,13 +411,13 @@ const VideoCall = ({
 
         console.log("[EnableX] SDK loaded successfully");
 
-        // Enable verbose SDK logging during testing
+        // Set SDK logging to warnings/errors only to prevent console spam
         try {
           if (EnxRtc.Logger?.setLogLevel) {
-            EnxRtc.Logger.setLogLevel(0);
+            EnxRtc.Logger.setLogLevel(3);
           }
         } catch (e) {
-          console.warn("[EnableX] Could not enable SDK debug logging:", e);
+          console.warn("[EnableX] Could not set SDK log level:", e);
         }
 
         // --------------------------------------------------
@@ -481,6 +488,8 @@ const VideoCall = ({
 
           audioMuted: false,
           videoMuted: callType !== "video",
+
+          videoSize: [320, 180, 1280, 720],
 
           attributes: {
             name: currentUserNameRef.current,
