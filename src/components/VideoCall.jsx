@@ -577,6 +577,7 @@ const VideoCall = ({
         // JWT string directly. Passing the raw string causes the
         // SDK's internal JSON.parse to throw
         // "Unexpected end of JSON input".
+        console.log("[EnableX] Token to pass to EnxRoom:", token);
         activeRoom = EnxRtc.EnxRoom({ token });
 
         if (!activeRoom) {
