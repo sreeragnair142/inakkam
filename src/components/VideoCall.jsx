@@ -310,37 +310,9 @@ const VideoCall = ({
               branding: { display: false },
             },
           });
+          console.log("[EnableX] Local video attached to", container.id);
         }
       }
-
-      const videoEls = container.querySelectorAll("video");
-      videoEls.forEach((v) => {
-        v.setAttribute("playsinline", "true");
-        v.setAttribute("webkit-playsinline", "true");
-        v.muted = true;
-        v.play().catch(() => {});
-      });
-
-      const nativeMediaStream =
-        stream.stream ||
-        stream.mediaStream ||
-        (typeof stream.getMediaStream === "function"
-          ? stream.getMediaStream()
-          : null);
-
-      if (videoEls.length === 0 && nativeMediaStream && typeof nativeMediaStream.getTracks === "function") {
-        let videoEl = document.createElement("video");
-        videoEl.className = "w-full h-full object-cover scale-x-[-1]";
-        videoEl.autoplay = true;
-        videoEl.playsInline = true;
-        videoEl.setAttribute("playsinline", "true");
-        videoEl.setAttribute("webkit-playsinline", "true");
-        videoEl.muted = true;
-        videoEl.srcObject = nativeMediaStream;
-        container.appendChild(videoEl);
-        videoEl.play().catch(() => {});
-      }
-      console.log("[EnableX] Local video attached to", container.id);
     } catch (error) {
       console.error("[EnableX] Local video playback failed:", error);
     }
@@ -356,9 +328,15 @@ const VideoCall = ({
     if (!container) return;
 
     try {
-      const streamId = (typeof stream.getID === "function" ? stream.getID() : "remote") || "remote";
+      const streamId =
+        (typeof stream.getID === "function" ? stream.getID() : "remote") ||
+        "remote";
       const key = `${streamId}_${containerId}`;
 
+      // Only call stream.play() once per stream-container pair.
+      // NEVER wipe container.innerHTML — EnableX's own reloadPlayer
+      // looks up DOM elements by id (e.g. stream2) and fails with
+      // "ID selector - stream2 null" if they were deleted.
       if (playedRemoteContainerRef.current !== key) {
         playedRemoteContainerRef.current = key;
         if (typeof stream.play === "function") {
@@ -374,41 +352,9 @@ const VideoCall = ({
               branding: { display: false },
             },
           });
+          console.log("[EnableX] Remote stream attached to", containerId);
         }
       }
-
-      const mediaEls = container.querySelectorAll("video, audio");
-      mediaEls.forEach((v) => {
-        v.setAttribute("playsinline", "true");
-        v.setAttribute("webkit-playsinline", "true");
-        v.muted = false;
-        v.play().catch((err) => {
-          console.warn("[EnableX] Remote autoplay waiting user interaction:", err);
-        });
-      });
-
-      const nativeMediaStream =
-        stream.stream ||
-        stream.mediaStream ||
-        (typeof stream.getMediaStream === "function"
-          ? stream.getMediaStream()
-          : null);
-
-      if (mediaEls.length === 0 && nativeMediaStream && typeof nativeMediaStream.getTracks === "function") {
-        let mediaEl = document.createElement(callType === "video" ? "video" : "audio");
-        mediaEl.className = "w-full h-full object-cover";
-        mediaEl.autoplay = true;
-        mediaEl.playsInline = true;
-        mediaEl.setAttribute("playsinline", "true");
-        mediaEl.setAttribute("webkit-playsinline", "true");
-        mediaEl.muted = false;
-        mediaEl.srcObject = nativeMediaStream;
-        container.appendChild(mediaEl);
-        mediaEl.play().catch((err) => {
-          console.warn("[EnableX] Fallback remote media play:", err);
-        });
-      }
-      console.log("[EnableX] Remote media attached to", containerId);
     } catch (error) {
       console.error("[EnableX] Remote playback failed:", error);
     }
@@ -422,16 +368,11 @@ const VideoCall = ({
   }, [callStatus, playLocalPreview]);
 
   useEffect(() => {
-    if (!remoteStreamActive) return;
-    const t1 = setTimeout(playRemotePreview, 50);
-    const t2 = setTimeout(playRemotePreview, 250);
-    const t3 = setTimeout(playRemotePreview, 600);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-    };
-  }, [remoteStreamActive, playRemotePreview]);
+    if (remoteStreamActive || callStatus === "connected") {
+      const t = setTimeout(playRemotePreview, 50);
+      return () => clearTimeout(t);
+    }
+  }, [remoteStreamActive, callStatus, playRemotePreview]);
 
   // ─── EnableX SDK Initialization ─────────────────────────
   useEffect(() => {
@@ -495,13 +436,13 @@ const VideoCall = ({
 
         console.log("[EnableX] SDK loaded successfully");
 
-        // Enable verbose SDK logging during testing
+        // Set SDK logging to warnings/errors only to prevent console spam
         try {
           if (EnxRtc.Logger?.setLogLevel) {
-            EnxRtc.Logger.setLogLevel(0);
+            EnxRtc.Logger.setLogLevel(3);
           }
         } catch (e) {
-          console.warn("[EnableX] Could not enable SDK debug logging:", e);
+          console.warn("[EnableX] Could not set SDK log level:", e);
         }
 
         // --------------------------------------------------
@@ -578,6 +519,8 @@ const VideoCall = ({
           audioMuted: false,
           videoMuted: callType !== "video",
 
+          videoSize: [320, 180, 1280, 720],
+
           attributes: {
             name: currentUserNameRef.current,
           },
@@ -646,9 +589,10 @@ const VideoCall = ({
         // --------------------------------------------------
         // 6. Remote stream handler
         // --------------------------------------------------
+        const subscribedStreamIds = new Set();
+
         const subscribeToRemoteStream = (stream) => {
           if (!stream || !activeRoom) {
-            console.warn("[EnableX] Invalid stream received");
             return;
           }
 
@@ -661,47 +605,48 @@ const VideoCall = ({
             const remoteId =
               typeof stream.getID === "function" ? stream.getID() : null;
 
-            console.log("[EnableX] Stream check:", {
-              localId,
-              remoteId,
-            });
-
             // Never subscribe to our own stream.
-            if (localId && remoteId && localId === remoteId) {
-              console.log("[EnableX] Ignoring own local stream:", remoteId);
+            if (localId && remoteId && String(localId) === String(remoteId)) {
               return;
+            }
+
+            if (remoteId && subscribedStreamIds.has(String(remoteId))) {
+              return;
+            }
+
+            if (remoteId) {
+              subscribedStreamIds.add(String(remoteId));
             }
 
             console.log("[EnableX] 📹 Subscribing to remote stream:", remoteId);
 
-            remoteStreamRef.current = stream;
-            if (isMountedRef.current) {
-              setRemoteStreamActive(true);
-              setCallStatus("connected");
-            }
-            setTimeout(() => playRemotePreview(), 50);
+            activeRoom.subscribe(
+              stream,
+              {
+                audio: true,
+                video: callType === "video",
+                data: true,
+              },
+              (response) => {
+                console.log("[EnableX] Subscribe callback response:", response);
 
-            activeRoom.subscribe(stream, (response) => {
-              console.log("[EnableX] Subscribe callback response:", response);
+                if (
+                  response &&
+                  response.result !== undefined &&
+                  response.result !== 0
+                ) {
+                  console.error("[EnableX] Subscribe failed:", response);
+                  return;
+                }
 
-              if (
-                response &&
-                response.result !== undefined &&
-                response.result !== 0
-              ) {
-                console.error("[EnableX] Subscribe failed:", response);
-                return;
-              }
-
-              remoteStreamRef.current = stream;
-              if (isMountedRef.current) {
-                setRemoteStreamActive(true);
-                setCallStatus("connected");
-              }
-              setTimeout(() => playRemotePreview(), 50);
-              setTimeout(() => playRemotePreview(), 250);
-              setTimeout(() => playRemotePreview(), 500);
-            });
+                remoteStreamRef.current = stream;
+                if (isMountedRef.current) {
+                  setRemoteStreamActive(true);
+                  setCallStatus("connected");
+                }
+                setTimeout(() => playRemotePreview(), 50);
+              },
+            );
           } catch (error) {
             console.error("[EnableX] Remote subscribe exception:", error);
           }
@@ -725,22 +670,17 @@ const VideoCall = ({
 
           tryPublish();
 
-          // Subscribe to streams already present
-          if (event?.streams && Array.isArray(event.streams)) {
-            event.streams.forEach((stream) => {
-              subscribeToRemoteStream(stream);
+          // Subscribe only to the latest remote stream (avoid subscribing to stale streams from previous sessions)
+          if (event?.streams && Array.isArray(event.streams) && event.streams.length > 0) {
+            const remoteStreams = event.streams.filter((s) => {
+              const localId = activeLocalStream && typeof activeLocalStream.getID === "function" ? activeLocalStream.getID() : null;
+              const sId = s && typeof s.getID === "function" ? s.getID() : null;
+              return s && (!localId || String(localId) !== String(sId));
             });
-          }
-
-          if (activeRoom.remoteStreams) {
-            if (activeRoom.remoteStreams instanceof Map) {
-              activeRoom.remoteStreams.forEach((stream) => {
-                subscribeToRemoteStream(stream);
-              });
-            } else if (typeof activeRoom.remoteStreams.forEach === "function") {
-              activeRoom.remoteStreams.forEach((stream) => {
-                subscribeToRemoteStream(stream);
-              });
+            if (remoteStreams.length > 0) {
+              const latestStream = remoteStreams[remoteStreams.length - 1];
+              console.log("[EnableX] Subscribing to latest remote stream from room:", latestStream?.getID?.());
+              subscribeToRemoteStream(latestStream);
             }
           }
         });
@@ -796,7 +736,7 @@ const VideoCall = ({
               : null;
 
           // Never display our own stream as remote.
-          if (localId && remoteId && localId === remoteId) {
+          if (localId && remoteId && String(localId) === String(remoteId)) {
             console.log("[EnableX] Ignoring own stream in stream-subscribed");
             return;
           }
@@ -814,8 +754,6 @@ const VideoCall = ({
           }
 
           setTimeout(() => playRemotePreview(), 50);
-          setTimeout(() => playRemotePreview(), 250);
-          setTimeout(() => playRemotePreview(), 700);
         });
 
         // --------------------------------------------------
