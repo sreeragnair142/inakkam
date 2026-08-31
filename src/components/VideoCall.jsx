@@ -575,34 +575,35 @@ const VideoCall = ({
 
             console.log("[EnableX] 📹 Subscribing to remote stream:", remoteId);
 
-            remoteStreamRef.current = stream;
-            if (isMountedRef.current) {
-              setRemoteStreamActive(true);
-              setCallStatus("connected");
-            }
-            setTimeout(() => playRemotePreview(), 50);
+            activeRoom.subscribe(
+              stream,
+              {
+                audio: true,
+                video: callType === "video",
+                data: true,
+              },
+              (response) => {
+                console.log("[EnableX] Subscribe callback response:", response);
 
-            activeRoom.subscribe(stream, (response) => {
-              console.log("[EnableX] Subscribe callback response:", response);
+                if (
+                  response &&
+                  response.result !== undefined &&
+                  response.result !== 0
+                ) {
+                  console.error("[EnableX] Subscribe failed:", response);
+                  return;
+                }
 
-              if (
-                response &&
-                response.result !== undefined &&
-                response.result !== 0
-              ) {
-                console.error("[EnableX] Subscribe failed:", response);
-                return;
-              }
-
-              remoteStreamRef.current = stream;
-              if (isMountedRef.current) {
-                setRemoteStreamActive(true);
-                setCallStatus("connected");
-              }
-              setTimeout(() => playRemotePreview(), 50);
-              setTimeout(() => playRemotePreview(), 250);
-              setTimeout(() => playRemotePreview(), 500);
-            });
+                remoteStreamRef.current = stream;
+                if (isMountedRef.current) {
+                  setRemoteStreamActive(true);
+                  setCallStatus("connected");
+                }
+                setTimeout(() => playRemotePreview(), 50);
+                setTimeout(() => playRemotePreview(), 250);
+                setTimeout(() => playRemotePreview(), 500);
+              },
+            );
           } catch (error) {
             console.error("[EnableX] Remote subscribe exception:", error);
           }
