@@ -318,21 +318,47 @@ const VideoCall = ({
     }
   }, [callType]);
 
-  const playRemotePreview = useCallback((streamArg = null) => {
-  const stream = streamArg || remoteStreamRef.current;
+  const isParticipantVideoStream = useCallback((stream) => {
+    if (!stream) return false;
 
-  if (!stream) {
-    console.warn("[EnableX] ❌ No remote stream available");
-    return;
-  }
-
-  if (!isParticipantVideoStream(stream)) {
-    console.warn(
-      "[EnableX] ❌ Refusing to play non-camera stream:",
-      stream.getID?.()
+    const id = String(
+      typeof stream.getID === "function" ? stream.getID() : ""
     );
-    return;
-  }
+
+    const localId = String(
+      localStreamRef.current && typeof localStreamRef.current.getID === "function"
+        ? localStreamRef.current.getID()
+        : ""
+    );
+
+    // Never treat our own local stream as remote
+    if (localId && id === localId) {
+      return false;
+    }
+
+    // Never display screen-share as participant camera if screen-share is active
+    if (typeof stream.ifScreen === "function" && stream.ifScreen()) {
+      return false;
+    }
+
+    return true;
+  }, []);
+
+  const playRemotePreview = useCallback((streamArg = null) => {
+    const stream = streamArg || remoteStreamRef.current;
+
+    if (!stream) {
+      console.warn("[EnableX] ❌ No remote stream available");
+      return;
+    }
+
+    if (!isParticipantVideoStream(stream)) {
+      console.warn(
+        "[EnableX] ❌ Refusing to play non-camera stream:",
+        stream.getID?.()
+      );
+      return;
+    }
 
   const containerId = "remote_video_player";
   const container = document.getElementById(containerId);
@@ -639,34 +665,6 @@ const VideoCall = ({
         // In a 2-person call there should only ever be one remote stream.
         const subscribedStreamIds = new Set();
 
-        const isParticipantVideoStream = (stream) => {
-  if (!stream) return false;
-
-  const id = String(
-    typeof stream.getID === "function" ? stream.getID() : ""
-  );
-
-  // EnableX reserved streams
-  if (id === "101" || id === "102") {
-    return false;
-  }
-
-  // Never display screen-share/canvas as participant camera
-  if (typeof stream.ifScreen === "function" && stream.ifScreen()) {
-    return false;
-  }
-
-  // For video calls, make sure the stream actually has video
-  if (
-    callType === "video" &&
-    typeof stream.ifVideo === "function" &&
-    !stream.ifVideo()
-  ) {
-    return false;
-  }
-
-  return true;
-};
         const subscribeToRemoteStream = (stream) => {
           if (!stream || !activeRoom) return;
 
