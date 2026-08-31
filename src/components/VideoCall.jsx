@@ -200,18 +200,12 @@ const VideoCall = ({
     if (!container) return;
 
     try {
-      const nativeMediaStream =
-        stream.stream ||
-        stream.mediaStream ||
-        (typeof stream.getMediaStream === "function"
-          ? stream.getMediaStream()
-          : null);
-
       const streamId = (typeof stream.getID === "function" ? stream.getID() : "local") || "local";
       const key = `${streamId}_${container.id}`;
 
       if (playedLocalContainerRef.current !== key) {
         playedLocalContainerRef.current = key;
+        container.innerHTML = "";
         if (typeof stream.play === "function") {
           stream.play(container.id, {
             player: {
@@ -226,33 +220,9 @@ const VideoCall = ({
               branding: { display: false },
             },
           });
+          console.log("[EnableX] Local video attached to", container.id);
         }
       }
-
-      const videoEls = container.querySelectorAll("video");
-      videoEls.forEach((v) => {
-        v.setAttribute("playsinline", "true");
-        v.setAttribute("webkit-playsinline", "true");
-        v.muted = true;
-        if (!v.srcObject && nativeMediaStream) {
-          v.srcObject = nativeMediaStream;
-        }
-        v.play().catch(() => {});
-      });
-
-      if (videoEls.length === 0 && nativeMediaStream && typeof nativeMediaStream.getTracks === "function") {
-        let videoEl = document.createElement("video");
-        videoEl.className = "w-full h-full object-cover scale-x-[-1]";
-        videoEl.autoplay = true;
-        videoEl.playsInline = true;
-        videoEl.setAttribute("playsinline", "true");
-        videoEl.setAttribute("webkit-playsinline", "true");
-        videoEl.muted = true;
-        videoEl.srcObject = nativeMediaStream;
-        container.appendChild(videoEl);
-        videoEl.play().catch(() => {});
-      }
-      console.log("[EnableX] Local video attached to", container.id);
     } catch (error) {
       console.error("[EnableX] Local video playback failed:", error);
     }
@@ -268,18 +238,12 @@ const VideoCall = ({
     if (!container) return;
 
     try {
-      const nativeMediaStream =
-        stream.stream ||
-        stream.mediaStream ||
-        (typeof stream.getMediaStream === "function"
-          ? stream.getMediaStream()
-          : null);
-
       const streamId = (typeof stream.getID === "function" ? stream.getID() : "remote") || "remote";
       const key = `${streamId}_${containerId}`;
 
       if (playedRemoteContainerRef.current !== key) {
         playedRemoteContainerRef.current = key;
+        container.innerHTML = "";
         if (typeof stream.play === "function") {
           stream.play(containerId, {
             player: {
@@ -293,37 +257,9 @@ const VideoCall = ({
               branding: { display: false },
             },
           });
+          console.log("[EnableX] Remote stream attached to", containerId);
         }
       }
-
-      const mediaEls = container.querySelectorAll("video, audio");
-      mediaEls.forEach((v) => {
-        v.setAttribute("playsinline", "true");
-        v.setAttribute("webkit-playsinline", "true");
-        v.muted = false;
-        if (!v.srcObject && nativeMediaStream) {
-          v.srcObject = nativeMediaStream;
-        }
-        v.play().catch((err) => {
-          console.warn("[EnableX] Remote autoplay waiting user interaction:", err);
-        });
-      });
-
-      if (mediaEls.length === 0 && nativeMediaStream && typeof nativeMediaStream.getTracks === "function") {
-        let mediaEl = document.createElement(callType === "video" ? "video" : "audio");
-        mediaEl.className = "w-full h-full object-cover";
-        mediaEl.autoplay = true;
-        mediaEl.playsInline = true;
-        mediaEl.setAttribute("playsinline", "true");
-        mediaEl.setAttribute("webkit-playsinline", "true");
-        mediaEl.muted = false;
-        mediaEl.srcObject = nativeMediaStream;
-        container.appendChild(mediaEl);
-        mediaEl.play().catch((err) => {
-          console.warn("[EnableX] Fallback remote media play:", err);
-        });
-      }
-      console.log("[EnableX] Remote media attached to", containerId);
     } catch (error) {
       console.error("[EnableX] Remote playback failed:", error);
     }
@@ -337,19 +273,10 @@ const VideoCall = ({
   }, [callStatus, playLocalPreview]);
 
   useEffect(() => {
-    if (!remoteStreamActive && callStatus !== "connected") return;
-    const t1 = setTimeout(playRemotePreview, 50);
-    const t2 = setTimeout(playRemotePreview, 250);
-    const t3 = setTimeout(playRemotePreview, 600);
-    const t4 = setTimeout(playRemotePreview, 1200);
-    const t5 = setTimeout(playRemotePreview, 2500);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(t4);
-      clearTimeout(t5);
-    };
+    if (remoteStreamActive || callStatus === "connected") {
+      const t = setTimeout(playRemotePreview, 50);
+      return () => clearTimeout(t);
+    }
   }, [remoteStreamActive, callStatus, playRemotePreview]);
 
   // ─── EnableX SDK Initialization ─────────────────────────
