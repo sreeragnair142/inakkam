@@ -52,7 +52,6 @@ const VideoCall = ({
   const remoteStreamRef = useRef(null);
   const playedLocalContainerRef = useRef("");
   const playedRemoteContainerRef = useRef("");
-  const remotePlayerStreamIdRef = useRef("");
   const isDisconnectedRef = useRef(false);
   const isMountedRef = useRef(true);
 
@@ -74,23 +73,6 @@ const VideoCall = ({
   useEffect(() => {
     currentUserNameRef.current = currentUser?.name || "Inakkam User";
   }, [currentUser?.name]);
-
-  const clearRemotePreview = useCallback(() => {
-    const container = document.getElementById("remote_video_player");
-
-    if (remoteStreamRef.current && typeof remoteStreamRef.current.stop === "function") {
-      try {
-        remoteStreamRef.current.stop();
-      } catch (error) {
-        console.warn("[EnableX] Remote stream stop failed:", error);
-      }
-    }
-
-    if (container) container.innerHTML = "";
-
-    playedRemoteContainerRef.current = "";
-    remotePlayerStreamIdRef.current = "";
-  }, []);
 
   // ─── Format call duration ───────────────────────────────
   const formatTime = (secs) => {
@@ -149,8 +131,6 @@ const VideoCall = ({
       }
     }
 
-    clearRemotePreview();
-
     const localStream = localStreamRef.current;
     localStreamRef.current = null;
     remoteStreamRef.current = null;
@@ -181,7 +161,7 @@ const VideoCall = ({
     if (onEndCallRef.current) {
       setTimeout(() => onEndCallRef.current(), 50);
     }
-  }, [roomId, targetUid, clearRemotePreview]);
+  }, [roomId, targetUid]);
 
   const handleDisconnect = useCallback(() => {
     finishCall({ notifyRemote: true });
@@ -351,59 +331,59 @@ const VideoCall = ({
         : ""
     );
 
-    if (localId && id === localId) return false;
-    if (id === "101" || id === "102") return false;
-    if (typeof stream.ifScreen === "function" && stream.ifScreen()) return false;
-    if (callType === "video" && typeof stream.ifVideo === "function" && !stream.ifVideo()) {
+    // Never treat our own local stream as remote
+    if (localId && id === localId) {
       return false;
     }
 
-    // Prefer the stream that belongs to the expected remote participant.
-    // EnableX exposes the publisher's custom attributes on remote streams.
-    if (remoteUserName && typeof stream.getAttributes === "function") {
-      const attrs = stream.getAttributes() || {};
-      const streamName = String(attrs.name || "").trim().toLowerCase();
-      const expectedName = String(remoteUserName || "").trim().toLowerCase();
-      if (streamName && expectedName && streamName !== expectedName) return false;
+    // Never display screen-share as participant camera if screen-share is active
+    if (typeof stream.ifScreen === "function" && stream.ifScreen()) {
+      return false;
     }
 
     return true;
-  }, [callType, remoteUserName]);
+  }, []);
 
   const playRemotePreview = useCallback((streamArg = null) => {
     const stream = streamArg || remoteStreamRef.current;
 
-    if (!stream || !isParticipantVideoStream(stream)) {
-      if (!stream) console.warn("[EnableX] ❌ No remote video stream available");
-      return false;
+    if (!stream) {
+      console.warn("[EnableX] ❌ No remote stream available");
+      return;
     }
 
-    const containerId = "remote_video_player";
-    const container = document.getElementById(containerId);
-    if (!container) {
-      console.warn("[EnableX] ❌ remote_video_player not found in DOM");
-      return false;
+    if (!isParticipantVideoStream(stream)) {
+      console.warn(
+        "[EnableX] ❌ Refusing to play non-camera stream:",
+        stream.getID?.()
+      );
+      return;
     }
 
-    const streamId = typeof stream.getID === "function" ? String(stream.getID()) : "remote";
-    const playerKey = `${streamId}_${containerId}`;
+  const containerId = "remote_video_player";
+  const container = document.getElementById(containerId);
 
-    // Prevent duplicate EnableX players in the same container.
-    if (remotePlayerStreamIdRef.current === playerKey) return true;
+  if (!container) {
+    console.warn(
+      "[EnableX] ❌ remote_video_player not found in DOM"
+    );
+    return;
+  }
 
-    try {
-      container.innerHTML = "";
-      remotePlayerStreamIdRef.current = playerKey;
-      playedRemoteContainerRef.current = "";
+  const streamId =
+    typeof stream.getID === "function"
+      ? String(stream.getID())
+      : "remote";
 
-      if (typeof stream.play !== "function") {
-        console.error("[EnableX] ❌ Remote stream.play() is unavailable:", streamId);
-        remotePlayerStreamIdRef.current = "";
-        return false;
-      }
+  console.log(
+    "[EnableX] 🎬 PLAYING PARTICIPANT VIDEO:",
+    streamId
+  );
 
-      console.log("[EnableX] 🎬 PLAYING PARTICIPANT VIDEO:", streamId);
+  try {
+    playedRemoteContainerRef.current = "";
 
+    if (typeof stream.play === "function") {
       stream.play(containerId, {
         player: {
           width: "100%",
@@ -415,40 +395,27 @@ const VideoCall = ({
         },
         toolbar: {
           displayMode: false,
-          branding: { display: false },
+          branding: {
+            display: false,
+          },
         },
       });
 
-      playedRemoteContainerRef.current = playerKey;
-      console.log("[EnableX] ✅ Participant video attached:", streamId);
+      playedRemoteContainerRef.current =
+        `${streamId}_${containerId}`;
 
-      const fixPlayer = () => {
-        const mediaEls = container.querySelectorAll("video, audio");
-        mediaEls.forEach((el) => {
-          el.autoplay = true;
-          el.playsInline = true;
-          el.setAttribute("playsinline", "true");
-          el.setAttribute("webkit-playsinline", "true");
-          el.play?.().catch(() => {});
-        });
-      };
-
-      setTimeout(fixPlayer, 50);
-      setTimeout(fixPlayer, 250);
-      setTimeout(fixPlayer, 750);
-
-      if (window.EnxRtc?.adjustLayout) {
-        try { window.EnxRtc.adjustLayout(() => {}, () => {}); } catch (_) {}
-      }
-
-      return true;
-    } catch (error) {
-      remotePlayerStreamIdRef.current = "";
-      playedRemoteContainerRef.current = "";
-      console.error("[EnableX] ❌ Remote video play failed:", error);
-      return false;
+      console.log(
+        "[EnableX] ✅ Participant video attached:",
+        streamId
+      );
     }
-  }, [isParticipantVideoStream]);
+  } catch (error) {
+    console.error(
+      "[EnableX] ❌ Remote video play failed:",
+      error
+    );
+  }
+}, [callType]);
 
   useEffect(() => {
     if (callStatus === "connecting" || callStatus === "connected") {
@@ -456,6 +423,13 @@ const VideoCall = ({
       return () => clearTimeout(id);
     }
   }, [callStatus, playLocalPreview]);
+
+  useEffect(() => {
+    if (remoteStreamActive || callStatus === "connected") {
+      const t = setTimeout(playRemotePreview, 50);
+      return () => clearTimeout(t);
+    }
+  }, [remoteStreamActive, callStatus, playRemotePreview]);
 
   // ─── EnableX SDK Initialization ─────────────────────────
   useEffect(() => {
@@ -701,14 +675,8 @@ const VideoCall = ({
               ? String(activeLocalStream.getID())
               : null;
 
-          // Skip own stream.
+          // Skip own stream
           if (localId && remoteId && localId === remoteId) return;
-
-          // Subscribe only to real participant camera streams in a video call.
-          if (callType === "video" && !isParticipantVideoStream(stream)) {
-            console.log("[EnableX] ⏭️ Ignoring non-video remote stream:", remoteId);
-            return;
-          }
 
           // Skip already-subscribed streams
           if (remoteId && subscribedStreamIds.has(remoteId)) {
@@ -839,39 +807,162 @@ const VideoCall = ({
             remoteDisconnectTimerRef.current = null;
           }
 
-          // Only render a real participant camera stream.
-          if (!isParticipantVideoStream(remoteStream)) {
-            console.log("[EnableX] ⏭️ Ignoring non-camera remote stream:", remoteId);
-            return;
-          }
+         // Only use an actual participant camera stream.
+// Do NOT allow screen-share (101), canvas (102),
+// audio-only or dummy streams to replace the camera.
+if (!isParticipantVideoStream(remoteStream)) {
+  console.log(
+    "[EnableX] ⏭️ Ignoring non-camera remote stream:",
+    remoteId
+  );
+  return;
+}
 
-          // This component is a 1-to-1 call. Once the expected participant
-          // camera is selected, ignore additional/stale remote streams.
-          if (remoteStreamRef.current && remoteStreamRef.current !== remoteStream) {
-            const currentId = remoteStreamRef.current.getID?.();
-            console.log("[EnableX] ⏭️ Keeping existing participant stream:", currentId);
-            return;
-          }
+console.log(
+  "[EnableX] 🎥 PARTICIPANT CAMERA STREAM READY:",
+  remoteId
+);
 
-          console.log("[EnableX] 🎥 PARTICIPANT CAMERA STREAM READY:", remoteId);
-          remoteStreamRef.current = remoteStream;
+remoteStreamRef.current = remoteStream;
 
-          if (isMountedRef.current) {
-            setRemoteStreamActive(true);
-            setCallStatus("connected");
-          }
+if (isMountedRef.current) {
+  setRemoteStreamActive(true);
+  setCallStatus("connected");
+}
 
-          setTimeout(() => playRemotePreview(remoteStream), 100);
+playedRemoteContainerRef.current = "";
+
+setTimeout(() => playRemotePreview(remoteStream), 50);
+setTimeout(() => playRemotePreview(remoteStream), 300);
+setTimeout(() => playRemotePreview(remoteStream), 1000);
         });
 
         // --------------------------------------------------
-        // Active talkers
-        // This is a 1-to-1 call. Do not repeatedly replace the main player
-        // from active-talkers-updated; stream-subscribed owns the video.
-        activeRoom.addEventListener("active-talkers-updated", (event) => {
-          const activeList = event?.message?.activeList || event?.activeList || [];
-          console.log("[EnableX] 🗣️ ACTIVE TALKERS UPDATED:", activeList);
-        });
+        // Active talkers updated (EnableX Group Mode)
+        // --------------------------------------------------
+        activeRoom.addEventListener(
+  "active-talkers-updated",
+  (event) => {
+    console.log(
+      "[EnableX] 🗣️ ACTIVE TALKERS UPDATED:",
+      event
+    );
+
+    const activeList =
+      event?.message?.activeList ||
+      event?.activeList ||
+      [];
+
+    if (!Array.isArray(activeList)) return;
+
+    console.log(
+      "[EnableX] Active talkers:",
+      activeList
+    );
+
+    const localId =
+      activeLocalStream?.getID?.() != null
+        ? String(activeLocalStream.getID())
+        : null;
+
+    // Find an actual participant video
+    const videoTalker = activeList.find((item) => {
+      const streamId = String(
+        item?.streamId ?? item?.id ?? ""
+      );
+
+      if (!streamId) return false;
+
+      // Never choose screen share / canvas
+      if (streamId === "101" || streamId === "102") {
+        return false;
+      }
+
+      // Never choose our own stream
+      if (localId && streamId === localId) {
+        return false;
+      }
+
+      // For video calls, prefer actual audio+video talkers
+      if (
+        callType === "video" &&
+        item?.mediatype &&
+        item.mediatype !== "audiovideo"
+      ) {
+        return false;
+      }
+
+      // Camera must not be muted
+      if (
+        callType === "video" &&
+        item?.videomuted === true
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+
+    if (!videoTalker) {
+      console.log(
+        "[EnableX] No active participant video found"
+      );
+      return;
+    }
+
+    const streamId = String(videoTalker.streamId);
+
+    let stream = null;
+
+    if (activeRoom.remoteStreams) {
+      if (typeof activeRoom.remoteStreams.get === "function") {
+        stream =
+          activeRoom.remoteStreams.get(
+            videoTalker.streamId
+          ) ||
+          activeRoom.remoteStreams.get(streamId);
+      }
+
+      if (!stream) {
+        stream =
+          activeRoom.remoteStreams[videoTalker.streamId] ||
+          activeRoom.remoteStreams[streamId];
+      }
+    }
+
+    if (!stream) {
+      console.warn(
+        "[EnableX] ❌ Active talker stream not found:",
+        streamId
+      );
+      return;
+    }
+
+    if (!isParticipantVideoStream(stream)) {
+      console.warn(
+        "[EnableX] ❌ Active stream is not participant video:",
+        streamId
+      );
+      return;
+    }
+
+    console.log(
+      "[EnableX] 🎥 Active participant video:",
+      streamId,
+      videoTalker
+    );
+
+    remoteStreamRef.current = stream;
+
+    if (isMountedRef.current) {
+      setRemoteStreamActive(true);
+    }
+
+    setTimeout(() => {
+      playRemotePreview(stream);
+    }, 50);
+  }
+);
 
         // --------------------------------------------------
         // 11. Remote user disconnected
@@ -884,8 +975,6 @@ const VideoCall = ({
           }
 
           if (isMountedRef.current && !isDisconnectedRef.current) {
-            clearRemotePreview();
-            remoteStreamRef.current = null;
             setRemoteStreamActive(false);
             toast("Connection interrupted. Reconnecting...", {
               icon: "📞",
@@ -1361,8 +1450,6 @@ const VideoCall = ({
         roomRef.current = null;
       }
 
-      clearRemotePreview();
-
       if (
         localStreamRef.current ===
         activeLocalStream
@@ -1374,7 +1461,7 @@ const VideoCall = ({
         socket.off("call_ended", handleRemoteCallEnded);
       }
     };
-  }, [roomId, callType, isCaller, handleDisconnect, finishCall, reconnectKey, clearRemotePreview]);
+  }, [roomId, callType, isCaller, handleDisconnect, finishCall, reconnectKey]);
 
   // ─── Toggle Mic ──────────────────────────────────────────
   const toggleMic = () => {
@@ -1679,7 +1766,7 @@ const VideoCall = ({
               {/* EnableX Remote Video Container — fullscreen */}
               <div
   id="remote_video_player"
-  className="absolute inset-0 w-full h-full overflow-hidden bg-black z-0 [&_*]:!w-full [&_*]:!h-full [&_video]:!absolute [&_video]:!inset-0 [&_video]:!object-cover"
+  className="absolute inset-0 w-full h-full overflow-hidden bg-black z-0"
 />
 
               {/* Waiting for remote placeholder */}
