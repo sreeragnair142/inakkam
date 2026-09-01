@@ -703,11 +703,32 @@ const VideoCall = ({
           console.log("[EnableX] 📹 Subscribing to remote stream:", remoteId);
 
           try {
+            const hasRemoteAudio =
+              typeof stream.ifAudio === "function" ? stream.ifAudio() : true;
+
+            const hasRemoteVideo =
+              typeof stream.ifVideo === "function"
+                ? stream.ifVideo()
+                : callType === "video";
+
+            const subscribeOptions = {
+              audio: hasRemoteAudio,
+              video: hasRemoteVideo,
+              data: true,
+            };
+
+            console.log("[EnableX] 🎧 Remote stream capabilities:", {
+              streamId: remoteId,
+              callType,
+              hasRemoteAudio,
+              hasRemoteVideo,
+              subscribeOptions,
+            });
+
             activeRoom.subscribe(
               stream,
-              { audio: true, video: callType === "video", data: true },
+              subscribeOptions,
               (response) => {
-                // EnableX v3 SDK may return true/false or {result:0}
                 const failed =
                   response === false ||
                   (response &&
@@ -716,19 +737,24 @@ const VideoCall = ({
                     response.result !== 0);
 
                 if (failed) {
-                  console.error("[EnableX] Subscribe failed:", response);
+                  console.error(
+                    "[EnableX] ❌ Subscribe failed:",
+                    response,
+                    subscribeOptions,
+                  );
                   if (remoteId) subscribedStreamIds.delete(remoteId);
                   return;
                 }
 
-                console.log("[EnableX] Subscribe acknowledged:", response);
-                // NOTE: Do NOT call stream.play() here.
-                // Wait for the 'stream-subscribed' event which fires when
-                // media is fully negotiated and ready to render.
+                console.log(
+                  "[EnableX] ✅ Remote stream subscription acknowledged:",
+                  remoteId,
+                  subscribeOptions,
+                );
               },
             );
           } catch (error) {
-            console.error("[EnableX] Remote subscribe exception:", error);
+            console.error("[EnableX] ❌ Remote subscribe exception:", error);
             if (remoteId) subscribedStreamIds.delete(remoteId);
           }
         };
@@ -821,79 +847,91 @@ const VideoCall = ({
             remoteDisconnectTimerRef.current = null;
           }
 
-          // ── For VOICE CALLS: play audio-only remote stream ──────────────
-          // ── VOICE CALL: attach and force remote audio playback ─────────
+          // ── For VOICE CALLS: attach and force remote audio playback ───
           if (callType === "audio") {
             const audioContainerId = "remote_audio_player";
             const audioContainer = document.getElementById(audioContainerId);
 
             remoteStreamRef.current = remoteStream;
 
-            if (audioContainer && typeof remoteStream.play === "function") {
+            console.log("[EnableX] 🎧 VOICE STREAM SUBSCRIBED:", {
+              streamId: remoteId,
+              hasAudio:
+                typeof remoteStream.ifAudio === "function"
+                  ? remoteStream.ifAudio()
+                  : "unknown",
+              hasVideo:
+                typeof remoteStream.ifVideo === "function"
+                  ? remoteStream.ifVideo()
+                  : "unknown",
+            });
+
+            if (!audioContainer) {
+              console.error("[EnableX] ❌ remote_audio_player not found");
+            } else if (typeof remoteStream.play === "function") {
               try {
                 remoteStream.play(audioContainerId, {
                   player: {
                     autoplay: true,
                     muted: false,
+                    playsinline: true,
                   },
                   toolbar: {
                     displayMode: false,
-                    branding: {
-                      display: false,
-                    },
+                    branding: { display: false },
                   },
                 });
 
                 console.log(
-                  "[EnableX] 🔊 Remote AUDIO play requested:",
+                  "[EnableX] 🔊 Remote voice stream.play() called:",
                   remoteId,
                 );
 
-                // EnableX creates the <audio> element asynchronously.
-                // Try again after it has been inserted into the DOM.
-                setTimeout(() => {
-                  const container = document.getElementById(audioContainerId);
-
+                // EnableX creates the media element asynchronously.
+                const forceAudioPlayback = () => {
+                  const container =
+                    document.getElementById(audioContainerId);
                   if (!container) return;
 
-                  const audioElements = container.querySelectorAll("audio");
+                  const mediaElements =
+                    container.querySelectorAll("audio, video");
 
-                  audioElements.forEach((audio) => {
-                    audio.autoplay = true;
-                    audio.muted = false;
-                    audio.volume = 1;
-                    audio.setAttribute("autoplay", "true");
+                  console.log(
+                    "[EnableX] 🔊 Media elements found:",
+                    mediaElements.length,
+                  );
 
-                    audio
+                  mediaElements.forEach((media) => {
+                    media.autoplay = true;
+                    media.muted = false;
+                    media.volume = 1;
+                    if ("playsInline" in media) media.playsInline = true;
+
+                    media
                       .play()
                       .then(() => {
                         console.log(
-                          "[EnableX] 🔊 Remote audio playback started",
+                          "[EnableX] ✅ Remote voice playback started",
                         );
                       })
-                      .catch((err) => {
+                      .catch((error) => {
                         console.warn(
-                          "[EnableX] ⚠️ Audio autoplay blocked:",
-                          err,
+                          "[EnableX] ⚠️ Remote playback blocked:",
+                          error,
                         );
                       });
                   });
-                }, 300);
+                };
 
-                // Second retry
-                setTimeout(() => {
-                  const container = document.getElementById(audioContainerId);
-
-                  if (!container) return;
-
-                  container.querySelectorAll("audio").forEach((audio) => {
-                    audio.muted = false;
-                    audio.volume = 1;
-                    audio.play().catch(() => {});
-                  });
-                }, 1000);
+                setTimeout(forceAudioPlayback, 100);
+                setTimeout(forceAudioPlayback, 500);
+                setTimeout(forceAudioPlayback, 1000);
+                setTimeout(forceAudioPlayback, 2000);
               } catch (error) {
-                console.error("[EnableX] ❌ Remote audio play failed:", error);
+                console.error(
+                  "[EnableX] ❌ Remote voice play failed:",
+                  error,
+                );
               }
             }
 
@@ -1628,8 +1666,6 @@ const VideoCall = ({
 
   return (
     <div
-      onClick={handleUnlockAudio}
-      onTouchStart={handleUnlockAudio}
       className="fixed inset-0 z-[1000] flex bg-[#0A0A0A] text-white overflow-hidden font-sans select-none"
     >
       {/* Radial glow backgrounds */}
@@ -1789,18 +1825,13 @@ const VideoCall = ({
                   autoplay on some browsers/mobile. Position it far off-screen
                   so it's invisible but still "rendered" by the browser. */}
               <div
-  id="remote_audio_player"
-  className="pointer-events-none"
-  style={{
-    position: "absolute",
-    left: "-9999px",
-    top: "-9999px",
-    width: "1px",
-    height: "1px",
-    overflow: "hidden",
-    opacity: 0,
-  }}
-/>
+                id="remote_audio_player"
+                className="absolute left-0 top-0 w-1 h-1 overflow-hidden pointer-events-none"
+                style={{
+                  opacity: 0.01,
+                }}
+              />
+
 
 <button
   type="button"
