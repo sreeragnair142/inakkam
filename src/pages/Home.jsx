@@ -7,6 +7,7 @@ import { selectUser } from '../redux/slices/userSlice';
 import { createNewChat } from '../redux/slices/chatSlice';
 import api from '../utils/api';
 import { VerificationBadge } from '../components/VerificationStatus';
+import HostProgramModal from '../components/HostProgramModal';
 import {
   Flame,
   MapPin,
@@ -22,7 +23,8 @@ import {
   Users,
   MessageSquare,
   Phone,
-  Video
+  Video,
+  Headphones
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import coupleImg from '../assets/couple.jpg';
@@ -36,6 +38,10 @@ const Home = () => {
   const { status: verificationStatus } = useSelector((s) => s.verification);
   const [agents, setAgents] = useState([]);
   const [loadingAgents, setLoadingAgents] = useState(true);
+
+  // Host Program Modal state
+  const [showHostModal, setShowHostModal] = useState(false);
+  const [hostModalTab, setHostModalTab] = useState('overview');
 
   useEffect(() => {
     const loadAgents = async () => {
@@ -154,19 +160,33 @@ const Home = () => {
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-0.5">
-                    <p className="text-sm font-black text-white">Become a Verified Customer</p>
+                    <p className="text-sm font-black text-white">Become a Verified Host / Customer</p>
                     <VerificationBadge status={verificationStatus} />
                   </div>
-                  <p className="text-xs text-white/40">
-                    {verificationStatus === 'NOT_VERIFIED' ? 'Complete KYC to earn money through chat and unlock paid features.' : 'Your verification is being reviewed. We\'ll notify you within 24–48 hours.'}
+                  <p className="text-xs text-white/50">
+                    {verificationStatus === 'NOT_VERIFIED' 
+                      ? 'Earn up to ₹60,000/mo chatting & calling with genuine members. Weekly payouts to Bank/UPI.' 
+                      : 'Your verification is being reviewed by our host onboarding team. We\'ll notify you within 24–48 hours.'}
                   </p>
                 </div>
               </div>
+              
               {verificationStatus === 'NOT_VERIFIED' && (
-                <button onClick={() => navigate('/kyc-verification')}
-                  className="px-6 py-3 rounded-2xl bg-gradient-to-r from-[#D51659] to-[#b44ddc] text-white text-xs font-bold whitespace-nowrap hover:opacity-90 transition-opacity cursor-pointer shadow-[0_4px_20px_rgba(213,22,89,0.3)] flex items-center gap-2 shrink-0">
-                  <ShieldCheck className="w-3.5 h-3.5" /> Get Verified
-                </button>
+                <div className="flex items-center gap-2.5 shrink-0 w-full sm:w-auto">
+                  <button
+                    onClick={() => { setHostModalTab('overview'); setShowHostModal(true); }}
+                    className="flex-1 sm:flex-none px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 text-white text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" /> Host Perks
+                  </button>
+
+                  <button 
+                    onClick={() => navigate('/kyc-verification')}
+                    className="flex-1 sm:flex-none px-5 py-2.5 rounded-2xl bg-gradient-to-r from-[#D51659] to-[#b44ddc] text-white text-xs font-bold whitespace-nowrap hover:opacity-90 transition-opacity cursor-pointer shadow-[0_4px_20px_rgba(213,22,89,0.3)] flex items-center justify-center gap-2"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" /> Get Verified
+                  </button>
+                </div>
               )}
             </div>
           </section>
@@ -634,6 +654,13 @@ const Home = () => {
           </div>
         </div>
       </footer>
+
+      {/* Host Program Modal */}
+      <HostProgramModal
+        isOpen={showHostModal}
+        onClose={() => setShowHostModal(false)}
+        initialTab={hostModalTab}
+      />
 
     </div>
   );

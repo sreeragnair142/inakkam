@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, ChevronLeft, ChevronRight, ShieldCheck, Loader2, ArrowLeft } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight, ShieldCheck, Loader2, ArrowLeft, Headphones } from 'lucide-react';
 import { submitVerification, resetSubmitSuccess } from '../../redux/slices/verificationSlice';
 import { updateProfile } from '../../redux/slices/authSlice';
+import HostProgramModal from '../../components/HostProgramModal';
 import Step1Personal from './Step1Personal';
 import Step2Aadhaar from './Step2Aadhaar';
 import Step3PAN from './Step3PAN';
@@ -82,6 +83,7 @@ const KYCVerification = () => {
 
   const [step, setStep]       = useState(1);
   const [confirmed, setConf]  = useState(false);
+  const [showHostModal, setShowHostModal] = useState(false);
   const [personal, setPersonal] = useState({ ...initPersonal, email: authUser?.email || '', phone: authUser?.phone || '', fullName: authUser?.name || '' });
   const [aadhaar,  setAadhaar]  = useState(initAadhaar);
   const [pan,      setPan]      = useState(initPAN);
@@ -172,6 +174,18 @@ const KYCVerification = () => {
                   </div>
                 );
               })}
+            </div>
+
+            {/* Staff Assistance Helper */}
+            <div className="mt-8 pt-4 border-t border-white/10 flex items-center justify-between">
+              <span className="text-[11px] text-white/50">Need help or have questions?</span>
+              <button 
+                type="button"
+                onClick={() => setShowHostModal(true)} 
+                className="text-xs text-amber-300 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <Headphones className="w-3.5 h-3.5" /> Inquire with Staff
+              </button>
             </div>
           </div>
           
@@ -286,10 +300,28 @@ const KYCVerification = () => {
                 </button>
               )}
             </div>
+
+            {/* Mobile Inquire Helper */}
+            <div className="lg:hidden mt-3 text-center">
+              <button 
+                type="button"
+                onClick={() => setShowHostModal(true)} 
+                className="text-[11px] text-white/50 hover:text-amber-300 transition-colors font-medium inline-flex items-center gap-1 cursor-pointer"
+              >
+                <Headphones className="w-3 h-3 text-amber-300" /> Have questions? Inquire with our staff team
+              </button>
+            </div>
           </div>
           
         </div>
       </div>
+
+      {/* Host Program Inquiry Modal */}
+      <HostProgramModal
+        isOpen={showHostModal}
+        onClose={() => setShowHostModal(false)}
+        initialTab="inquiry"
+      />
     </div>
   );
 };

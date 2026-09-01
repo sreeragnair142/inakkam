@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import api from '../utils/api';
 import { fetchMe } from '../redux/slices/authSlice';
 import toast from 'react-hot-toast';
+import HostProgramModal from '../components/HostProgramModal';
 
 const Wallet = () => {
   const dispatch = useDispatch();
@@ -13,6 +14,10 @@ const Wallet = () => {
   const currentUser = useSelector((state) => state.auth.user);
 
   const isStaff = currentUser?.isStaff || currentUser?.isEliteAgent || currentUser?.role === 'staff';
+
+  // Host Program Modal state
+  const [showHostModal, setShowHostModal] = useState(false);
+  const [hostModalTab, setHostModalTab] = useState('overview');
 
   // Local state for staff dashboard & payout
   const [payoutSummary, setPayoutSummary] = useState(null);
@@ -372,10 +377,55 @@ const Wallet = () => {
               </div>
             </div>
 
+            {/* 🌟 BECOME A VERIFIED HOST & EARN MONEY BANNER 🌟 */}
+            <div className="rounded-[2.5rem] bg-gradient-to-br from-[#1b0a26] via-[#100317] to-[#250920] border border-purple-500/20 text-white p-6 md:p-8 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-72 h-72 bg-[#D51659]/20 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute bottom-0 left-0 w-72 h-72 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+                <div className="space-y-2 max-w-xl">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-[#D51659]/20 to-[#b44ddc]/20 border border-purple-500/30 text-purple-300 text-xs font-black uppercase tracking-wider">
+                    <Sparkles className="w-3.5 h-3.5 text-[#D51659]" /> Host & Creator Program
+                  </div>
+                  <h3 className="text-2xl md:text-3xl font-black text-white leading-tight">
+                    Want to Earn Money on Inakkam?
+                  </h3>
+                  <p className="text-xs md:text-sm text-white/70 leading-relaxed font-medium">
+                    Become a Verified Host and earn up to <strong className="text-emerald-400">₹25,000 – ₹60,000/month</strong> by talking and connecting with genuine members. Enjoy flexible hours and weekly payouts to your Bank / UPI!
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row lg:flex-col gap-3 w-full lg:w-auto shrink-0">
+                  <button
+                    onClick={() => { setHostModalTab('overview'); setShowHostModal(true); }}
+                    className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#D51659] via-purple-600 to-[#b44ddc] text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-[#D51659]/30 hover:scale-105 transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Become a Host</span>
+                  </button>
+
+                  <button
+                    onClick={() => { setHostModalTab('inquiry'); setShowHostModal(true); }}
+                    className="px-6 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 text-white font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <span>Inquire with Staff</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
           </div>
         )}
 
       </div>
+      
+      {/* Host Program / Earn Money & Staff Inquiry Modal */}
+      <HostProgramModal
+        isOpen={showHostModal}
+        onClose={() => setShowHostModal(false)}
+        initialTab={hostModalTab}
+      />
     </div>
   );
 };

@@ -5,6 +5,7 @@ import { setTheme } from '../redux/slices/themeSlice';
 import { fetchVerificationStatus } from '../redux/slices/verificationSlice';
 import { logout } from '../redux/slices/authSlice';
 import { VerificationCard } from '../components/VerificationStatus';
+import HostProgramModal from '../components/HostProgramModal';
 import toast from 'react-hot-toast';
 import { 
   Palette, 
@@ -16,7 +17,8 @@ import {
   Smartphone, 
   Globe,
   ShieldCheck,
-  LogOut
+  LogOut,
+  Sparkles
 } from 'lucide-react';
 
 const Settings = () => {
@@ -24,6 +26,10 @@ const Settings = () => {
   const navigate = useNavigate();
   const themeMode = useSelector((state) => state.theme.mode);
   const { status: verificationStatus } = useSelector((state) => state.verification);
+
+  // Host Program Modal state
+  const [showHostModal, setShowHostModal] = useState(false);
+  const [hostModalTab, setHostModalTab] = useState('overview');
 
   useEffect(() => {
     dispatch(fetchVerificationStatus());
@@ -82,10 +88,21 @@ const Settings = () => {
         </p>
         <VerificationCard status={verificationStatus} />
         {verificationStatus === 'NOT_VERIFIED' && (
-          <button onClick={() => navigate('/kyc-verification')}
-            className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#D51659] to-[#b44ddc] text-white text-sm font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity cursor-pointer shadow-[0_4px_20px_rgba(213,22,89,0.25)]">
-            <ShieldCheck className="w-4 h-4" /> Become a Verified Customer
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3 pt-1">
+            <button 
+              onClick={() => navigate('/kyc-verification')}
+              className="flex-[2] py-3.5 rounded-2xl bg-gradient-to-r from-[#D51659] to-[#b44ddc] text-white text-sm font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity cursor-pointer shadow-[0_4px_20px_rgba(213,22,89,0.25)]"
+            >
+              <ShieldCheck className="w-4 h-4" /> Become a Verified Host
+            </button>
+
+            <button
+              onClick={() => { setHostModalTab('inquiry'); setShowHostModal(true); }}
+              className="flex-1 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 text-white text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" /> Inquire with Staff
+            </button>
+          </div>
         )}
       </div>
 
@@ -256,6 +273,12 @@ const Settings = () => {
         </div>
       </div>
 
+      {/* Host Program Modal */}
+      <HostProgramModal
+        isOpen={showHostModal}
+        onClose={() => setShowHostModal(false)}
+        initialTab={hostModalTab}
+      />
     </div>
   );
 };

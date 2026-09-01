@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { VerificationCard } from '../components/VerificationStatus';
+import HostProgramModal from '../components/HostProgramModal';
 import { fetchVerificationStatus } from '../redux/slices/verificationSlice';
 import { uploadUserPhoto, updateUserProfile, logout } from '../redux/slices/authSlice';
 import toast from 'react-hot-toast';
@@ -24,6 +25,8 @@ const Profile = () => {
   const [viewSelf, setViewSelf] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showHostModal, setShowHostModal] = useState(false);
+  const [hostModalTab, setHostModalTab] = useState('overview');
   const [editForm, setEditForm] = useState({});
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef(null);
@@ -511,10 +514,21 @@ const Profile = () => {
                         </div>
                       ))}
                     </div>
-                    <button onClick={() => navigate('/kyc-verification')}
-                      className="mt-6 w-full py-4 rounded-2xl bg-gradient-to-r from-[#D51659] to-[#b44ddc] text-white font-bold text-sm hover:opacity-90 transition-opacity cursor-pointer shadow-[0_4px_20px_rgba(213,22,89,0.3)] flex items-center justify-center gap-2">
-                      <ShieldCheck className="w-4 h-4" /> Become a Verified Customer
-                    </button>
+                    <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                      <button 
+                        onClick={() => navigate('/kyc-verification')}
+                        className="flex-[2] py-4 rounded-2xl bg-gradient-to-r from-[#D51659] to-[#b44ddc] text-white font-bold text-sm hover:opacity-90 transition-opacity cursor-pointer shadow-[0_4px_20px_rgba(213,22,89,0.3)] flex items-center justify-center gap-2"
+                      >
+                        <ShieldCheck className="w-4 h-4" /> Become a Verified Host
+                      </button>
+
+                      <button
+                        onClick={() => { setHostModalTab('inquiry'); setShowHostModal(true); }}
+                        className="flex-1 py-4 rounded-2xl bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-colors cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        <Sparkles className="w-4 h-4 text-amber-300" /> Inquire with Staff
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -739,6 +753,13 @@ const Profile = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Host Program Modal */}
+      <HostProgramModal
+        isOpen={showHostModal}
+        onClose={() => setShowHostModal(false)}
+        initialTab={hostModalTab}
+      />
     </div>
   );
 };
