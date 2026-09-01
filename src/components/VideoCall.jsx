@@ -583,20 +583,24 @@ const VideoCall = ({
           toast("No camera found. Starting call with audio only.", { icon: "🎙️" });
         }
 
-        const streamOptions = {
-          audio: true,
-          video: callType === "video" && hasCamera,
-          data: true,
-
-          audioMuted: false,
-          videoMuted: callType !== "video" || !hasCamera,
-
-          videoSize: [320, 180, 1280, 720],
-
-          attributes: {
-            name: currentUserNameRef.current,
-          },
-        };
+        const streamOptions = callType === "audio"
+          ? {
+              audio: true,
+              video: false,
+              data: true,
+              audioMuted: false,
+              videoMuted: true,
+              attributes: { name: currentUserNameRef.current },
+            }
+          : {
+              audio: true,
+              video: hasCamera,
+              data: true,
+              audioMuted: false,
+              videoMuted: !hasCamera,
+              maxVideoLayers: 1,
+              attributes: { name: currentUserNameRef.current },
+            };
 
         console.log("[EnableX] Creating local stream:", streamOptions);
 
@@ -807,34 +811,59 @@ const VideoCall = ({
             remoteDisconnectTimerRef.current = null;
           }
 
-         // Only use an actual participant camera stream.
-// Do NOT allow screen-share (101), canvas (102),
-// audio-only or dummy streams to replace the camera.
-if (!isParticipantVideoStream(remoteStream)) {
-  console.log(
-    "[EnableX] ⏭️ Ignoring non-camera remote stream:",
-    remoteId
-  );
-  return;
-}
+         // ── For VOICE CALLS: play audio-only remote stream ──────────────
+         if (callType === "audio") {
+           const audioContainerId = "remote_audio_player";
+           const audioContainer = document.getElementById(audioContainerId);
+           if (audioContainer && typeof remoteStream.play === "function") {
+             try {
+               remoteStream.play(audioContainerId, {
+                 player: { autoplay: true, muted: false },
+                 toolbar: { displayMode: false, branding: { display: false } },
+               });
+               console.log("[EnableX] 🔊 Remote AUDIO stream attached:", remoteId);
+             } catch (e) {
+               console.error("[EnableX] ❌ Remote audio play failed:", e);
+             }
+           }
+           remoteStreamRef.current = remoteStream;
+           if (isMountedRef.current) {
+             setRemoteStreamActive(true);
+             setCallStatus("connected");
+           }
+           if (remoteDisconnectTimerRef.current) {
+             clearTimeout(remoteDisconnectTimerRef.current);
+             remoteDisconnectTimerRef.current = null;
+           }
+           return;
+         }
 
-console.log(
-  "[EnableX] 🎥 PARTICIPANT CAMERA STREAM READY:",
-  remoteId
-);
+         // ── For VIDEO CALLS: only allow real participant camera streams ──
+         if (!isParticipantVideoStream(remoteStream)) {
+           console.log(
+             "[EnableX] ⏭️ Ignoring non-camera remote stream:",
+             remoteId
+           );
+           return;
+         }
 
-remoteStreamRef.current = remoteStream;
+         console.log(
+           "[EnableX] 🎥 PARTICIPANT CAMERA STREAM READY:",
+           remoteId
+         );
 
-if (isMountedRef.current) {
-  setRemoteStreamActive(true);
-  setCallStatus("connected");
-}
+         remoteStreamRef.current = remoteStream;
 
-playedRemoteContainerRef.current = "";
+         if (isMountedRef.current) {
+           setRemoteStreamActive(true);
+           setCallStatus("connected");
+         }
 
-setTimeout(() => playRemotePreview(remoteStream), 50);
-setTimeout(() => playRemotePreview(remoteStream), 300);
-setTimeout(() => playRemotePreview(remoteStream), 1000);
+         playedRemoteContainerRef.current = "";
+
+         setTimeout(() => playRemotePreview(remoteStream), 50);
+         setTimeout(() => playRemotePreview(remoteStream), 300);
+         setTimeout(() => playRemotePreview(remoteStream), 1000);
         });
 
         // --------------------------------------------------
