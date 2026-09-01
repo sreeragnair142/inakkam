@@ -1640,17 +1640,7 @@ const VideoCall = ({
   }, [isMutedSound]);
 
   return (
-    <div
-      className="fixed inset-0 z-[1000] flex bg-[#0A0A0A] text-white overflow-hidden font-sans select-none"
-    >
-      {/* ALWAYS-MOUNTED REMOTE AUDIO CONTAINER (Continuous layout element for uninterrupted audio) */}
-      <div
-        id="remote_audio_player"
-        aria-hidden="true"
-        className="pointer-events-none absolute w-1 h-1 opacity-0 overflow-hidden"
-        style={{ left: 0, top: 0, zIndex: -1 }}
-      />
-
+    <div className="fixed inset-0 z-[1000] flex bg-[#0A0A0A] text-white overflow-hidden font-sans select-none h-[100dvh] w-full">
       {/* Radial glow backgrounds */}
       <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] rounded-full bg-[#D51659]/10 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] rounded-full bg-[#B44DDC]/10 blur-[120px] pointer-events-none" />
@@ -1661,15 +1651,7 @@ const VideoCall = ({
           {/* If video call, show live camera preview fullscreen */}
           {callType === "video" ? (
             <div className="absolute inset-0 z-0 bg-[#121212]">
-              {/* EnableX Local Preview Container.
-                  NOTE: EnableX injects its own wrapper element(s)
-                  here, not a bare <video>. The `[&_*]:!w-full
-                  [&_*]:!h-full` rule (with !important) forces every
-                  injected descendant to fill this container instead
-                  of falling back to EnableX's own inline
-                  width/height, which is what previously produced a
-                  small fixed-size box instead of a fullscreen
-                  preview. */}
+              {/* EnableX Local Preview Container */}
               <div
                 id="connecting_local_video"
                 className="absolute inset-0 w-full h-full [&_*]:!w-full [&_*]:!h-full [&_video]:!object-cover [&_video]:scale-x-[-1]"
@@ -1682,41 +1664,43 @@ const VideoCall = ({
           )}
 
           {/* Top header on connecting screen */}
-          <div className="relative z-10 p-6 flex items-center justify-between">
-            <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10">
+          <div className="relative z-10 p-4 sm:p-6 flex items-center justify-between">
+            <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md px-3 sm:px-3.5 py-1.5 rounded-full border border-white/10 shadow-sm">
               <span className="w-2 h-2 rounded-full bg-[#D51659] animate-ping" />
               <span className="text-xs font-bold text-white tracking-wide">
                 {isCaller ? "Calling..." : "Connecting..."}
               </span>
             </div>
-            <span className="text-xs font-semibold text-slate-300 bg-black/30 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
+            <span className="text-xs font-semibold text-slate-300 bg-black/40 backdrop-blur-md px-3 sm:px-3.5 py-1.5 rounded-full border border-white/10 shadow-sm">
               {callType === "video" ? "Video Call" : "Voice Call"}
             </span>
           </div>
 
           {/* Center Glass Card with Remote User Info & Status */}
-          <div className="relative z-10 flex flex-col items-center justify-center px-6">
-            <div className="bg-black/50 backdrop-blur-xl border border-white/15 p-6 sm:p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-full">
+          <div className="relative z-10 flex flex-col items-center justify-center px-4 sm:px-6 my-auto">
+            <div className="bg-black/50 backdrop-blur-2xl border border-white/15 p-6 sm:p-8 rounded-3xl sm:rounded-[2rem] shadow-[0_20px_60px_rgba(0,0,0,0.6)] flex flex-col items-center max-w-xs sm:max-w-sm w-full transition-all">
               {/* Pulsing Avatar */}
-              <div className="relative mb-5 flex items-center justify-center">
-                <span className="absolute w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-[#D51659]/30 blur-xl animate-pulse" />
+              <div className="relative mb-5 sm:mb-6 flex items-center justify-center">
+                <span className="absolute w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-[#D51659]/30 blur-2xl animate-pulse pointer-events-none" />
                 <span
-                  className="absolute w-24 h-24 sm:w-28 sm:h-28 rounded-full border-2 border-[#D51659]/60 animate-ping"
+                  className="absolute w-24 h-24 sm:w-32 sm:h-32 rounded-full border border-[#D51659]/60 animate-ping pointer-events-none"
                   style={{ animationDuration: "2.5s" }}
                 />
-                <img
-                  src={remoteUserPhoto || "https://via.placeholder.com/150"}
-                  alt={remoteUserName}
-                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-white/20 shadow-2xl relative z-10"
-                />
+                <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-full p-1 bg-gradient-to-tr from-[#D51659] to-[#B44DDC] shadow-2xl relative z-10">
+                  <img
+                    src={remoteUserPhoto || "https://via.placeholder.com/150"}
+                    alt={remoteUserName}
+                    className="w-full h-full rounded-full object-cover border-2 border-black bg-black"
+                  />
+                </div>
               </div>
 
-              <h3 className="text-xl font-black text-white text-center drop-shadow-md">
+              <h3 className="text-xl sm:text-2xl font-black text-white text-center drop-shadow-md px-2 truncate max-w-full">
                 {remoteUserName}
               </h3>
 
-              <div className="flex items-center gap-2 mt-3 text-slate-300 text-xs font-medium bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
-                <div className="w-3.5 h-3.5 border-2 border-[#D51659] border-t-transparent rounded-full animate-spin" />
+              <div className="flex items-center gap-2 mt-3 text-slate-300 text-xs font-medium bg-white/5 px-3.5 py-1.5 rounded-full border border-white/10 backdrop-blur-md">
+                <div className="w-3 h-3 border-2 border-[#D51659] border-t-transparent rounded-full animate-spin" />
                 <span>
                   {isCaller
                     ? "Waiting for answer..."
@@ -1727,13 +1711,13 @@ const VideoCall = ({
           </div>
 
           {/* Bottom Controls Bar on Connecting Screen */}
-          <div className="relative z-10 p-6 pb-10 flex items-center justify-center gap-6">
+          <div className="relative z-10 p-4 sm:p-6 pb-8 sm:pb-10 flex items-center justify-center gap-4 sm:gap-6">
             {/* Mic toggle */}
             <button
               onClick={toggleMic}
-              className={`p-3.5 rounded-full transition-all duration-300 backdrop-blur-md ${
+              className={`p-3.5 sm:p-4 rounded-full transition-all duration-300 backdrop-blur-md ${
                 micActive
-                  ? "bg-black/50 text-white border border-white/15 hover:bg-black/70"
+                  ? "bg-black/60 text-white border border-white/15 hover:bg-black/80"
                   : "bg-[#D51659]/40 text-[#D51659] border border-[#D51659] hover:bg-[#D51659]/50"
               }`}
               title={micActive ? "Mute Microphone" : "Unmute Microphone"}
@@ -1749,9 +1733,9 @@ const VideoCall = ({
             {callType === "video" && (
               <button
                 onClick={toggleVideo}
-                className={`p-3.5 rounded-full transition-all duration-300 backdrop-blur-md ${
+                className={`p-3.5 sm:p-4 rounded-full transition-all duration-300 backdrop-blur-md ${
                   videoActive
-                    ? "bg-black/50 text-white border border-white/15 hover:bg-black/70"
+                    ? "bg-black/60 text-white border border-white/15 hover:bg-black/80"
                     : "bg-[#D51659]/40 text-[#D51659] border border-[#D51659] hover:bg-[#D51659]/50"
                 }`}
                 title={videoActive ? "Turn Camera Off" : "Turn Camera On"}
@@ -1767,7 +1751,7 @@ const VideoCall = ({
             {/* Cancel / End Call Button */}
             <button
               onClick={handleDisconnect}
-              className="p-4 rounded-full bg-[#D51659] hover:bg-[#D51659]/90 text-white hover:scale-105 active:scale-95 transition-all shadow-[0_4px_20px_rgba(213,22,89,0.5)] flex items-center justify-center cursor-pointer"
+              className="p-4 sm:p-4.5 rounded-full bg-[#D51659] hover:bg-[#D51659]/90 text-white hover:scale-105 active:scale-95 transition-all shadow-[0_4px_24px_rgba(213,22,89,0.5)] flex items-center justify-center cursor-pointer"
               title="Cancel Call"
             >
               <PhoneOff className="w-6 h-6" />
@@ -1778,46 +1762,82 @@ const VideoCall = ({
 
       {/* ─── Active Call Screen ─────────────────────────────── */}
       {callStatus === "connected" && (
-        <div className="flex-1 flex relative">
+        <div className="flex-1 flex relative h-full w-full overflow-hidden">
           {/* ── Main viewport ─────────────────────────── */}
           {callType === "audio" ? (
             /* ── Audio call UI ── */
-            <div className="flex-1 h-full relative overflow-hidden flex flex-col items-center justify-center bg-gradient-to-b from-[#150A1A] via-[#0A0A0A] to-[#1A0A15]">
-              {/* Pulsing Aura */}
-              <div className="relative mb-8 flex items-center justify-center">
-                <span className="absolute w-52 h-52 rounded-full bg-[#D51659]/20 blur-2xl animate-pulse" />
-                <span
-                  className="absolute w-40 h-40 rounded-full border border-[#D51659]/40 animate-ping"
-                  style={{ animationDuration: "3s" }}
-                />
-                <img
-                  src={remoteUserPhoto || "https://via.placeholder.com/150"}
-                  alt={remoteUserName}
-                  className="w-32 h-32 rounded-full object-cover border-4 border-white/10 shadow-[0_0_50px_rgba(213,22,89,0.4)] relative z-10"
-                />
-              </div>
-              <h2 className="text-2xl font-black text-white tracking-wide drop-shadow-md">
-                {remoteUserName}
-              </h2>
-              <p className="text-xs font-bold text-[#D51659] uppercase tracking-widest mt-2 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                Voice Call Connected ({formatTime(duration)})
-              </p>
-              {/* Animated Soundwave */}
-              <div className="flex items-center gap-1.5 mt-8 h-10">
-                {[40, 75, 30, 90, 50, 85, 45, 65, 100, 55, 80, 35, 70, 45].map(
-                  (h, i) => (
-                    <span
-                      key={i}
-                      className="w-1.5 bg-gradient-to-t from-[#D51659] to-[#B44DDC] rounded-full animate-pulse"
-                      style={{
-                        height: micActive ? `${h}%` : "20%",
-                        animationDelay: `${(i * 120) % 600}ms`,
-                        animationDuration: "1.2s",
-                      }}
+            <div className="flex-1 h-full relative overflow-hidden flex flex-col items-center justify-center p-4 sm:p-6 bg-gradient-to-b from-[#150A1A] via-[#0A0A0A] to-[#1A0A15]">
+              {/* Hidden audio player container for remote WebRTC stream */}
+              <div
+                id="remote_audio_player"
+                className="absolute left-0 top-0 w-1 h-1 overflow-hidden pointer-events-none"
+                style={{ opacity: 0.01 }}
+              />
+
+              {/* Main Center Profile Container */}
+              <div className="flex flex-col items-center max-w-sm sm:max-w-md w-full z-10 my-auto -mt-6 sm:-mt-10">
+                {/* Animated Multi-Ring Glowing Avatar */}
+                <div className="relative mb-6 sm:mb-8 flex items-center justify-center">
+                  {/* Ambient Glow */}
+                  <div className="absolute w-44 h-44 sm:w-56 sm:h-56 md:w-64 md:h-64 rounded-full bg-gradient-to-tr from-[#D51659]/25 to-[#B44DDC]/25 blur-3xl animate-pulse pointer-events-none" />
+
+                  {/* Expanding Ping Ring */}
+                  <div
+                    className="absolute w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52 rounded-full border border-[#D51659]/40 animate-ping pointer-events-none"
+                    style={{ animationDuration: "3.2s" }}
+                  />
+
+                  {/* Outer Gradient Border Ring & Avatar */}
+                  <div className="w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 rounded-full p-1.5 bg-gradient-to-tr from-[#D51659] via-[#EC3F7B] to-[#B44DDC] shadow-[0_0_50px_rgba(213,22,89,0.35)] relative z-10">
+                    <img
+                      src={remoteUserPhoto || "https://via.placeholder.com/150"}
+                      alt={remoteUserName}
+                      className="w-full h-full rounded-full object-cover border-2 border-black bg-black"
                     />
-                  ),
-                )}
+                  </div>
+                </div>
+
+                {/* User Name */}
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white text-center tracking-tight drop-shadow-md px-4 truncate max-w-full">
+                  {remoteUserName}
+                </h2>
+
+                {/* Live Call Duration Badge */}
+                <div className="mt-3 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md text-emerald-400 text-xs sm:text-sm font-semibold shadow-sm">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Voice Call Connected ({formatTime(duration)})</span>
+                </div>
+
+                {/* Enable / Boost Sound Button */}
+                <button
+                  type="button"
+                  onClick={handleUnlockAudio}
+                  className="mt-4 px-4 py-1.5 rounded-full bg-white/5 hover:bg-[#D51659]/20 border border-white/10 hover:border-[#D51659]/40 text-slate-300 hover:text-white text-xs font-medium flex items-center gap-1.5 backdrop-blur-md transition-all shadow-sm active:scale-95"
+                  title="Click if you cannot hear remote audio"
+                >
+                  <Volume2 className="w-3.5 h-3.5 text-[#D51659]" />
+                  <span>Enable / Boost Sound</span>
+                </button>
+
+                {/* Dynamic Responsive Soundwave Visualizer */}
+                <div className="flex items-center justify-center gap-1 sm:gap-1.5 mt-6 sm:mt-8 h-10 sm:h-12 w-full max-w-xs sm:max-w-sm px-4">
+                  {[35, 70, 25, 85, 45, 95, 50, 75, 100, 60, 80, 30, 65, 40, 90, 55].map(
+                    (h, i) => (
+                      <span
+                        key={i}
+                        className="w-1 sm:w-1.5 bg-gradient-to-t from-[#D51659] via-[#EC3F7B] to-[#B44DDC] rounded-full transition-all duration-300"
+                        style={{
+                          height: micActive ? `${h}%` : "15%",
+                          opacity: micActive ? 0.9 : 0.25,
+                          animation: micActive
+                            ? `pulse 1.2s ease-in-out infinite`
+                            : "none",
+                          animationDelay: `${(i * 90) % 600}ms`,
+                        }}
+                      />
+                    ),
+                  )}
+                </div>
               </div>
             </div>
           ) : (
@@ -1831,13 +1851,13 @@ const VideoCall = ({
 
               {/* Waiting for remote placeholder */}
               {!remoteStreamActive && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#121212] z-10 pointer-events-none">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#121212] z-10 pointer-events-none p-4 text-center">
                   <img
                     src={remoteUserPhoto || "https://via.placeholder.com/150"}
                     alt={remoteUserName}
-                    className="w-24 h-24 rounded-full object-cover border-2 border-white/10 mb-3 opacity-50"
+                    className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 border-white/10 mb-3 opacity-50 shadow-lg"
                   />
-                  <p className="text-slate-500 text-sm">
+                  <p className="text-slate-400 text-xs sm:text-sm">
                     Connecting video stream with {remoteUserName}...
                   </p>
                 </div>
@@ -1845,61 +1865,71 @@ const VideoCall = ({
 
               {/* EnableX Local camera PiP — top-right corner */}
               <div
-                className="absolute top-6 right-6 w-28 md:w-36 rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-[#1a1a1a] z-20"
+                className="absolute top-4 sm:top-6 right-4 sm:right-6 w-24 sm:w-32 md:w-40 rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-[#1a1a1a] z-20"
                 style={{ aspectRatio: "9/16" }}
               >
                 <div
                   id="local_pip_video"
                   className="w-full h-full [&_*]:!w-full [&_*]:!h-full [&_video]:!object-cover [&_video]:scale-x-[-1]"
                 />
-                <div className="absolute bottom-2 left-2 text-[9px] font-semibold bg-black/65 px-1.5 py-0.5 rounded text-slate-300">
+                <div className="absolute bottom-2 left-2 text-[9px] font-semibold bg-black/70 px-1.5 py-0.5 rounded text-slate-200 backdrop-blur-sm">
                   You
                 </div>
               </div>
             </div>
           )}
 
-          {/* ── Top overlay (name + timer + sound toggle) ─── */}
-          <div className="absolute top-0 left-0 right-0 p-6 bg-gradient-to-b from-black/60 to-transparent flex items-center justify-between pointer-events-none z-25">
-            <div className="flex items-center gap-3 pointer-events-auto">
-              <div>
-                <h4 className="font-extrabold text-sm text-white drop-shadow-md">
-                  {remoteUserName}
-                </h4>
-                <p className="text-[10px] font-bold text-[#D51659] uppercase tracking-wider drop-shadow-sm flex items-center gap-1">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                  Live Call · {formatTime(duration)}
-                </p>
+          {/* ── Top overlay ─── */}
+          <div className="absolute top-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-b from-black/70 to-transparent flex items-center justify-between pointer-events-none z-25">
+            {callType === "video" ? (
+              <div className="flex items-center gap-3 pointer-events-auto">
+                <div>
+                  <h4 className="font-extrabold text-sm sm:text-base text-white drop-shadow-md">
+                    {remoteUserName}
+                  </h4>
+                  <p className="text-[10px] sm:text-xs font-bold text-[#D51659] uppercase tracking-wider drop-shadow-sm flex items-center gap-1.5">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                    Live Call · {formatTime(duration)}
+                  </p>
+                </div>
               </div>
-            </div>
-            {callType === "video" && (
+            ) : (
               <div className="flex items-center gap-2 pointer-events-auto">
-                <button
-                  onClick={() => setIsMutedSound((m) => !m)}
-                  className="p-2.5 rounded-xl bg-black/40 border border-white/10 hover:bg-black/60 text-white transition-colors"
-                  title={
-                    isMutedSound ? "Unmute Remote Audio" : "Mute Remote Audio"
-                  }
-                >
-                  {isMutedSound ? (
-                    <VolumeX className="w-4 h-4" />
-                  ) : (
-                    <Volume2 className="w-4 h-4" />
-                  )}
-                </button>
+                <div className="flex items-center gap-2 bg-white/5 backdrop-blur-md px-3 sm:px-3.5 py-1.5 rounded-full border border-white/10 shadow-sm">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-[11px] sm:text-xs font-semibold text-slate-300 tracking-wide">
+                    Inakkam HD Voice
+                  </span>
+                </div>
               </div>
             )}
+
+            <div className="flex items-center gap-2 pointer-events-auto">
+              <button
+                onClick={() => setIsMutedSound((m) => !m)}
+                className="p-2 sm:p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 hover:text-white transition-all backdrop-blur-md"
+                title={
+                  isMutedSound ? "Unmute Remote Audio" : "Mute Remote Audio"
+                }
+              >
+                {isMutedSound ? (
+                  <VolumeX className="w-4 h-4 text-[#D51659]" />
+                ) : (
+                  <Volume2 className="w-4 h-4" />
+                )}
+              </button>
+            </div>
           </div>
 
           {/* ── Bottom controls HUD ──────────────────────── */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 px-6 py-3.5 bg-black/50 border border-white/10 backdrop-blur-xl rounded-3xl flex items-center gap-5 md:gap-7 z-25 shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
+          <div className="absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 px-4 sm:px-6 py-3 sm:py-3.5 bg-black/60 border border-white/15 backdrop-blur-2xl rounded-full flex items-center gap-3.5 sm:gap-6 md:gap-8 z-25 shadow-[0_16px_50px_rgba(0,0,0,0.6)] max-w-[calc(100vw-2rem)]">
             {/* Mic toggle */}
             <button
               onClick={toggleMic}
-              className={`p-3 rounded-2xl transition-all duration-300 ${
+              className={`p-3 sm:p-3.5 rounded-full transition-all duration-300 backdrop-blur-md ${
                 micActive
-                  ? "bg-white/10 text-white hover:bg-white/20"
-                  : "bg-[#D51659]/30 text-[#D51659] border border-[#D51659]/50 hover:bg-[#D51659]/40"
+                  ? "bg-white/10 text-white hover:bg-white/20 border border-white/10"
+                  : "bg-[#D51659]/30 text-[#D51659] border border-[#D51659]/60 hover:bg-[#D51659]/40"
               }`}
               title={micActive ? "Mute Microphone" : "Unmute Microphone"}
             >
@@ -1914,10 +1944,10 @@ const VideoCall = ({
             {callType === "video" && (
               <button
                 onClick={toggleVideo}
-                className={`p-3 rounded-2xl transition-all duration-300 ${
+                className={`p-3 sm:p-3.5 rounded-full transition-all duration-300 backdrop-blur-md ${
                   videoActive
-                    ? "bg-white/10 text-white hover:bg-white/20"
-                    : "bg-[#D51659]/30 text-[#D51659] border border-[#D51659]/50 hover:bg-[#D51659]/40"
+                    ? "bg-white/10 text-white hover:bg-white/20 border border-white/10"
+                    : "bg-[#D51659]/30 text-[#D51659] border border-[#D51659]/60 hover:bg-[#D51659]/40"
                 }`}
                 title={videoActive ? "Turn Camera Off" : "Turn Camera On"}
               >
@@ -1932,10 +1962,10 @@ const VideoCall = ({
             {/* In-call text chat */}
             <button
               onClick={() => setShowChat(!showChat)}
-              className={`p-3 rounded-2xl transition-all duration-300 relative ${
+              className={`p-3 sm:p-3.5 rounded-full transition-all duration-300 relative backdrop-blur-md ${
                 showChat
                   ? "bg-purple-500/30 text-purple-300 border border-purple-500/50 hover:bg-purple-500/40"
-                  : "bg-white/10 text-white hover:bg-white/20"
+                  : "bg-white/10 text-white hover:bg-white/20 border border-white/10"
               }`}
               title="Session Chat"
             >
@@ -1943,19 +1973,19 @@ const VideoCall = ({
               {!showChat &&
                 chatMessages.filter((m) => m.sender === "remote").length >
                   0 && (
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#D51659] rounded-full border border-black animate-pulse" />
+                  <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-[#D51659] rounded-full border-2 border-black animate-pulse" />
                 )}
             </button>
 
-            <span className="w-[1px] h-6 bg-white/15" />
+            <span className="w-[1px] h-6 bg-white/20" />
 
             {/* End call */}
             <button
               onClick={handleDisconnect}
-              className="p-3.5 rounded-full bg-[#D51659] hover:bg-[#D51659]/90 text-white hover:scale-105 active:scale-95 transition-all shadow-[0_4px_16px_rgba(213,22,89,0.4)]"
+              className="p-3.5 sm:p-4 rounded-full bg-[#D51659] hover:bg-[#D51659]/90 text-white hover:scale-105 active:scale-95 transition-all shadow-[0_4px_20px_rgba(213,22,89,0.5)] flex items-center justify-center cursor-pointer"
               title="Hang Up"
             >
-              <PhoneOff className="w-5 h-5" />
+              <PhoneOff className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
           </div>
 
@@ -2058,3 +2088,4 @@ const VideoCall = ({
 };
 
 export default VideoCall;
+
