@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   PhoneOff,
   Mic,
@@ -1639,8 +1640,8 @@ const VideoCall = ({
     }
   }, [isMutedSound]);
 
-  return (
-    <div className="fixed inset-0 z-[1000] flex bg-[#0A0A0A] text-white overflow-hidden font-sans select-none h-[100dvh] w-full">
+  return createPortal(
+    <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 z-[99999] flex bg-[#0A0A0A] text-white overflow-hidden font-sans select-none h-[100dvh] w-screen">
       {/* Radial glow backgrounds */}
       <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] rounded-full bg-[#D51659]/10 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] rounded-full bg-[#B44DDC]/10 blur-[120px] pointer-events-none" />
@@ -1775,9 +1776,9 @@ const VideoCall = ({
               />
 
               {/* Main Center Profile Container */}
-              <div className="flex flex-col items-center max-w-sm sm:max-w-md w-full z-10 my-auto -mt-6 sm:-mt-10">
+              <div className="flex flex-col items-center max-w-sm sm:max-w-md w-full z-10 my-auto">
                 {/* Animated Multi-Ring Glowing Avatar */}
-                <div className="relative mb-6 sm:mb-8 flex items-center justify-center">
+                <div className="relative mb-5 sm:mb-6 flex items-center justify-center">
                   {/* Ambient Glow */}
                   <div className="absolute w-44 h-44 sm:w-56 sm:h-56 md:w-64 md:h-64 rounded-full bg-gradient-to-tr from-[#D51659]/25 to-[#B44DDC]/25 blur-3xl animate-pulse pointer-events-none" />
 
@@ -1788,7 +1789,7 @@ const VideoCall = ({
                   />
 
                   {/* Outer Gradient Border Ring & Avatar */}
-                  <div className="w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 rounded-full p-1.5 bg-gradient-to-tr from-[#D51659] via-[#EC3F7B] to-[#B44DDC] shadow-[0_0_50px_rgba(213,22,89,0.35)] relative z-10">
+                  <div className="w-28 h-28 sm:w-36 sm:h-36 md:w-44 md:h-44 rounded-full p-1.5 bg-gradient-to-tr from-[#D51659] via-[#EC3F7B] to-[#B44DDC] shadow-[0_0_50px_rgba(213,22,89,0.35)] relative z-10">
                     <img
                       src={remoteUserPhoto || "https://via.placeholder.com/150"}
                       alt={remoteUserName}
@@ -1803,24 +1804,13 @@ const VideoCall = ({
                 </h2>
 
                 {/* Live Call Duration Badge */}
-                <div className="mt-3 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md text-emerald-400 text-xs sm:text-sm font-semibold shadow-sm">
+                <div className="mt-2.5 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md text-emerald-400 text-xs sm:text-sm font-semibold shadow-sm">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                   <span>Voice Call Connected ({formatTime(duration)})</span>
                 </div>
 
-                {/* Enable / Boost Sound Button */}
-                <button
-                  type="button"
-                  onClick={handleUnlockAudio}
-                  className="mt-4 px-4 py-1.5 rounded-full bg-white/5 hover:bg-[#D51659]/20 border border-white/10 hover:border-[#D51659]/40 text-slate-300 hover:text-white text-xs font-medium flex items-center gap-1.5 backdrop-blur-md transition-all shadow-sm active:scale-95"
-                  title="Click if you cannot hear remote audio"
-                >
-                  <Volume2 className="w-3.5 h-3.5 text-[#D51659]" />
-                  <span>Enable / Boost Sound</span>
-                </button>
-
-                {/* Dynamic Responsive Soundwave Visualizer */}
-                <div className="flex items-center justify-center gap-1 sm:gap-1.5 mt-6 sm:mt-8 h-10 sm:h-12 w-full max-w-xs sm:max-w-sm px-4">
+                {/* Dynamic Responsive Soundwave Visualizer — placed directly below status pill */}
+                <div className="flex items-center justify-center gap-1 sm:gap-1.5 mt-5 sm:mt-6 h-8 sm:h-10 w-full max-w-xs sm:max-w-sm px-4">
                   {[35, 70, 25, 85, 45, 95, 50, 75, 100, 60, 80, 30, 65, 40, 90, 55].map(
                     (h, i) => (
                       <span
@@ -1838,6 +1828,17 @@ const VideoCall = ({
                     ),
                   )}
                 </div>
+
+                {/* Enable / Boost Sound Button */}
+                <button
+                  type="button"
+                  onClick={handleUnlockAudio}
+                  className="mt-4 px-3.5 py-1.5 rounded-full bg-white/5 hover:bg-[#D51659]/20 border border-white/10 hover:border-[#D51659]/40 text-slate-300 hover:text-white text-xs font-medium flex items-center gap-1.5 backdrop-blur-md transition-all shadow-sm active:scale-95"
+                  title="Click if you cannot hear remote audio"
+                >
+                  <Volume2 className="w-3.5 h-3.5 text-[#D51659]" />
+                  <span>Enable / Boost Sound</span>
+                </button>
               </div>
             </div>
           ) : (
@@ -2083,7 +2084,8 @@ const VideoCall = ({
           </AnimatePresence>
         </div>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 };
 
