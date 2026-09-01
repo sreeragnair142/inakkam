@@ -128,6 +128,10 @@ const Profile = () => {
 
   const heroImg = userImages[0] || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=600';
 
+  const isVerified = viewSelf
+    ? (verificationStatus === 'VERIFIED')
+    : (profileUser?.verificationStatus === 'VERIFIED' || profileUser?.verified === true);
+
   const tabs = [
     { id: 'about', label: 'About', icon: User },
     { id: 'media', label: 'Gallery', icon: ImageIcon },
@@ -182,7 +186,7 @@ const Profile = () => {
           <div className="w-[320px] shrink-0 relative group">
             <img src={heroImg} alt={profileUser.name} className="w-full h-full object-cover min-h-[380px]" />
             <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/15" />
-            {profileUser.verified && (
+            {isVerified && (
               <div className="absolute top-5 left-5 flex items-center gap-1.5 text-[10px] font-black bg-white/80 backdrop-blur-md text-[#2D2D2D] px-3 py-1.5 rounded-full border border-slate-200 uppercase tracking-wider">
                 <CheckCircle2 className="w-3.5 h-3.5 text-[#D51659]" /> Verified
               </div>
@@ -262,7 +266,7 @@ const Profile = () => {
           <div className="bg-[#FCFAF2] rounded-2xl p-4 shadow-2xl border border-slate-200">
             <div className="relative w-32 h-32 rounded-full overflow-hidden shadow-xl mb-4 mx-auto border border-slate-200">
               <img src={heroImg} alt={profileUser.name} className="w-full h-full object-cover" />
-              {profileUser.verified && (
+              {isVerified && (
                 <div className="absolute top-1 left-1 flex items-center gap-1 text-[8px] font-black bg-white/80 backdrop-blur-md text-[#2D2D2D] px-2 py-1 rounded-full border border-slate-200 uppercase">
                   <CheckCircle2 className="w-2.5 h-2.5 text-[#D51659]" /> Verified
                 </div>

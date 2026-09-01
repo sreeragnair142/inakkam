@@ -58,11 +58,11 @@ const MobileCard = ({ profile, active, onSwipe, swipeDirection, onClick }) => {
       <img src={profile.images?.[0] || 'https://via.placeholder.com/400x500'} alt={profile.name} className="w-full h-full object-cover pointer-events-none select-none" />
       <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none" />
 
-      {/* Verified Agent / Host Badge Overlay */}
-      {(profile.isEliteAgent || profile.isStaff || profile.role === 'staff') && (
-        <div className="absolute top-4 left-4 bg-gradient-to-r from-[#D51659] to-[#b44ddc] text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-lg flex items-center gap-1.5 z-20">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Verified Host</span>
+      {/* Verified Customer Badge Overlay */}
+      {(profile.verified || profile.verificationStatus === 'VERIFIED') && (
+        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md text-[#2D2D2D] px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-lg flex items-center gap-1.5 z-20 border border-slate-200">
+          <CheckCircle2 className="w-3.5 h-3.5 text-[#D51659]" />
+          <span>Verified</span>
         </div>
       )}
 
@@ -220,11 +220,11 @@ const Discover = () => {
                   >
                     <img src={profile.images?.[0] || 'https://via.placeholder.com/400x500'} alt={profile.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
 
-                    {/* Verified Agent / Host Badge Overlay */}
-                    {(profile.isEliteAgent || profile.isStaff || profile.role === 'staff') && (
-                      <div className="absolute top-4 left-4 bg-gradient-to-r from-[#D51659] to-[#b44ddc] text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-lg flex items-center gap-1.5 z-20">
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Verified Host</span>
+                    {/* Verified Customer Badge Overlay */}
+                    {(profile.verified || profile.verificationStatus === 'VERIFIED') && (
+                      <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md text-[#2D2D2D] px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-lg flex items-center gap-1.5 z-20 border border-slate-200">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#D51659]" />
+                        <span>Verified</span>
                       </div>
                     )}
 
