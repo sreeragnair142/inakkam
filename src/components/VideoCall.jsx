@@ -458,9 +458,8 @@ const VideoCall = ({
 
     if (!container) {
       console.warn(
-        "[EnableX] ❌ remote_video_player not found in DOM, scheduling retry..."
+        "[EnableX] ❌ remote_video_player not found in DOM"
       );
-      setTimeout(() => playRemotePreview(stream), 150);
       return;
     }
 
@@ -475,6 +474,8 @@ const VideoCall = ({
     );
 
     try {
+      playedRemoteContainerRef.current = "";
+
       if (typeof stream.play === "function") {
         stream.play(containerId, {
           player: {
@@ -493,43 +494,13 @@ const VideoCall = ({
           },
         });
 
-        playedRemoteContainerRef.current = `${streamId}_${containerId}`;
+        playedRemoteContainerRef.current =
+          `${streamId}_${containerId}`;
+
         console.log(
           "[EnableX] ✅ Participant video attached:",
           streamId
         );
-      }
-
-      // Direct HTML5 video fallback for native WebRTC MediaStream
-      const nativeStream =
-        stream.stream ||
-        (typeof stream.getMediaStream === "function"
-          ? stream.getMediaStream()
-          : null);
-
-      if (
-        nativeStream &&
-        (nativeStream instanceof MediaStream || nativeStream.getVideoTracks)
-      ) {
-        let videoEl = container.querySelector("video.enx-remote-video-native");
-        if (!videoEl && !container.querySelector("video")) {
-          videoEl = document.createElement("video");
-          videoEl.className = "enx-remote-video-native w-full h-full object-cover";
-          videoEl.autoplay = true;
-          videoEl.playsInline = true;
-          videoEl.setAttribute("playsinline", "true");
-          videoEl.setAttribute("webkit-playsinline", "true");
-          container.appendChild(videoEl);
-        }
-        const targetEl = videoEl || container.querySelector("video");
-        if (targetEl && targetEl.srcObject !== nativeStream) {
-          targetEl.srcObject = nativeStream;
-        }
-        if (targetEl) {
-          targetEl.play().catch((e) =>
-            console.log("[EnableX] Remote video play notice:", e?.message)
-          );
-        }
       }
     } catch (error) {
       console.error(
@@ -740,7 +711,6 @@ const VideoCall = ({
                 audioMuted: false,
                 videoMuted: !hasCamera,
                 maxVideoLayers: 1,
-                videoSize: [320, 180, 1280, 720],
                 attributes: { name: currentUserNameRef.current },
               };
 
@@ -1011,10 +981,8 @@ const VideoCall = ({
           playedRemoteContainerRef.current = "";
 
           setTimeout(() => playRemotePreview(remoteStream), 50);
-          setTimeout(() => playRemotePreview(remoteStream), 200);
-          setTimeout(() => playRemotePreview(remoteStream), 500);
+          setTimeout(() => playRemotePreview(remoteStream), 300);
           setTimeout(() => playRemotePreview(remoteStream), 1000);
-          setTimeout(() => playRemotePreview(remoteStream), 2000);
         });
 
         // --------------------------------------------------
@@ -1040,7 +1008,7 @@ const VideoCall = ({
                 ? String(activeLocalStream.getID())
                 : null;
 
-            // Find an active talker (not self, not screen share)
+            // Find an active talker
             const talker = activeList.find((item) => {
               const streamId = String(
                 item?.streamId ?? item?.id ?? ""
@@ -1055,6 +1023,23 @@ const VideoCall = ({
 
               // Never choose our own stream
               if (localId && streamId === localId) {
+                return false;
+              }
+
+              // For video calls, prefer actual audio+video talkers
+              if (
+                callType === "video" &&
+                item?.mediatype &&
+                item.mediatype !== "audiovideo"
+              ) {
+                return false;
+              }
+
+              // For video calls, camera must not be muted
+              if (
+                callType === "video" &&
+                item?.videomuted === true
+              ) {
                 return false;
               }
 
@@ -1862,7 +1847,7 @@ const VideoCall = ({
               {/* EnableX Remote Video Container — fullscreen */}
               <div
                 id="remote_video_player"
-                className="absolute inset-0 w-full h-full overflow-hidden bg-black z-0 [&_*]:!w-full [&_*]:!h-full [&_video]:!object-cover"
+                className="absolute inset-0 w-full h-full overflow-hidden bg-black z-0"
               />
 
               {/* Waiting for remote placeholder */}
