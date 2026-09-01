@@ -110,58 +110,61 @@ const VideoCall = ({
     onEndCallRef.current = onEndCall;
   }, [onEndCall]);
 
-  const finishCall = useCallback(({ notifyRemote = true } = {}) => {
-    if (isDisconnectedRef.current) return;
+  const finishCall = useCallback(
+    ({ notifyRemote = true } = {}) => {
+      if (isDisconnectedRef.current) return;
 
-    isDisconnectedRef.current = true;
-    intentionalDisconnectRef.current = true;
+      isDisconnectedRef.current = true;
+      intentionalDisconnectRef.current = true;
 
-    if (remoteDisconnectTimerRef.current) {
-      clearTimeout(remoteDisconnectTimerRef.current);
-      remoteDisconnectTimerRef.current = null;
-    }
-
-    const room = roomRef.current;
-    roomRef.current = null;
-    if (room) {
-      try {
-        room.disconnect();
-      } catch (e) {
-        console.warn("Error disconnecting EnableX room:", e);
+      if (remoteDisconnectTimerRef.current) {
+        clearTimeout(remoteDisconnectTimerRef.current);
+        remoteDisconnectTimerRef.current = null;
       }
-    }
 
-    const localStream = localStreamRef.current;
-    localStreamRef.current = null;
-    remoteStreamRef.current = null;
-
-    if (localStream) {
-      try {
-        localStream.close();
-      } catch (e) {
-        console.warn("Error closing local stream:", e);
+      const room = roomRef.current;
+      roomRef.current = null;
+      if (room) {
+        try {
+          room.disconnect();
+        } catch (e) {
+          console.warn("Error disconnecting EnableX room:", e);
+        }
       }
-    }
 
-    if (notifyRemote) {
-      const socket = getSocket();
-      if (socket && targetUid) {
-        socket.emit("end_call", {
-          targetUserId: targetUid,
-          conversationId: roomId,
-        });
+      const localStream = localStreamRef.current;
+      localStreamRef.current = null;
+      remoteStreamRef.current = null;
+
+      if (localStream) {
+        try {
+          localStream.close();
+        } catch (e) {
+          console.warn("Error closing local stream:", e);
+        }
       }
-    }
 
-    if (isMountedRef.current) {
-      setRemoteStreamActive(false);
-      setCallStatus("disconnected");
-    }
+      if (notifyRemote) {
+        const socket = getSocket();
+        if (socket && targetUid) {
+          socket.emit("end_call", {
+            targetUserId: targetUid,
+            conversationId: roomId,
+          });
+        }
+      }
 
-    if (onEndCallRef.current) {
-      setTimeout(() => onEndCallRef.current(), 50);
-    }
-  }, [roomId, targetUid]);
+      if (isMountedRef.current) {
+        setRemoteStreamActive(false);
+        setCallStatus("disconnected");
+      }
+
+      if (onEndCallRef.current) {
+        setTimeout(() => onEndCallRef.current(), 50);
+      }
+    },
+    [roomId, targetUid],
+  );
 
   const handleDisconnect = useCallback(() => {
     finishCall({ notifyRemote: true });
@@ -203,7 +206,7 @@ const VideoCall = ({
     }
 
     const applyToEl = (el, muted = false) => {
-      if (!el || (el._enxFixed)) return;
+      if (!el || el._enxFixed) return;
       el._enxFixed = true;
       el.setAttribute("playsinline", "true");
       el.setAttribute("webkit-playsinline", "true");
@@ -215,7 +218,9 @@ const VideoCall = ({
 
     const fixContainer = (container, muted = false) => {
       if (!container) return;
-      container.querySelectorAll("video, audio").forEach((el) => applyToEl(el, muted));
+      container
+        .querySelectorAll("video, audio")
+        .forEach((el) => applyToEl(el, muted));
     };
 
     const containerIds = [
@@ -238,7 +243,9 @@ const VideoCall = ({
           if (node.tagName === "VIDEO" || node.tagName === "AUDIO") {
             applyToEl(node, entry.muted);
           } else {
-            node.querySelectorAll("video, audio").forEach((el) => applyToEl(el, entry.muted));
+            node
+              .querySelectorAll("video, audio")
+              .forEach((el) => applyToEl(el, entry.muted));
           }
         });
       });
@@ -291,7 +298,9 @@ const VideoCall = ({
     if (!container) return;
 
     try {
-      const streamId = (typeof stream.getID === "function" ? stream.getID() : "local") || "local";
+      const streamId =
+        (typeof stream.getID === "function" ? stream.getID() : "local") ||
+        "local";
       const key = `${streamId}_${container.id}`;
 
       if (playedLocalContainerRef.current !== key) {
@@ -321,14 +330,13 @@ const VideoCall = ({
   const isParticipantVideoStream = useCallback((stream) => {
     if (!stream) return false;
 
-    const id = String(
-      typeof stream.getID === "function" ? stream.getID() : ""
-    );
+    const id = String(typeof stream.getID === "function" ? stream.getID() : "");
 
     const localId = String(
-      localStreamRef.current && typeof localStreamRef.current.getID === "function"
+      localStreamRef.current &&
+        typeof localStreamRef.current.getID === "function"
         ? localStreamRef.current.getID()
-        : ""
+        : "",
     );
 
     // Never treat our own local stream as remote
@@ -344,78 +352,67 @@ const VideoCall = ({
     return true;
   }, []);
 
-  const playRemotePreview = useCallback((streamArg = null) => {
-    const stream = streamArg || remoteStreamRef.current;
+  const playRemotePreview = useCallback(
+    (streamArg = null) => {
+      const stream = streamArg || remoteStreamRef.current;
 
-    if (!stream) {
-      console.warn("[EnableX] ❌ No remote stream available");
-      return;
-    }
+      if (!stream) {
+        console.warn("[EnableX] ❌ No remote stream available");
+        return;
+      }
 
-    if (!isParticipantVideoStream(stream)) {
-      console.warn(
-        "[EnableX] ❌ Refusing to play non-camera stream:",
-        stream.getID?.()
-      );
-      return;
-    }
+      if (!isParticipantVideoStream(stream)) {
+        console.warn(
+          "[EnableX] ❌ Refusing to play non-camera stream:",
+          stream.getID?.(),
+        );
+        return;
+      }
 
-  const containerId = "remote_video_player";
-  const container = document.getElementById(containerId);
+      const containerId = "remote_video_player";
+      const container = document.getElementById(containerId);
 
-  if (!container) {
-    console.warn(
-      "[EnableX] ❌ remote_video_player not found in DOM"
-    );
-    return;
-  }
+      if (!container) {
+        console.warn("[EnableX] ❌ remote_video_player not found in DOM");
+        return;
+      }
 
-  const streamId =
-    typeof stream.getID === "function"
-      ? String(stream.getID())
-      : "remote";
+      const streamId =
+        typeof stream.getID === "function" ? String(stream.getID()) : "remote";
 
-  console.log(
-    "[EnableX] 🎬 PLAYING PARTICIPANT VIDEO:",
-    streamId
+      console.log("[EnableX] 🎬 PLAYING PARTICIPANT VIDEO:", streamId);
+
+      try {
+        playedRemoteContainerRef.current = "";
+
+        if (typeof stream.play === "function") {
+          stream.play(containerId, {
+            player: {
+              width: "100%",
+              height: "100%",
+              minWidth: "100%",
+              minHeight: "100%",
+              autoplay: true,
+              playsinline: true,
+            },
+            toolbar: {
+              displayMode: false,
+              branding: {
+                display: false,
+              },
+            },
+          });
+
+          playedRemoteContainerRef.current = `${streamId}_${containerId}`;
+
+          console.log("[EnableX] ✅ Participant video attached:", streamId);
+        }
+      } catch (error) {
+        console.error("[EnableX] ❌ Remote video play failed:", error);
+      }
+    },
+    [callType],
   );
-
-  try {
-    playedRemoteContainerRef.current = "";
-
-    if (typeof stream.play === "function") {
-      stream.play(containerId, {
-        player: {
-          width: "100%",
-          height: "100%",
-          minWidth: "100%",
-          minHeight: "100%",
-          autoplay: true,
-          playsinline: true,
-        },
-        toolbar: {
-          displayMode: false,
-          branding: {
-            display: false,
-          },
-        },
-      });
-
-      playedRemoteContainerRef.current =
-        `${streamId}_${containerId}`;
-
-      console.log(
-        "[EnableX] ✅ Participant video attached:",
-        streamId
-      );
-    }
-  } catch (error) {
-    console.error(
-      "[EnableX] ❌ Remote video play failed:",
-      error
-    );
-  }
-}, [callType]);
 
   useEffect(() => {
     if (callStatus === "connecting" || callStatus === "connected") {
@@ -443,31 +440,33 @@ const VideoCall = ({
     let hasPublished = false;
 
     const tryPublish = () => {
-      if (hasPublished || !mediaReady || !roomConnected || !activeRoom || !activeLocalStream) {
+      if (
+        hasPublished ||
+        !mediaReady ||
+        !roomConnected ||
+        !activeRoom ||
+        !activeLocalStream
+      ) {
         return;
       }
       hasPublished = true;
       console.log("[EnableX] 🚀 Publishing local stream now...");
       try {
-        activeRoom.publish(
-          activeLocalStream,
-          {},
-          (publishResponse) => {
-            console.log("[EnableX] Publish response:", publishResponse);
+        activeRoom.publish(activeLocalStream, {}, (publishResponse) => {
+          console.log("[EnableX] Publish response:", publishResponse);
 
-            if (
-              publishResponse &&
-              publishResponse.result !== undefined &&
-              publishResponse.result !== 0
-            ) {
-              console.error("[EnableX] ❌ Publish failed:", publishResponse);
-              hasPublished = false;
-              return;
-            }
+          if (
+            publishResponse &&
+            publishResponse.result !== undefined &&
+            publishResponse.result !== 0
+          ) {
+            console.error("[EnableX] ❌ Publish failed:", publishResponse);
+            hasPublished = false;
+            return;
+          }
 
-            setTimeout(() => playLocalPreview(), 50);
-          },
-        );
+          setTimeout(() => playLocalPreview(), 50);
+        });
       } catch (publishError) {
         console.error("[EnableX] ❌ Publish exception:", publishError);
         hasPublished = false;
@@ -570,37 +569,48 @@ const VideoCall = ({
         // --------------------------------------------------
         let hasCamera = false;
         try {
-          if (navigator.mediaDevices && typeof navigator.mediaDevices.enumerateDevices === "function") {
+          if (
+            navigator.mediaDevices &&
+            typeof navigator.mediaDevices.enumerateDevices === "function"
+          ) {
             const devices = await navigator.mediaDevices.enumerateDevices();
             hasCamera = devices.some((device) => device.kind === "videoinput");
-            console.log("[EnableX] Camera check result:", hasCamera, "Devices:", devices);
+            console.log(
+              "[EnableX] Camera check result:",
+              hasCamera,
+              "Devices:",
+              devices,
+            );
           }
         } catch (deviceError) {
           console.warn("[EnableX] Device enumeration failed:", deviceError);
         }
 
         if (callType === "video" && !hasCamera) {
-          toast("No camera found. Starting call with audio only.", { icon: "🎙️" });
+          toast("No camera found. Starting call with audio only.", {
+            icon: "🎙️",
+          });
         }
 
-        const streamOptions = callType === "audio"
-          ? {
-              audio: true,
-              video: false,
-              data: true,
-              audioMuted: false,
-              videoMuted: true,
-              attributes: { name: currentUserNameRef.current },
-            }
-          : {
-              audio: true,
-              video: hasCamera,
-              data: true,
-              audioMuted: false,
-              videoMuted: !hasCamera,
-              maxVideoLayers: 1,
-              attributes: { name: currentUserNameRef.current },
-            };
+        const streamOptions =
+          callType === "audio"
+            ? {
+                audio: true,
+                video: false,
+                data: true,
+                audioMuted: false,
+                videoMuted: true,
+                attributes: { name: currentUserNameRef.current },
+              }
+            : {
+                audio: true,
+                video: hasCamera,
+                data: true,
+                audioMuted: false,
+                videoMuted: !hasCamera,
+                maxVideoLayers: 1,
+                attributes: { name: currentUserNameRef.current },
+              };
 
         console.log("[EnableX] Creating local stream:", streamOptions);
 
@@ -811,187 +821,224 @@ const VideoCall = ({
             remoteDisconnectTimerRef.current = null;
           }
 
-         // ── For VOICE CALLS: play audio-only remote stream ──────────────
-         if (callType === "audio") {
-           const audioContainerId = "remote_audio_player";
-           const audioContainer = document.getElementById(audioContainerId);
-           if (audioContainer && typeof remoteStream.play === "function") {
-             try {
-               remoteStream.play(audioContainerId, {
-                 player: { autoplay: true, muted: false },
-                 toolbar: { displayMode: false, branding: { display: false } },
-               });
-               console.log("[EnableX] 🔊 Remote AUDIO stream attached:", remoteId);
-             } catch (e) {
-               console.error("[EnableX] ❌ Remote audio play failed:", e);
-             }
-           }
-           remoteStreamRef.current = remoteStream;
-           if (isMountedRef.current) {
-             setRemoteStreamActive(true);
-             setCallStatus("connected");
-           }
-           if (remoteDisconnectTimerRef.current) {
-             clearTimeout(remoteDisconnectTimerRef.current);
-             remoteDisconnectTimerRef.current = null;
-           }
-           return;
-         }
+          // ── For VOICE CALLS: play audio-only remote stream ──────────────
+          // ── VOICE CALL: attach and force remote audio playback ─────────
+          if (callType === "audio") {
+            const audioContainerId = "remote_audio_player";
+            const audioContainer = document.getElementById(audioContainerId);
 
-         // ── For VIDEO CALLS: only allow real participant camera streams ──
-         if (!isParticipantVideoStream(remoteStream)) {
-           console.log(
-             "[EnableX] ⏭️ Ignoring non-camera remote stream:",
-             remoteId
-           );
-           return;
-         }
+            remoteStreamRef.current = remoteStream;
 
-         console.log(
-           "[EnableX] 🎥 PARTICIPANT CAMERA STREAM READY:",
-           remoteId
-         );
+            if (audioContainer && typeof remoteStream.play === "function") {
+              try {
+                remoteStream.play(audioContainerId, {
+                  player: {
+                    autoplay: true,
+                    muted: false,
+                  },
+                  toolbar: {
+                    displayMode: false,
+                    branding: {
+                      display: false,
+                    },
+                  },
+                });
 
-         remoteStreamRef.current = remoteStream;
+                console.log(
+                  "[EnableX] 🔊 Remote AUDIO play requested:",
+                  remoteId,
+                );
 
-         if (isMountedRef.current) {
-           setRemoteStreamActive(true);
-           setCallStatus("connected");
-         }
+                // EnableX creates the <audio> element asynchronously.
+                // Try again after it has been inserted into the DOM.
+                setTimeout(() => {
+                  const container = document.getElementById(audioContainerId);
 
-         playedRemoteContainerRef.current = "";
+                  if (!container) return;
 
-         setTimeout(() => playRemotePreview(remoteStream), 50);
-         setTimeout(() => playRemotePreview(remoteStream), 300);
-         setTimeout(() => playRemotePreview(remoteStream), 1000);
+                  const audioElements = container.querySelectorAll("audio");
+
+                  audioElements.forEach((audio) => {
+                    audio.autoplay = true;
+                    audio.muted = false;
+                    audio.volume = 1;
+                    audio.setAttribute("autoplay", "true");
+
+                    audio
+                      .play()
+                      .then(() => {
+                        console.log(
+                          "[EnableX] 🔊 Remote audio playback started",
+                        );
+                      })
+                      .catch((err) => {
+                        console.warn(
+                          "[EnableX] ⚠️ Audio autoplay blocked:",
+                          err,
+                        );
+                      });
+                  });
+                }, 300);
+
+                // Second retry
+                setTimeout(() => {
+                  const container = document.getElementById(audioContainerId);
+
+                  if (!container) return;
+
+                  container.querySelectorAll("audio").forEach((audio) => {
+                    audio.muted = false;
+                    audio.volume = 1;
+                    audio.play().catch(() => {});
+                  });
+                }, 1000);
+              } catch (error) {
+                console.error("[EnableX] ❌ Remote audio play failed:", error);
+              }
+            }
+
+            if (isMountedRef.current) {
+              setRemoteStreamActive(true);
+              setCallStatus("connected");
+            }
+
+            return;
+          }
+
+          // ── For VIDEO CALLS: only allow real participant camera streams ──
+          if (!isParticipantVideoStream(remoteStream)) {
+            console.log(
+              "[EnableX] ⏭️ Ignoring non-camera remote stream:",
+              remoteId,
+            );
+            return;
+          }
+
+          console.log(
+            "[EnableX] 🎥 PARTICIPANT CAMERA STREAM READY:",
+            remoteId,
+          );
+
+          remoteStreamRef.current = remoteStream;
+
+          if (isMountedRef.current) {
+            setRemoteStreamActive(true);
+            setCallStatus("connected");
+          }
+
+          playedRemoteContainerRef.current = "";
+
+          setTimeout(() => playRemotePreview(remoteStream), 50);
+          setTimeout(() => playRemotePreview(remoteStream), 300);
+          setTimeout(() => playRemotePreview(remoteStream), 1000);
         });
 
         // --------------------------------------------------
         // Active talkers updated (EnableX Group Mode)
         // --------------------------------------------------
-        activeRoom.addEventListener(
-  "active-talkers-updated",
-  (event) => {
-    console.log(
-      "[EnableX] 🗣️ ACTIVE TALKERS UPDATED:",
-      event
-    );
+        activeRoom.addEventListener("active-talkers-updated", (event) => {
+          console.log("[EnableX] 🗣️ ACTIVE TALKERS UPDATED:", event);
 
-    const activeList =
-      event?.message?.activeList ||
-      event?.activeList ||
-      [];
+          const activeList =
+            event?.message?.activeList || event?.activeList || [];
 
-    if (!Array.isArray(activeList)) return;
+          if (!Array.isArray(activeList)) return;
 
-    console.log(
-      "[EnableX] Active talkers:",
-      activeList
-    );
+          console.log("[EnableX] Active talkers:", activeList);
 
-    const localId =
-      activeLocalStream?.getID?.() != null
-        ? String(activeLocalStream.getID())
-        : null;
+          const localId =
+            activeLocalStream?.getID?.() != null
+              ? String(activeLocalStream.getID())
+              : null;
 
-    // Find an actual participant video
-    const videoTalker = activeList.find((item) => {
-      const streamId = String(
-        item?.streamId ?? item?.id ?? ""
-      );
+          // Find an actual participant video
+          const videoTalker = activeList.find((item) => {
+            const streamId = String(item?.streamId ?? item?.id ?? "");
 
-      if (!streamId) return false;
+            if (!streamId) return false;
 
-      // Never choose screen share / canvas
-      if (streamId === "101" || streamId === "102") {
-        return false;
-      }
+            // Never choose screen share / canvas
+            if (streamId === "101" || streamId === "102") {
+              return false;
+            }
 
-      // Never choose our own stream
-      if (localId && streamId === localId) {
-        return false;
-      }
+            // Never choose our own stream
+            if (localId && streamId === localId) {
+              return false;
+            }
 
-      // For video calls, prefer actual audio+video talkers
-      if (
-        callType === "video" &&
-        item?.mediatype &&
-        item.mediatype !== "audiovideo"
-      ) {
-        return false;
-      }
+            // For video calls, prefer actual audio+video talkers
+            if (
+              callType === "video" &&
+              item?.mediatype &&
+              item.mediatype !== "audiovideo"
+            ) {
+              return false;
+            }
 
-      // Camera must not be muted
-      if (
-        callType === "video" &&
-        item?.videomuted === true
-      ) {
-        return false;
-      }
+            // Camera must not be muted
+            if (callType === "video" && item?.videomuted === true) {
+              return false;
+            }
 
-      return true;
-    });
+            return true;
+          });
 
-    if (!videoTalker) {
-      console.log(
-        "[EnableX] No active participant video found"
-      );
-      return;
-    }
+          if (!videoTalker) {
+            console.log("[EnableX] No active participant video found");
+            return;
+          }
 
-    const streamId = String(videoTalker.streamId);
+          const streamId = String(videoTalker.streamId);
 
-    let stream = null;
+          let stream = null;
 
-    if (activeRoom.remoteStreams) {
-      if (typeof activeRoom.remoteStreams.get === "function") {
-        stream =
-          activeRoom.remoteStreams.get(
-            videoTalker.streamId
-          ) ||
-          activeRoom.remoteStreams.get(streamId);
-      }
+          if (activeRoom.remoteStreams) {
+            if (typeof activeRoom.remoteStreams.get === "function") {
+              stream =
+                activeRoom.remoteStreams.get(videoTalker.streamId) ||
+                activeRoom.remoteStreams.get(streamId);
+            }
 
-      if (!stream) {
-        stream =
-          activeRoom.remoteStreams[videoTalker.streamId] ||
-          activeRoom.remoteStreams[streamId];
-      }
-    }
+            if (!stream) {
+              stream =
+                activeRoom.remoteStreams[videoTalker.streamId] ||
+                activeRoom.remoteStreams[streamId];
+            }
+          }
 
-    if (!stream) {
-      console.warn(
-        "[EnableX] ❌ Active talker stream not found:",
-        streamId
-      );
-      return;
-    }
+          if (!stream) {
+            console.warn(
+              "[EnableX] ❌ Active talker stream not found:",
+              streamId,
+            );
+            return;
+          }
 
-    if (!isParticipantVideoStream(stream)) {
-      console.warn(
-        "[EnableX] ❌ Active stream is not participant video:",
-        streamId
-      );
-      return;
-    }
+          if (!isParticipantVideoStream(stream)) {
+            console.warn(
+              "[EnableX] ❌ Active stream is not participant video:",
+              streamId,
+            );
+            return;
+          }
 
-    console.log(
-      "[EnableX] 🎥 Active participant video:",
-      streamId,
-      videoTalker
-    );
+          console.log(
+            "[EnableX] 🎥 Active participant video:",
+            streamId,
+            videoTalker,
+          );
 
-    remoteStreamRef.current = stream;
+          remoteStreamRef.current = stream;
 
-    if (isMountedRef.current) {
-      setRemoteStreamActive(true);
-    }
+          if (isMountedRef.current) {
+            setRemoteStreamActive(true);
+          }
 
-    setTimeout(() => {
-      playRemotePreview(stream);
-    }, 50);
-  }
-);
+          setTimeout(() => {
+            playRemotePreview(stream);
+          }, 50);
+        });
 
         // --------------------------------------------------
         // 11. Remote user disconnected
@@ -1022,383 +1069,326 @@ const VideoCall = ({
         // --------------------------------------------------
         // 12. Room errors + automatic token recovery
         // --------------------------------------------------
-        activeRoom.addEventListener(
-          'room-error',
-          async (error) => {
-            console.error('[EnableX] ❌ ROOM ERROR (raw):', error);
+        activeRoom.addEventListener("room-error", async (error) => {
+          console.error("[EnableX] ❌ ROOM ERROR (raw):", error);
 
-            // Ignore errors from an old room that is already being
-            // cleaned up during a reconnect.
-            if (
-              cancelled ||
-              !isMountedRef.current ||
-              intentionalDisconnectRef.current
-            ) {
+          // Ignore errors from an old room that is already being
+          // cleaned up during a reconnect.
+          if (
+            cancelled ||
+            !isMountedRef.current ||
+            intentionalDisconnectRef.current
+          ) {
+            return;
+          }
+
+          const errorText = String(
+            error?.msg || error?.message || error?.desc || error?.error || "",
+          ).toLowerCase();
+
+          const enablexErrorCode = Number(
+            error?.error ?? error?.code ?? error?.result,
+          );
+
+          console.error("[EnableX] Room error details:", {
+            error,
+            errorText,
+            enablexErrorCode,
+            roomId,
+            reconnectAttempts: reconnectAttemptsRef.current,
+          });
+
+          // --------------------------------------------------
+          // Detect "room deleted" (needs a brand new room)
+          // --------------------------------------------------
+          const isRoomDeletedError =
+            enablexErrorCode === 4118 ||
+            errorText.includes("room has been deleted") ||
+            errorText.includes("room deleted");
+
+          // --------------------------------------------------
+          // Detect EnableX token/authentication errors.
+          //
+          // IMPORTANT: this used to include a bare
+          // errorText.includes('token') check, which matched
+          // almost any EnableX message that merely *mentions*
+          // "token" (rate limit notices, ICE renegotiation
+          // messages, etc). That falsely triggered a full
+          // room/token rebuild mid-call, which looked like the
+          // other person "left" even though nothing was
+          // actually wrong. We now require a specific,
+          // unambiguous phrase or a real auth-related HTTP/
+          // EnableX status code.
+          // --------------------------------------------------
+          const isTokenError =
+            errorText.includes("invalid token") ||
+            errorText.includes("invalid_token") ||
+            errorText.includes("token expired") ||
+            errorText.includes("token has expired") ||
+            errorText.includes("invalid token/param") ||
+            errorText.includes("token/param") ||
+            errorText.includes("token param") ||
+            enablexErrorCode === 401 ||
+            enablexErrorCode === 4011; // EnableX auth-failure code — verify against EnableX docs/logs for your account
+
+          if (isRoomDeletedError) {
+            console.warn("[EnableX] 🚨 ROOM 4118: room has been deleted");
+
+            // Do NOT try to reconnect to the old room.
+            // A completely NEW room is required.
+
+            if (reconnectingRef.current) {
+              console.warn("[EnableX] Room recreation already in progress");
               return;
             }
 
-            const errorText = String(
-              error?.msg ||
-              error?.message ||
-              error?.desc ||
-              error?.error ||
-              ''
-            ).toLowerCase();
+            reconnectingRef.current = true;
 
-            const enablexErrorCode = Number(
-              error?.error ??
-              error?.code ??
-              error?.result
-            );
+            if (isMountedRef.current) {
+              setCallStatus("connecting");
+              setRemoteStreamActive(false);
+            }
 
-            console.error('[EnableX] Room error details:', {
-              error,
-              errorText,
-              enablexErrorCode,
-              roomId,
-              reconnectAttempts: reconnectAttemptsRef.current
-            });
+            try {
+              const response = await api.post("/enablex/create-room", {
+                name: `Inakkam Call ${Date.now()}`,
+              });
 
-            // --------------------------------------------------
-            // Detect "room deleted" (needs a brand new room)
-            // --------------------------------------------------
-            const isRoomDeletedError =
-              enablexErrorCode === 4118 ||
-              errorText.includes('room has been deleted') ||
-              errorText.includes('room deleted');
+              const newRoomId =
+                response.data?.roomId ||
+                response.data?.room?.room_id ||
+                response.data?.room?.roomId ||
+                response.data?.room?._id;
 
-            // --------------------------------------------------
-            // Detect EnableX token/authentication errors.
-            //
-            // IMPORTANT: this used to include a bare
-            // errorText.includes('token') check, which matched
-            // almost any EnableX message that merely *mentions*
-            // "token" (rate limit notices, ICE renegotiation
-            // messages, etc). That falsely triggered a full
-            // room/token rebuild mid-call, which looked like the
-            // other person "left" even though nothing was
-            // actually wrong. We now require a specific,
-            // unambiguous phrase or a real auth-related HTTP/
-            // EnableX status code.
-            // --------------------------------------------------
-            const isTokenError =
-              errorText.includes('invalid token') ||
-              errorText.includes('invalid_token') ||
-              errorText.includes('token expired') ||
-              errorText.includes('token has expired') ||
-              errorText.includes('invalid token/param') ||
-              errorText.includes('token/param') ||
-              errorText.includes('token param') ||
-              enablexErrorCode === 401 ||
-              enablexErrorCode === 4011; // EnableX auth-failure code — verify against EnableX docs/logs for your account
+              if (!response.data?.success || !newRoomId) {
+                throw new Error(
+                  response.data?.message || "Failed to create replacement room",
+                );
+              }
 
-            if (isRoomDeletedError) {
-              console.warn(
-                '[EnableX] 🚨 ROOM 4118: room has been deleted'
+              console.log("[EnableX] ✅ Replacement room created:", newRoomId);
+
+              const socket = getSocket();
+
+              // Tell the other participant.
+              if (socket && targetUid) {
+                socket.emit("enablex_room_recreated", {
+                  targetUserId: targetUid,
+                  conversationId: roomId,
+                  roomId: newRoomId,
+                  callType,
+                });
+              }
+
+              /*
+               * IMPORTANT:
+               *
+               * We cannot simply change the local `roomId` prop.
+               * The parent needs to pass the new roomId back
+               * into VideoCall.
+               *
+               * So emit an event / callback to the parent here.
+               */
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(
+                  new CustomEvent("enablex-room-recreated", {
+                    detail: {
+                      roomId: newRoomId,
+                    },
+                  }),
+                );
+              }
+            } catch (recreateError) {
+              console.error(
+                "[EnableX] ❌ Failed to recreate room:",
+                recreateError?.response?.data || recreateError,
               );
 
-              // Do NOT try to reconnect to the old room.
-              // A completely NEW room is required.
+              // If EnableX is rate-limiting us (429), do NOT leave
+              // the call sitting in "connecting" waiting for
+              // another room-error to retry — that just fires
+              // create-room again and deepens the rate limit.
+              // End the call cleanly instead.
+              const isRateLimited =
+                recreateError?.response?.status === 429 ||
+                recreateError?.response?.data?.rateLimited === true;
 
-              if (reconnectingRef.current) {
-                console.warn(
-                  '[EnableX] Room recreation already in progress'
-                );
-                return;
-              }
-
-              reconnectingRef.current = true;
-
-              if (isMountedRef.current) {
-                setCallStatus('connecting');
-                setRemoteStreamActive(false);
-              }
-
-              try {
-                const response = await api.post(
-                  '/enablex/create-room',
-                  {
-                    name:
-                      `Inakkam Call ${Date.now()}`
-                  }
-                );
-
-                const newRoomId =
-                  response.data?.roomId ||
-                  response.data?.room?.room_id ||
-                  response.data?.room?.roomId ||
-                  response.data?.room?._id;
-
-                if (
-                  !response.data?.success ||
-                  !newRoomId
-                ) {
-                  throw new Error(
-                    response.data?.message ||
-                    'Failed to create replacement room'
-                  );
-                }
-
-                console.log(
-                  '[EnableX] ✅ Replacement room created:',
-                  newRoomId
-                );
-
-                const socket = getSocket();
-
-                // Tell the other participant.
-                if (socket && targetUid) {
-                  socket.emit(
-                    'enablex_room_recreated',
-                    {
-                      targetUserId: targetUid,
-                      conversationId: roomId,
-                      roomId: newRoomId,
-                      callType
-                    }
-                  );
-                }
-
-                /*
-                 * IMPORTANT:
-                 *
-                 * We cannot simply change the local `roomId` prop.
-                 * The parent needs to pass the new roomId back
-                 * into VideoCall.
-                 *
-                 * So emit an event / callback to the parent here.
-                 */
-                if (
-                  typeof window !== 'undefined'
-                ) {
-                  window.dispatchEvent(
-                    new CustomEvent(
-                      'enablex-room-recreated',
-                      {
-                        detail: {
-                          roomId: newRoomId
-                        }
-                      }
-                    )
-                  );
-                }
-
-              } catch (recreateError) {
-
-                console.error(
-                  '[EnableX] ❌ Failed to recreate room:',
-                  recreateError?.response?.data ||
-                  recreateError
-                );
-
-                // If EnableX is rate-limiting us (429), do NOT leave
-                // the call sitting in "connecting" waiting for
-                // another room-error to retry — that just fires
-                // create-room again and deepens the rate limit.
-                // End the call cleanly instead.
-                const isRateLimited =
-                  recreateError?.response?.status === 429 ||
-                  recreateError?.response?.data?.rateLimited === true;
-
-                if (isRateLimited) {
-                  const retryAfterSeconds =
-                    recreateError?.response?.data?.retryAfterSeconds;
-
-                  toast.error(
-                    retryAfterSeconds
-                      ? `Video service is busy. Please try again in ${retryAfterSeconds}s.`
-                      : "Video service is busy. Please try again in a moment.",
-                  );
-
-                  reconnectingRef.current = false;
-
-                  if (isMountedRef.current && !intentionalDisconnectRef.current) {
-                    handleDisconnect();
-                  }
-
-                  return;
-                }
+              if (isRateLimited) {
+                const retryAfterSeconds =
+                  recreateError?.response?.data?.retryAfterSeconds;
 
                 toast.error(
-                  'Unable to reconnect the video call.'
+                  retryAfterSeconds
+                    ? `Video service is busy. Please try again in ${retryAfterSeconds}s.`
+                    : "Video service is busy. Please try again in a moment.",
                 );
 
-              } finally {
                 reconnectingRef.current = false;
-              }
 
-              return;
-            }
-            if (isTokenError) {
-              // Prevent multiple room-error events from triggering
-              // multiple simultaneous reconnects.
-              if (reconnectingRef.current) {
-                console.warn(
-                  '[EnableX] Token recovery already in progress.'
-                );
+                if (isMountedRef.current && !intentionalDisconnectRef.current) {
+                  handleDisconnect();
+                }
+
                 return;
               }
 
-              reconnectingRef.current = true;
+              toast.error("Unable to reconnect the video call.");
+            } finally {
+              reconnectingRef.current = false;
+            }
 
-              console.warn(
-                '[EnableX] 🔄 INVALID TOKEN DETECTED — starting full token recovery'
-              );
-
-              if (isMountedRef.current) {
-                setCallStatus('connecting');
-                setRemoteStreamActive(false);
-              }
-
-              toast.error(
-                'Video connection expired. Reconnecting...'
-              );
-
-              // Allow the old room to finish disconnecting.
-              try {
-                if (activeRoom) {
-                  activeRoom.disconnect();
-                }
-              } catch (disconnectError) {
-                console.warn(
-                  '[EnableX] Old room disconnect during token recovery:',
-                  disconnectError
-                );
-              }
-
-              // Close old local stream.
-              try {
-                if (activeLocalStream) {
-                  activeLocalStream.close();
-                }
-              } catch (streamError) {
-                console.warn(
-                  '[EnableX] Old stream close during token recovery:',
-                  streamError
-                );
-              }
-
-              // Clear current references.
-              if (roomRef.current === activeRoom) {
-                roomRef.current = null;
-              }
-
-              if (localStreamRef.current === activeLocalStream) {
-                localStreamRef.current = null;
-              }
-
-              remoteStreamRef.current = null;
-              tokenRef.current = null;
-
-              // Reset retry counter because we're doing a complete
-              // token refresh rather than a normal reconnect.
-              reconnectAttemptsRef.current = 0;
-
-              // Force the EnableX initialization useEffect to run again.
-              if (isMountedRef.current) {
-                setTimeout(() => {
-                  if (!isMountedRef.current) return;
-
-                  reconnectingRef.current = false;
-
-                  setReconnectKey(prev => prev + 1);
-                }, 500);
-              }
-
+            return;
+          }
+          if (isTokenError) {
+            // Prevent multiple room-error events from triggering
+            // multiple simultaneous reconnects.
+            if (reconnectingRef.current) {
+              console.warn("[EnableX] Token recovery already in progress.");
               return;
             }
 
-            // --------------------------------------------------
-            // Temporary connection errors — DO NOT tear the room
-            // down for these; the SDK's own allow_reconnect logic
-            // (see room.connect below) handles brief network blips.
-            // --------------------------------------------------
-            if (reconnectAttemptsRef.current < 3) {
-              reconnectAttemptsRef.current += 1;
+            reconnectingRef.current = true;
 
-              console.warn(
-                `[EnableX] Temporary room error. ` +
-                `Reconnect attempt ${reconnectAttemptsRef.current}/3`
-              );
-
-              toast(
-                `Connection interrupted. Reconnecting ` +
-                `(${reconnectAttemptsRef.current}/3)...`
-              );
-
-              return;
-            }
-
-            // --------------------------------------------------
-            // Final failure
-            // --------------------------------------------------
-            toast.error(
-              'Unable to reconnect the video call.'
+            console.warn(
+              "[EnableX] 🔄 INVALID TOKEN DETECTED — starting full token recovery",
             );
 
-            if (
-              isMountedRef.current &&
-              !intentionalDisconnectRef.current
-            ) {
-              handleDisconnect();
+            if (isMountedRef.current) {
+              setCallStatus("connecting");
+              setRemoteStreamActive(false);
             }
+
+            toast.error("Video connection expired. Reconnecting...");
+
+            // Allow the old room to finish disconnecting.
+            try {
+              if (activeRoom) {
+                activeRoom.disconnect();
+              }
+            } catch (disconnectError) {
+              console.warn(
+                "[EnableX] Old room disconnect during token recovery:",
+                disconnectError,
+              );
+            }
+
+            // Close old local stream.
+            try {
+              if (activeLocalStream) {
+                activeLocalStream.close();
+              }
+            } catch (streamError) {
+              console.warn(
+                "[EnableX] Old stream close during token recovery:",
+                streamError,
+              );
+            }
+
+            // Clear current references.
+            if (roomRef.current === activeRoom) {
+              roomRef.current = null;
+            }
+
+            if (localStreamRef.current === activeLocalStream) {
+              localStreamRef.current = null;
+            }
+
+            remoteStreamRef.current = null;
+            tokenRef.current = null;
+
+            // Reset retry counter because we're doing a complete
+            // token refresh rather than a normal reconnect.
+            reconnectAttemptsRef.current = 0;
+
+            // Force the EnableX initialization useEffect to run again.
+            if (isMountedRef.current) {
+              setTimeout(() => {
+                if (!isMountedRef.current) return;
+
+                reconnectingRef.current = false;
+
+                setReconnectKey((prev) => prev + 1);
+              }, 500);
+            }
+
+            return;
           }
-        );
+
+          // --------------------------------------------------
+          // Temporary connection errors — DO NOT tear the room
+          // down for these; the SDK's own allow_reconnect logic
+          // (see room.connect below) handles brief network blips.
+          // --------------------------------------------------
+          if (reconnectAttemptsRef.current < 3) {
+            reconnectAttemptsRef.current += 1;
+
+            console.warn(
+              `[EnableX] Temporary room error. ` +
+                `Reconnect attempt ${reconnectAttemptsRef.current}/3`,
+            );
+
+            toast(
+              `Connection interrupted. Reconnecting ` +
+                `(${reconnectAttemptsRef.current}/3)...`,
+            );
+
+            return;
+          }
+
+          // --------------------------------------------------
+          // Final failure
+          // --------------------------------------------------
+          toast.error("Unable to reconnect the video call.");
+
+          if (isMountedRef.current && !intentionalDisconnectRef.current) {
+            handleDisconnect();
+          }
+        });
 
         // --------------------------------------------------
         // 12. Room disconnected
         // --------------------------------------------------
-        activeRoom.addEventListener(
-          'room-disconnected',
-          (event) => {
-            console.log(
-              '[EnableX] Room disconnected:',
-              event
-            );
+        activeRoom.addEventListener("room-disconnected", (event) => {
+          console.log("[EnableX] Room disconnected:", event);
 
-            // User intentionally ended the call.
-            if (
-              intentionalDisconnectRef.current ||
-              isDisconnectedRef.current ||
-              cancelled
-            ) {
-              console.log(
-                '[EnableX] Intentional/cleanup disconnect.'
-              );
-              return;
-            }
-
-            // If token recovery / room recreation is already
-            // happening, do not start another recovery — this
-            // room-disconnected event almost certainly belongs to
-            // the room we're already tearing down on purpose.
-            if (reconnectingRef.current) {
-              console.log(
-                '[EnableX] Disconnect belongs to an in-progress recovery.'
-              );
-              return;
-            }
-
-            console.warn(
-              '[EnableX] Unexpected room disconnect.'
-            );
-
-            if (isMountedRef.current) {
-              setCallStatus('connecting');
-              setRemoteStreamActive(false);
-            }
-
-            // Rebuild the EnableX session.
-            reconnectingRef.current = true;
-
-            setTimeout(() => {
-              if (!isMountedRef.current) return;
-
-              reconnectingRef.current = false;
-              setReconnectKey(prev => prev + 1);
-            }, 500);
+          // User intentionally ended the call.
+          if (
+            intentionalDisconnectRef.current ||
+            isDisconnectedRef.current ||
+            cancelled
+          ) {
+            console.log("[EnableX] Intentional/cleanup disconnect.");
+            return;
           }
-        );
+
+          // If token recovery / room recreation is already
+          // happening, do not start another recovery — this
+          // room-disconnected event almost certainly belongs to
+          // the room we're already tearing down on purpose.
+          if (reconnectingRef.current) {
+            console.log(
+              "[EnableX] Disconnect belongs to an in-progress recovery.",
+            );
+            return;
+          }
+
+          console.warn("[EnableX] Unexpected room disconnect.");
+
+          if (isMountedRef.current) {
+            setCallStatus("connecting");
+            setRemoteStreamActive(false);
+          }
+
+          // Rebuild the EnableX session.
+          reconnectingRef.current = true;
+
+          setTimeout(() => {
+            if (!isMountedRef.current) return;
+
+            reconnectingRef.current = false;
+            setReconnectKey((prev) => prev + 1);
+          }, 500);
+        });
         // --------------------------------------------------
         // 13. CONNECT TO ENABLEX
         // --------------------------------------------------
@@ -1457,10 +1447,7 @@ const VideoCall = ({
         try {
           cleanupRoom.disconnect();
         } catch (e) {
-          console.warn(
-            '[EnableX] Room cleanup error:',
-            e
-          );
+          console.warn("[EnableX] Room cleanup error:", e);
         }
       }
 
@@ -1468,10 +1455,7 @@ const VideoCall = ({
         try {
           activeLocalStream.close();
         } catch (e) {
-          console.warn(
-            '[EnableX] Stream cleanup error:',
-            e
-          );
+          console.warn("[EnableX] Stream cleanup error:", e);
         }
       }
 
@@ -1479,10 +1463,7 @@ const VideoCall = ({
         roomRef.current = null;
       }
 
-      if (
-        localStreamRef.current ===
-        activeLocalStream
-      ) {
+      if (localStreamRef.current === activeLocalStream) {
         localStreamRef.current = null;
       }
 
@@ -1584,18 +1565,66 @@ const VideoCall = ({
     socket.on("webrtc_chat", handleChatMsg);
     return () => socket.off("webrtc_chat", handleChatMsg);
   }, [targetUid, remoteUserName]);
-  const handleUnlockAudio = useCallback(() => {
-    const remoteContainer =
-      document.getElementById("remote_video_player") ||
+ const handleUnlockAudio = useCallback(() => {
+  const audioContainer =
+    document.getElementById("remote_audio_player");
+
+  if (!audioContainer) {
+    console.warn("[EnableX] Audio container not found");
+    return;
+  }
+
+  const mediaEls =
+    audioContainer.querySelectorAll("audio, video");
+
+  mediaEls.forEach((el) => {
+    try {
+      el.muted = false;
+      el.volume = 1;
+      el.autoplay = true;
+      el.playsInline = true;
+
+      const playPromise = el.play();
+
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            console.log(
+              "[EnableX] 🔊 Audio unlocked successfully"
+            );
+          })
+          .catch((err) => {
+            console.warn(
+              "[EnableX] Audio unlock failed:",
+              err
+            );
+          });
+      }
+    } catch (error) {
+      console.error(
+        "[EnableX] Audio unlock error:",
+        error
+      );
+    }
+  });
+
+  // Retry once because EnableX may inject the audio element
+  // slightly after the click.
+  setTimeout(() => {
+    const container =
       document.getElementById("remote_audio_player");
-    if (remoteContainer) {
-      const mediaEls = remoteContainer.querySelectorAll("video, audio");
-      mediaEls.forEach((el) => {
+
+    if (!container) return;
+
+    container
+      .querySelectorAll("audio, video")
+      .forEach((el) => {
         el.muted = false;
+        el.volume = 1;
         el.play().catch(() => {});
       });
-    }
-  }, []);
+  }, 300);
+}, []);
 
   return (
     <div
@@ -1760,18 +1789,26 @@ const VideoCall = ({
                   autoplay on some browsers/mobile. Position it far off-screen
                   so it's invisible but still "rendered" by the browser. */}
               <div
-                id="remote_audio_player"
-                className="pointer-events-none"
-                style={{
-                  position: "absolute",
-                  left: "-9999px",
-                  top: "-9999px",
-                  width: "1px",
-                  height: "1px",
-                  overflow: "hidden",
-                  opacity: 0,
-                }}
-              />
+  id="remote_audio_player"
+  className="pointer-events-none"
+  style={{
+    position: "absolute",
+    left: "-9999px",
+    top: "-9999px",
+    width: "1px",
+    height: "1px",
+    overflow: "hidden",
+    opacity: 0,
+  }}
+/>
+
+<button
+  type="button"
+  onClick={handleUnlockAudio}
+  className="mt-6 px-6 py-3 rounded-full bg-[#D51659] hover:bg-[#D51659]/90 text-white font-bold shadow-lg transition-all"
+>
+  🔊 Enable Sound
+</button>
               {/* Animated Soundwave */}
               <div className="flex items-center gap-1.5 mt-8 h-10">
                 {[40, 75, 30, 90, 50, 85, 45, 65, 100, 55, 80, 35, 70, 45].map(
@@ -1794,9 +1831,9 @@ const VideoCall = ({
             <div className="flex-1 h-full bg-[#121212] relative overflow-hidden">
               {/* EnableX Remote Video Container — fullscreen */}
               <div
-  id="remote_video_player"
-  className="absolute inset-0 w-full h-full overflow-hidden bg-black z-0"
-/>
+                id="remote_video_player"
+                className="absolute inset-0 w-full h-full overflow-hidden bg-black z-0"
+              />
 
               {/* Waiting for remote placeholder */}
               {!remoteStreamActive && (
