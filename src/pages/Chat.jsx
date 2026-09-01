@@ -829,7 +829,11 @@ const Chat = () => {
                   onClick={handleAcceptCall}
                   className="flex-1 py-3 px-4 rounded-xl bg-[#D51659] hover:bg-[#D51659]/90 text-white font-bold transition-all text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#D51659]/20 cursor-pointer"
                 >
-                  <Video className="w-4 h-4" />
+                  {incomingCall.callType === 'audio' ? (
+                    <Phone className="w-4 h-4" />
+                  ) : (
+                    <Video className="w-4 h-4" />
+                  )}
                   Accept
                 </button>
               </div>

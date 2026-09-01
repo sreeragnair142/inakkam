@@ -352,67 +352,162 @@ const VideoCall = ({
     return true;
   }, []);
 
-  const playRemotePreview = useCallback(
-    (streamArg = null) => {
-      const stream = streamArg || remoteStreamRef.current;
+  const playRemoteAudio = useCallback((streamArg = null) => {
+    const stream = streamArg || remoteStreamRef.current;
+    if (!stream) {
+      console.warn("[EnableX] ❌ No remote audio stream available");
+      return;
+    }
 
-      if (!stream) {
-        console.warn("[EnableX] ❌ No remote stream available");
-        return;
+    const localId = String(
+      localStreamRef.current && typeof localStreamRef.current.getID === "function"
+        ? localStreamRef.current.getID()
+        : ""
+    );
+    const streamId = String(
+      typeof stream.getID === "function" ? stream.getID() : "remote_audio"
+    );
+    if (localId && streamId === localId) return;
+
+    const containerId = "remote_audio_player";
+    const container = document.getElementById(containerId);
+    if (!container) {
+      console.warn("[EnableX] ❌ remote_audio_player container not found in DOM");
+      return;
+    }
+
+    console.log("[EnableX] 🔊 Playing remote audio stream:", streamId);
+
+    try {
+      // 1. EnableX SDK stream.play
+      if (typeof stream.play === "function") {
+        stream.play(containerId, {
+          player: {
+            autoplay: true,
+            playsinline: true,
+            muted: false,
+          },
+          toolbar: {
+            displayMode: false,
+            branding: { display: false },
+          },
+        });
       }
 
-      if (!isParticipantVideoStream(stream)) {
-        console.warn(
-          "[EnableX] ❌ Refusing to play non-camera stream:",
-          stream.getID?.(),
-        );
-        return;
-      }
-
-      const containerId = "remote_video_player";
-      const container = document.getElementById(containerId);
-
-      if (!container) {
-        console.warn("[EnableX] ❌ remote_video_player not found in DOM");
-        return;
-      }
-
-      const streamId =
-        typeof stream.getID === "function" ? String(stream.getID()) : "remote";
-
-      console.log("[EnableX] 🎬 PLAYING PARTICIPANT VIDEO:", streamId);
-
-      try {
-        playedRemoteContainerRef.current = "";
-
-        if (typeof stream.play === "function") {
-          stream.play(containerId, {
-            player: {
-              width: "100%",
-              height: "100%",
-              minWidth: "100%",
-              minHeight: "100%",
-              autoplay: true,
-              playsinline: true,
-            },
-            toolbar: {
-              displayMode: false,
-              branding: {
-                display: false,
-              },
-            },
-          });
-
-          playedRemoteContainerRef.current = `${streamId}_${containerId}`;
-
-          console.log("[EnableX] ✅ Participant video attached:", streamId);
+      // 2. Direct HTML5 Audio fallback for native WebRTC MediaStream
+      const nativeStream = stream.stream || (typeof stream.getMediaStream === 'function' ? stream.getMediaStream() : null);
+      if (nativeStream && (nativeStream instanceof MediaStream || nativeStream.getAudioTracks)) {
+        let audioEl = container.querySelector("audio.enx-audio-native-track");
+        if (!audioEl) {
+          audioEl = document.createElement("audio");
+          audioEl.className = "enx-audio-native-track";
+          audioEl.autoplay = true;
+          audioEl.playsInline = true;
+          audioEl.setAttribute("playsinline", "true");
+          audioEl.setAttribute("webkit-playsinline", "true");
+          container.appendChild(audioEl);
         }
-      } catch (error) {
-        console.error("[EnableX] ❌ Remote video play failed:", error);
+        if (audioEl.srcObject !== nativeStream) {
+          audioEl.srcObject = nativeStream;
+        }
+        audioEl.muted = false;
+        audioEl.volume = 1.0;
+        audioEl.play().catch((err) => {
+          console.log("[EnableX] Audio play waiting for user interaction:", err?.message);
+        });
       }
-    },
-    [callType],
-  );
+
+      // 3. Ensure any audio elements created inside container are unmuted & playing
+      setTimeout(() => {
+        container.querySelectorAll("audio, video").forEach((el) => {
+          el.muted = false;
+          el.volume = 1.0;
+          el.setAttribute("playsinline", "true");
+          el.play().catch(() => {});
+        });
+      }, 50);
+    } catch (error) {
+      console.error("[EnableX] ❌ Remote audio play failed:", error);
+    }
+  }, []);
+
+  const playRemotePreview = useCallback((streamArg = null) => {
+    const stream = streamArg || remoteStreamRef.current;
+
+    if (!stream) {
+      console.warn("[EnableX] ❌ No remote stream available");
+      return;
+    }
+
+    if (callType === "audio") {
+      playRemoteAudio(stream);
+      return;
+    }
+
+    if (!isParticipantVideoStream(stream)) {
+      console.warn(
+        "[EnableX] ❌ Refusing to play non-camera stream:",
+        stream.getID?.()
+      );
+      return;
+    }
+
+    const containerId = "remote_video_player";
+    const container = document.getElementById(containerId);
+
+    if (!container) {
+      console.warn(
+        "[EnableX] ❌ remote_video_player not found in DOM"
+      );
+      return;
+    }
+
+    const streamId =
+      typeof stream.getID === "function"
+        ? String(stream.getID())
+        : "remote";
+
+    console.log(
+      "[EnableX] 🎬 PLAYING PARTICIPANT VIDEO:",
+      streamId
+    );
+
+    try {
+      playedRemoteContainerRef.current = "";
+
+      if (typeof stream.play === "function") {
+        stream.play(containerId, {
+          player: {
+            width: "100%",
+            height: "100%",
+            minWidth: "100%",
+            minHeight: "100%",
+            autoplay: true,
+            playsinline: true,
+          },
+          toolbar: {
+            displayMode: false,
+            branding: {
+              display: false,
+            },
+          },
+        });
+
+        playedRemoteContainerRef.current =
+          `${streamId}_${containerId}`;
+
+        console.log(
+          "[EnableX] ✅ Participant video attached:",
+          streamId
+        );
+      }
+    } catch (error) {
+      console.error(
+        "[EnableX] ❌ Remote video play failed:",
+        error
+      );
+    }
+  }, [callType, isParticipantVideoStream, playRemoteAudio]);
 
   useEffect(() => {
     if (callStatus === "connecting" || callStatus === "connected") {
@@ -423,10 +518,16 @@ const VideoCall = ({
 
   useEffect(() => {
     if (remoteStreamActive || callStatus === "connected") {
-      const t = setTimeout(playRemotePreview, 50);
+      const t = setTimeout(() => {
+        if (callType === "audio") {
+          playRemoteAudio();
+        } else {
+          playRemotePreview();
+        }
+      }, 50);
       return () => clearTimeout(t);
     }
-  }, [remoteStreamActive, callStatus, playRemotePreview]);
+  }, [remoteStreamActive, callStatus, callType, playRemoteAudio, playRemotePreview]);
 
   // ─── EnableX SDK Initialization ─────────────────────────
   useEffect(() => {
@@ -847,99 +948,18 @@ const VideoCall = ({
             remoteDisconnectTimerRef.current = null;
           }
 
-          // ── For VOICE CALLS: attach and force remote audio playback ───
+          remoteStreamRef.current = remoteStream;
+
+          if (isMountedRef.current) {
+            setRemoteStreamActive(true);
+            setCallStatus("connected");
+          }
+
+          // ── For VOICE CALLS: play audio stream with retries ──────────────
           if (callType === "audio") {
-            const audioContainerId = "remote_audio_player";
-            const audioContainer = document.getElementById(audioContainerId);
-
-            remoteStreamRef.current = remoteStream;
-
-            console.log("[EnableX] 🎧 VOICE STREAM SUBSCRIBED:", {
-              streamId: remoteId,
-              hasAudio:
-                typeof remoteStream.ifAudio === "function"
-                  ? remoteStream.ifAudio()
-                  : "unknown",
-              hasVideo:
-                typeof remoteStream.ifVideo === "function"
-                  ? remoteStream.ifVideo()
-                  : "unknown",
-            });
-
-            if (!audioContainer) {
-              console.error("[EnableX] ❌ remote_audio_player not found");
-            } else if (typeof remoteStream.play === "function") {
-              try {
-                remoteStream.play(audioContainerId, {
-                  player: {
-                    autoplay: true,
-                    muted: false,
-                    playsinline: true,
-                  },
-                  toolbar: {
-                    displayMode: false,
-                    branding: { display: false },
-                  },
-                });
-
-                console.log(
-                  "[EnableX] 🔊 Remote voice stream.play() called:",
-                  remoteId,
-                );
-
-                // EnableX creates the media element asynchronously.
-                const forceAudioPlayback = () => {
-                  const container =
-                    document.getElementById(audioContainerId);
-                  if (!container) return;
-
-                  const mediaElements =
-                    container.querySelectorAll("audio, video");
-
-                  console.log(
-                    "[EnableX] 🔊 Media elements found:",
-                    mediaElements.length,
-                  );
-
-                  mediaElements.forEach((media) => {
-                    media.autoplay = true;
-                    media.muted = false;
-                    media.volume = 1;
-                    if ("playsInline" in media) media.playsInline = true;
-
-                    media
-                      .play()
-                      .then(() => {
-                        console.log(
-                          "[EnableX] ✅ Remote voice playback started",
-                        );
-                      })
-                      .catch((error) => {
-                        console.warn(
-                          "[EnableX] ⚠️ Remote playback blocked:",
-                          error,
-                        );
-                      });
-                  });
-                };
-
-                setTimeout(forceAudioPlayback, 100);
-                setTimeout(forceAudioPlayback, 500);
-                setTimeout(forceAudioPlayback, 1000);
-                setTimeout(forceAudioPlayback, 2000);
-              } catch (error) {
-                console.error(
-                  "[EnableX] ❌ Remote voice play failed:",
-                  error,
-                );
-              }
-            }
-
-            if (isMountedRef.current) {
-              setRemoteStreamActive(true);
-              setCallStatus("connected");
-            }
-
+            setTimeout(() => playRemoteAudio(remoteStream), 50);
+            setTimeout(() => playRemoteAudio(remoteStream), 300);
+            setTimeout(() => playRemoteAudio(remoteStream), 1000);
             return;
           }
 
@@ -947,22 +967,15 @@ const VideoCall = ({
           if (!isParticipantVideoStream(remoteStream)) {
             console.log(
               "[EnableX] ⏭️ Ignoring non-camera remote stream:",
-              remoteId,
+              remoteId
             );
             return;
           }
 
           console.log(
             "[EnableX] 🎥 PARTICIPANT CAMERA STREAM READY:",
-            remoteId,
+            remoteId
           );
-
-          remoteStreamRef.current = remoteStream;
-
-          if (isMountedRef.current) {
-            setRemoteStreamActive(true);
-            setCallStatus("connected");
-          }
 
           playedRemoteContainerRef.current = "";
 
@@ -974,109 +987,109 @@ const VideoCall = ({
         // --------------------------------------------------
         // Active talkers updated (EnableX Group Mode)
         // --------------------------------------------------
-        activeRoom.addEventListener("active-talkers-updated", (event) => {
-          console.log("[EnableX] 🗣️ ACTIVE TALKERS UPDATED:", event);
+        activeRoom.addEventListener(
+          "active-talkers-updated",
+          (event) => {
+            console.log(
+              "[EnableX] 🗣️ ACTIVE TALKERS UPDATED:",
+              event
+            );
 
-          const activeList =
-            event?.message?.activeList || event?.activeList || [];
+            const activeList =
+              event?.message?.activeList ||
+              event?.activeList ||
+              [];
 
-          if (!Array.isArray(activeList)) return;
+            if (!Array.isArray(activeList) || activeList.length === 0) return;
 
-          console.log("[EnableX] Active talkers:", activeList);
+            const localId =
+              activeLocalStream?.getID?.() != null
+                ? String(activeLocalStream.getID())
+                : null;
 
-          const localId =
-            activeLocalStream?.getID?.() != null
-              ? String(activeLocalStream.getID())
-              : null;
+            // Find an active talker
+            const talker = activeList.find((item) => {
+              const streamId = String(
+                item?.streamId ?? item?.id ?? ""
+              );
 
-          // Find an actual participant video
-          const videoTalker = activeList.find((item) => {
-            const streamId = String(item?.streamId ?? item?.id ?? "");
+              if (!streamId) return false;
 
-            if (!streamId) return false;
+              // Never choose screen share / canvas
+              if (streamId === "101" || streamId === "102") {
+                return false;
+              }
 
-            // Never choose screen share / canvas
-            if (streamId === "101" || streamId === "102") {
-              return false;
+              // Never choose our own stream
+              if (localId && streamId === localId) {
+                return false;
+              }
+
+              // For video calls, prefer actual audio+video talkers
+              if (
+                callType === "video" &&
+                item?.mediatype &&
+                item.mediatype !== "audiovideo"
+              ) {
+                return false;
+              }
+
+              // For video calls, camera must not be muted
+              if (
+                callType === "video" &&
+                item?.videomuted === true
+              ) {
+                return false;
+              }
+
+              return true;
+            });
+
+            if (!talker) {
+              return;
             }
 
-            // Never choose our own stream
-            if (localId && streamId === localId) {
-              return false;
-            }
+            const streamId = String(talker.streamId);
 
-            // For video calls, prefer actual audio+video talkers
-            if (
-              callType === "video" &&
-              item?.mediatype &&
-              item.mediatype !== "audiovideo"
-            ) {
-              return false;
-            }
+            let stream = null;
 
-            // Camera must not be muted
-            if (callType === "video" && item?.videomuted === true) {
-              return false;
-            }
+            if (activeRoom.remoteStreams) {
+              if (typeof activeRoom.remoteStreams.get === "function") {
+                stream =
+                  activeRoom.remoteStreams.get(
+                    talker.streamId
+                  ) ||
+                  activeRoom.remoteStreams.get(streamId);
+              }
 
-            return true;
-          });
-
-          if (!videoTalker) {
-            console.log("[EnableX] No active participant video found");
-            return;
-          }
-
-          const streamId = String(videoTalker.streamId);
-
-          let stream = null;
-
-          if (activeRoom.remoteStreams) {
-            if (typeof activeRoom.remoteStreams.get === "function") {
-              stream =
-                activeRoom.remoteStreams.get(videoTalker.streamId) ||
-                activeRoom.remoteStreams.get(streamId);
+              if (!stream) {
+                stream =
+                  activeRoom.remoteStreams[talker.streamId] ||
+                  activeRoom.remoteStreams[streamId];
+              }
             }
 
             if (!stream) {
-              stream =
-                activeRoom.remoteStreams[videoTalker.streamId] ||
-                activeRoom.remoteStreams[streamId];
+              return;
+            }
+
+            remoteStreamRef.current = stream;
+
+            if (isMountedRef.current) {
+              setRemoteStreamActive(true);
+            }
+
+            if (callType === "audio") {
+              setTimeout(() => {
+                playRemoteAudio(stream);
+              }, 50);
+            } else if (isParticipantVideoStream(stream)) {
+              setTimeout(() => {
+                playRemotePreview(stream);
+              }, 50);
             }
           }
-
-          if (!stream) {
-            console.warn(
-              "[EnableX] ❌ Active talker stream not found:",
-              streamId,
-            );
-            return;
-          }
-
-          if (!isParticipantVideoStream(stream)) {
-            console.warn(
-              "[EnableX] ❌ Active stream is not participant video:",
-              streamId,
-            );
-            return;
-          }
-
-          console.log(
-            "[EnableX] 🎥 Active participant video:",
-            streamId,
-            videoTalker,
-          );
-
-          remoteStreamRef.current = stream;
-
-          if (isMountedRef.current) {
-            setRemoteStreamActive(true);
-          }
-
-          setTimeout(() => {
-            playRemotePreview(stream);
-          }, 50);
-        });
+        );
 
         // --------------------------------------------------
         // 11. Remote user disconnected
@@ -1603,71 +1616,41 @@ const VideoCall = ({
     socket.on("webrtc_chat", handleChatMsg);
     return () => socket.off("webrtc_chat", handleChatMsg);
   }, [targetUid, remoteUserName]);
- const handleUnlockAudio = useCallback(() => {
-  const audioContainer =
-    document.getElementById("remote_audio_player");
-
-  if (!audioContainer) {
-    console.warn("[EnableX] Audio container not found");
-    return;
-  }
-
-  const mediaEls =
-    audioContainer.querySelectorAll("audio, video");
-
-  mediaEls.forEach((el) => {
-    try {
-      el.muted = false;
-      el.volume = 1;
-      el.autoplay = true;
-      el.playsInline = true;
-
-      const playPromise = el.play();
-
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            console.log(
-              "[EnableX] 🔊 Audio unlocked successfully"
-            );
-          })
-          .catch((err) => {
-            console.warn(
-              "[EnableX] Audio unlock failed:",
-              err
-            );
-          });
-      }
-    } catch (error) {
-      console.error(
-        "[EnableX] Audio unlock error:",
-        error
-      );
-    }
-  });
-
-  // Retry once because EnableX may inject the audio element
-  // slightly after the click.
-  setTimeout(() => {
-    const container =
-      document.getElementById("remote_audio_player");
-
-    if (!container) return;
-
-    container
-      .querySelectorAll("audio, video")
-      .forEach((el) => {
+  const handleUnlockAudio = useCallback(() => {
+    const audioContainer = document.getElementById("remote_audio_player");
+    if (audioContainer) {
+      const mediaEls = audioContainer.querySelectorAll("video, audio");
+      mediaEls.forEach((el) => {
         el.muted = false;
-        el.volume = 1;
+        el.volume = 1.0;
         el.play().catch(() => {});
       });
-  }, 300);
-}, []);
+    }
+    const videoContainer = document.getElementById("remote_video_player");
+    if (videoContainer) {
+      const mediaEls = videoContainer.querySelectorAll("video, audio");
+      mediaEls.forEach((el) => {
+        if (!isMutedSound) {
+          el.muted = false;
+          el.volume = 1.0;
+        }
+        el.play().catch(() => {});
+      });
+    }
+  }, [isMutedSound]);
 
   return (
     <div
       className="fixed inset-0 z-[1000] flex bg-[#0A0A0A] text-white overflow-hidden font-sans select-none"
     >
+      {/* ALWAYS-MOUNTED REMOTE AUDIO CONTAINER (Continuous layout element for uninterrupted audio) */}
+      <div
+        id="remote_audio_player"
+        aria-hidden="true"
+        className="pointer-events-none absolute w-1 h-1 opacity-0 overflow-hidden"
+        style={{ left: 0, top: 0, zIndex: -1 }}
+      />
+
       {/* Radial glow backgrounds */}
       <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] rounded-full bg-[#D51659]/10 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] rounded-full bg-[#B44DDC]/10 blur-[120px] pointer-events-none" />
@@ -1820,26 +1803,6 @@ const VideoCall = ({
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                 Voice Call Connected ({formatTime(duration)})
               </p>
-              {/* Audio player container for remote.
-                  Must be in the DOM but NOT zero-sized — zero-size blocks
-                  autoplay on some browsers/mobile. Position it far off-screen
-                  so it's invisible but still "rendered" by the browser. */}
-              <div
-                id="remote_audio_player"
-                className="absolute left-0 top-0 w-1 h-1 overflow-hidden pointer-events-none"
-                style={{
-                  opacity: 0.01,
-                }}
-              />
-
-
-<button
-  type="button"
-  onClick={handleUnlockAudio}
-  className="mt-6 px-6 py-3 rounded-full bg-[#D51659] hover:bg-[#D51659]/90 text-white font-bold shadow-lg transition-all"
->
-  🔊 Enable Sound
-</button>
               {/* Animated Soundwave */}
               <div className="flex items-center gap-1.5 mt-8 h-10">
                 {[40, 75, 30, 90, 50, 85, 45, 65, 100, 55, 80, 35, 70, 45].map(

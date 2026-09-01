@@ -151,10 +151,10 @@ const MainLayout = ({ children }) => {
 
         {/* TOP RIGHT PROFILE & COIN BADGE MENU */}
         {(() => {
-          if (location.pathname === '/chat' || location.pathname === '/profile') return null;
+          if (location.pathname === '/chat') return null;
           const coinBalance = user?.wallet?.balance || 0;
           return (
-            <div className={`fixed top-4 right-4 md:top-6 md:right-6 z-50 flex items-center gap-3 transition-all duration-500 ease-in-out ${isHeaderVisible ? 'translate-y-0 opacity-100' : '-translate-y-[150%] opacity-0'}`}>
+            <div className={`fixed top-4 right-4 md:top-6 md:right-6 z-50 flex items-center gap-2.5 transition-all duration-500 ease-in-out ${isHeaderVisible ? 'translate-y-0 opacity-100' : '-translate-y-[150%] opacity-0'}`}>
               
               {/* Tokify Style Coin Badge Button */}
               <div
@@ -169,80 +169,121 @@ const MainLayout = ({ children }) => {
                 </span>
               </div>
 
-              {/* Desktop Profile Menu */}
-              <div className="relative hidden lg:block">
+              {/* Responsive Profile Menu Trigger (Desktop & Mobile) */}
+              <div className="relative">
                 <div
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
-                  className="flex items-center gap-2 p-1 pr-3 rounded-full border border-white/10 bg-[#D51659] hover:bg-[#b44ddc] cursor-pointer shadow-lg transition-all"
+                  className="flex items-center gap-2 p-1 pr-1.5 md:pr-3 rounded-full border border-white/20 bg-gradient-to-r from-[#D51659] to-[#b44ddc] hover:brightness-110 cursor-pointer shadow-lg transition-all"
                 >
-                  <img
-                    src={
-                      user?.images?.[0] ||
-                      "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=600"
-                    }
-                    alt={user?.name || "User"}
-                    className="w-8 h-8 rounded-full object-cover border border-white"
-                  />
-                  <span className="text-xs font-black hidden sm:inline-block text-white">
+                  <div className="relative">
+                    <img
+                      src={
+                        user?.images?.[0] ||
+                        user?.photos?.[0]?.url ||
+                        "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=600"
+                      }
+                      alt={user?.name || "User"}
+                      className="w-7 h-7 md:w-8 md:h-8 rounded-full object-cover border-2 border-white"
+                    />
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full shadow-sm" />
+                  </div>
+                  <span className="text-xs font-black hidden sm:inline-block text-white max-w-[90px] truncate">
                     {user?.name || "User"}
                   </span>
-                  <ChevronDown className="w-3.5 h-3.5 text-white/80" />
+                  <ChevronDown className="w-3.5 h-3.5 text-white/90" />
                 </div>
 
-
-                {/* Profile Menu Dropdown */}
+                {/* Profile Menu Dropdown / Bottom Sheet Modal */}
                 <AnimatePresence>
                   {showProfileMenu && (
                     <>
                       <div
-                        className="fixed inset-0 z-40"
+                        className="fixed inset-0 z-40 bg-black/20 backdrop-blur-xs"
                         onClick={() => setShowProfileMenu(false)}
                       />
                       <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        className="absolute right-0 mt-2.5 w-56 rounded-2xl shadow-xl border bg-white border-slate-100 z-50 p-2 text-left"
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ duration: 0.15, ease: 'easeOut' }}
+                        className="absolute right-0 mt-2.5 w-64 rounded-3xl shadow-2xl border bg-white/95 backdrop-blur-xl border-slate-100 z-50 p-2.5 text-left"
                       >
-                        <div className="p-3 border-b border-slate-100 flex flex-col">
-                          <span className="font-bold text-xs flex items-center gap-1 text-slate-800">
-                            {user?.name || "User"}, {user?.age || 26}
-                            <CheckCircle2 className="w-3.5 h-3.5 text-blue-500 fill-current" />
-                          </span>
-                          <span className="text-[9px] text-slate-400 font-bold uppercase mt-1 tracking-wider">
-                            {user?.membership?.plan || (typeof user?.membership === 'string' ? user?.membership : "Free Tier")}
-                          </span>
+                        {/* User info banner in menu */}
+                        <div className="p-3.5 rounded-2xl bg-gradient-to-br from-slate-50 to-[#FFF5F6] border border-slate-100/80 flex items-center gap-3">
+                          <img
+                            src={
+                              user?.images?.[0] ||
+                              user?.photos?.[0]?.url ||
+                              "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=600"
+                            }
+                            alt={user?.name || "User"}
+                            className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
+                          />
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-bold text-xs flex items-center gap-1 text-slate-800 truncate">
+                              {user?.name || "User"}, {user?.age || 26}
+                              <CheckCircle2 className="w-3.5 h-3.5 text-[#D51659] shrink-0 fill-current" />
+                            </span>
+                            <span className="text-[9px] text-[#D51659] font-black uppercase tracking-wider mt-0.5 truncate">
+                              {user?.membership?.plan || (typeof user?.membership === 'string' ? user?.membership : "Inakkam Elite")}
+                            </span>
+                          </div>
                         </div>
 
-                        <button
-                          onClick={() => {
-                            navigate("/profile");
-                            setShowProfileMenu(false);
-                          }}
-                          className="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold rounded-xl text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors cursor-pointer mt-1 border-none bg-transparent"
-                        >
-                          <User className="w-4 h-4 text-slate-400" />
-                          <span>My Profile</span>
-                        </button>
+                        {/* Menu Actions */}
+                        <div className="space-y-1 mt-2">
+                          <button
+                            onClick={() => {
+                              navigate("/profile");
+                              setShowProfileMenu(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-xl text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer border-none bg-transparent"
+                          >
+                            <div className="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center text-purple-600">
+                              <User className="w-4 h-4" />
+                            </div>
+                            <span>My Profile</span>
+                          </button>
 
-                        <button
-                          onClick={() => {
-                            setShowSettingsModal(true);
-                            setShowProfileMenu(false);
-                          }}
-                          className="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold rounded-xl text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors cursor-pointer border-none bg-transparent"
-                        >
-                          <Settings className="w-4 h-4 text-slate-400" />
-                          <span>Account Settings</span>
-                        </button>
+                          <button
+                            onClick={() => {
+                              navigate("/buy-coin");
+                              setShowProfileMenu(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-xl text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer border-none bg-transparent"
+                          >
+                            <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
+                              <Coins className="w-4 h-4" />
+                            </div>
+                            <span>Wallet & Coins</span>
+                          </button>
 
-                        <button
-                          onClick={handleLogout}
-                          className="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold rounded-xl text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer mt-1 border-t border-slate-100 pt-3 border-none bg-transparent"
-                        >
-                          <LogOut className="w-4 h-4" />
-                          <span>Log Out</span>
-                        </button>
+                          <button
+                            onClick={() => {
+                              setShowSettingsModal(true);
+                              setShowProfileMenu(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold rounded-xl text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer border-none bg-transparent"
+                          >
+                            <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
+                              <Settings className="w-4 h-4" />
+                            </div>
+                            <span>Account Settings</span>
+                          </button>
+                        </div>
+
+                        {/* Premium Logout Button */}
+                        <div className="mt-2 pt-2 border-t border-slate-100">
+                          <button
+                            onClick={handleLogout}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-black rounded-xl text-rose-600 bg-rose-50/70 hover:bg-rose-100/80 transition-all cursor-pointer border border-rose-200/50 shadow-xs"
+                          >
+                            <div className="w-7 h-7 rounded-lg bg-rose-100 flex items-center justify-center text-rose-600">
+                              <LogOut className="w-4 h-4" />
+                            </div>
+                            <span>Log Out</span>
+                          </button>
+                        </div>
                       </motion.div>
                     </>
                   )}
@@ -458,6 +499,26 @@ const MainLayout = ({ children }) => {
                           </button>
                         </div>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* Session & Logout Section */}
+                  <div className="space-y-4 pt-2">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border border-slate-200 p-4 rounded-2xl bg-slate-50">
+                      <div className="text-left">
+                        <span className="text-sm font-bold block text-slate-800">Account Session</span>
+                        <span className="text-xs text-slate-500 block mt-0.5">Sign out of your active session on this device.</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setShowSettingsModal(false);
+                          handleLogout();
+                        }}
+                        className="px-5 py-2.5 rounded-xl text-xs font-black bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>Log Out</span>
+                      </button>
                     </div>
                   </div>
 

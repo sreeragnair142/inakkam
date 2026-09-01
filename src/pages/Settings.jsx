@@ -3,7 +3,9 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { setTheme } from '../redux/slices/themeSlice';
 import { fetchVerificationStatus } from '../redux/slices/verificationSlice';
+import { logout } from '../redux/slices/authSlice';
 import { VerificationCard } from '../components/VerificationStatus';
+import toast from 'react-hot-toast';
 import { 
   Palette, 
   Bell, 
@@ -13,7 +15,8 @@ import {
   Check, 
   Smartphone, 
   Globe,
-  ShieldCheck
+  ShieldCheck,
+  LogOut
 } from 'lucide-react';
 
 const Settings = () => {
@@ -53,6 +56,12 @@ const Settings = () => {
 
   const handleThemeChange = (mode) => {
     dispatch(setTheme(mode));
+  };
+
+  const handleLogout = () => {
+    dispatch(logout());
+    toast.success("Logged out successfully!");
+    navigate('/auth');
   };
 
   const getContainerClass = () => {
@@ -197,7 +206,28 @@ const Settings = () => {
         </div>
       </div>
 
-      {/* 4. Danger Zone */}
+      {/* 4. Session & Logout */}
+      <div className={`${getContainerClass()} p-6 rounded-3xl space-y-4`}>
+        <div className="flex items-center gap-2">
+          <LogOut className="w-5 h-5 text-slate-700" />
+          <h3 className="font-extrabold text-sm uppercase tracking-wider text-bumble-charcoal">Session Management</h3>
+        </div>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border border-slate-200 p-4 rounded-2xl bg-slate-50">
+          <div className="text-left">
+            <span className="text-sm font-bold block text-bumble-charcoal">Active Account Session</span>
+            <span className="text-xs text-slate-500 block mt-0.5">Sign out of your Inakkam account on this browser / device.</span>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="px-5 py-2.5 rounded-xl text-xs font-black bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition-colors flex items-center gap-2 shrink-0 cursor-pointer shadow-xs"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Log Out</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 5. Danger Zone */}
       <div className={`${getContainerClass()} p-6 rounded-3xl space-y-4`}>
         <div className="flex items-center gap-2">
           <Shield className="w-5 h-5 text-rose-600" />
@@ -216,7 +246,7 @@ const Settings = () => {
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border border-rose-300 p-4 rounded-2xl bg-rose-50">
           <div className="text-left">
-            <span className="text-sm font-bold block text-rose-600">Delete HoneyGlow Account</span>
+            <span className="text-sm font-bold block text-rose-600">Delete Inakkam Account</span>
             <span className="text-xs text-slate-500 block mt-0.5">Permanently scrub swipe logs, chats history, matches, and images.</span>
           </div>
           <button className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer shadow-sm">

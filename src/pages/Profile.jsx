@@ -4,12 +4,13 @@ import { useSelector, useDispatch } from 'react-redux';
 import {
   CheckCircle2, MapPin, Sparkles, Image as ImageIcon, Heart, Award,
   MessageSquare, HelpCircle, Camera, User, Wallet, Briefcase, GraduationCap,
-  Globe, BookHeart, Ruler, Star, Dumbbell, Eye, Crown, ShieldCheck, X
+  Globe, BookHeart, Ruler, Star, Dumbbell, Eye, Crown, ShieldCheck, X,
+  LogOut, Settings as SettingsIcon, AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { VerificationCard } from '../components/VerificationStatus';
 import { fetchVerificationStatus } from '../redux/slices/verificationSlice';
-import { uploadUserPhoto, updateUserProfile } from '../redux/slices/authSlice';
+import { uploadUserPhoto, updateUserProfile, logout } from '../redux/slices/authSlice';
 import toast from 'react-hot-toast';
 
 const Profile = () => {
@@ -22,9 +23,16 @@ const Profile = () => {
   const [activeTab, setActiveTab] = useState('about');
   const [viewSelf, setViewSelf] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [editForm, setEditForm] = useState({});
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef(null);
+
+  const handleLogout = () => {
+    dispatch(logout());
+    toast.success('Logged out successfully!');
+    navigate('/auth');
+  };
 
   const openEditModal = () => {
     setEditForm({
@@ -231,12 +239,20 @@ const Profile = () => {
             <div className="flex items-end justify-between mt-8 pt-6 border-t border-slate-200">
               <div className="flex gap-3">
                 {viewSelf ? (
-                  <button
-                    onClick={openEditModal}
-                    className="px-8 py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest bg-white hover:bg-slate-50 text-[#2D2D2D] transition-colors cursor-pointer border border-slate-200"
-                  >
-                    Edit Profile
-                  </button>
+                  <>
+                    <button
+                      onClick={openEditModal}
+                      className="px-7 py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest bg-white hover:bg-slate-50 text-[#2D2D2D] transition-colors cursor-pointer border border-slate-200 shadow-sm flex items-center gap-2"
+                    >
+                      <User className="w-4 h-4 text-slate-500" /> Edit Profile
+                    </button>
+                    <button
+                      onClick={() => setShowLogoutConfirm(true)}
+                      className="px-6 py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer border border-rose-200 shadow-sm flex items-center gap-2"
+                    >
+                      <LogOut className="w-4 h-4" /> Log Out
+                    </button>
+                  </>
                 ) : (
                   <>
                     <button className="px-8 py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest bg-[#D51659] text-white hover:bg-[#b44ddc] transition-all cursor-pointer shadow-[0_2px_12px_rgba(213,22,89,0.4)] flex items-center gap-2">
@@ -283,7 +299,22 @@ const Profile = () => {
             </div>
             <div className="mt-5">
               {viewSelf ? (
-                <button onClick={openEditModal} className="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-white hover:bg-slate-50 text-[#2D2D2D] cursor-pointer border border-slate-200">Edit Profile Info</button>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    onClick={openEditModal}
+                    className="py-3 px-3 rounded-xl text-[11px] font-black uppercase tracking-wider bg-white hover:bg-slate-50 text-[#2D2D2D] cursor-pointer border border-slate-200 shadow-xs flex items-center justify-center gap-1.5"
+                  >
+                    <User className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Edit Profile</span>
+                  </button>
+                  <button
+                    onClick={() => setShowLogoutConfirm(true)}
+                    className="py-3 px-3 rounded-xl text-[11px] font-black uppercase tracking-wider bg-rose-50 hover:bg-rose-100 text-rose-600 cursor-pointer border border-rose-200 shadow-xs flex items-center justify-center gap-1.5"
+                  >
+                    <LogOut className="w-3.5 h-3.5 text-rose-600" />
+                    <span>Log Out</span>
+                  </button>
+                </div>
               ) : (
                 <button className="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-[#D51659] text-white hover:bg-[#b44ddc] cursor-pointer shadow-[0_2px_12px_rgba(213,22,89,0.4)] flex items-center justify-center gap-2">
                   <Sparkles className="w-4 h-4 fill-current" /> Send Spark
@@ -655,6 +686,53 @@ const Profile = () => {
                   ) : (
                     <><CheckCircle2 className="w-4 h-4" /> Save Changes</>
                   )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ═══ LOGOUT CONFIRMATION MODAL ═══ */}
+      <AnimatePresence>
+        {showLogoutConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}
+            onClick={() => setShowLogoutConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.9, y: 20, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-[#FCFAF2] rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl border border-slate-200 p-6 text-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-14 h-14 rounded-2xl bg-rose-100 border border-rose-200 flex items-center justify-center mx-auto mb-4 text-rose-600 shadow-sm">
+                <LogOut className="w-7 h-7" />
+              </div>
+              <h3 className="text-lg font-black text-[#2D2D2D]">Log Out of Inakkam?</h3>
+              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                You will need to sign in again to access your active matches, chats, and coin wallet.
+              </p>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="flex-1 py-3 rounded-xl text-xs font-bold text-[#2D2D2D] bg-white border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="flex-1 py-3 rounded-xl text-xs font-black text-white bg-rose-600 hover:bg-rose-700 transition-all cursor-pointer shadow-md shadow-rose-600/30 flex items-center justify-center gap-1.5"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Yes, Log Out</span>
                 </button>
               </div>
             </motion.div>
