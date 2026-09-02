@@ -457,9 +457,7 @@ const VideoCall = ({
     const container = document.getElementById(containerId);
 
     if (!container) {
-      console.warn(
-        "[EnableX] ❌ remote_video_player not found in DOM"
-      );
+      console.warn("[EnableX] ❌ remote_video_player not found in DOM");
       return;
     }
 
@@ -468,13 +466,27 @@ const VideoCall = ({
         ? String(stream.getID())
         : "remote";
 
-    console.log(
-      "[EnableX] 🎬 PLAYING PARTICIPANT VIDEO:",
-      streamId
-    );
+    const playKey = `${streamId}_${containerId}`;
+
+    // ── Guard: skip if this exact stream is already playing ──────────────
+    if (playedRemoteContainerRef.current === playKey) {
+      console.log("[EnableX] ⏭️ Already playing stream:", streamId);
+      return;
+    }
+
+    // ── If switching to a different stream, clear the container ──────────
+    if (
+      playedRemoteContainerRef.current &&
+      !playedRemoteContainerRef.current.startsWith(`${streamId}_`)
+    ) {
+      container.innerHTML = "";
+    }
+
+    console.log("[EnableX] 🎬 PLAYING PARTICIPANT VIDEO:", streamId);
 
     try {
-      playedRemoteContainerRef.current = "";
+      // Mark as playing BEFORE the call so concurrent invocations are blocked
+      playedRemoteContainerRef.current = playKey;
 
       if (typeof stream.play === "function") {
         stream.play(containerId, {
@@ -494,19 +506,12 @@ const VideoCall = ({
           },
         });
 
-        playedRemoteContainerRef.current =
-          `${streamId}_${containerId}`;
-
-        console.log(
-          "[EnableX] ✅ Participant video attached:",
-          streamId
-        );
+        console.log("[EnableX] ✅ Participant video attached:", streamId);
       }
     } catch (error) {
-      console.error(
-        "[EnableX] ❌ Remote video play failed:",
-        error
-      );
+      console.error("[EnableX] ❌ Remote video play failed:", error);
+      // Allow retry on error
+      playedRemoteContainerRef.current = "";
     }
   }, [callType, isParticipantVideoStream, playRemoteAudio]);
 
@@ -710,6 +715,9 @@ const VideoCall = ({
                 data: true,
                 audioMuted: false,
                 videoMuted: !hasCamera,
+                // Required by EnableX SDK — without this, EnxRtc.js:661 throws
+                // "Cannot read properties of undefined (reading '3')"
+                videoSize: [320, 180, 1280, 720],
                 maxVideoLayers: 1,
                 attributes: { name: currentUserNameRef.current },
               };
@@ -978,11 +986,13 @@ const VideoCall = ({
             remoteId
           );
 
+          // Reset tracking so this new stream can play (deduplication key cleared)
           playedRemoteContainerRef.current = "";
 
-          setTimeout(() => playRemotePreview(remoteStream), 50);
-          setTimeout(() => playRemotePreview(remoteStream), 300);
-          setTimeout(() => playRemotePreview(remoteStream), 1000);
+          // One immediate attempt + one retry in case the DOM container
+          // hasn't rendered yet when stream-subscribed fires
+          setTimeout(() => playRemotePreview(remoteStream), 100);
+          setTimeout(() => playRemotePreview(remoteStream), 800);
         });
 
         // --------------------------------------------------
@@ -1008,7 +1018,7 @@ const VideoCall = ({
                 ? String(activeLocalStream.getID())
                 : null;
 
-            // Find an active talker
+            // Find the first remote talker (skip own stream and screen-share)
             const talker = activeList.find((item) => {
               const streamId = String(
                 item?.streamId ?? item?.id ?? ""
@@ -1023,23 +1033,6 @@ const VideoCall = ({
 
               // Never choose our own stream
               if (localId && streamId === localId) {
-                return false;
-              }
-
-              // For video calls, prefer actual audio+video talkers
-              if (
-                callType === "video" &&
-                item?.mediatype &&
-                item.mediatype !== "audiovideo"
-              ) {
-                return false;
-              }
-
-              // For video calls, camera must not be muted
-              if (
-                callType === "video" &&
-                item?.videomuted === true
-              ) {
                 return false;
               }
 
