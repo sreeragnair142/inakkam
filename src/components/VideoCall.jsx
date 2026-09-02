@@ -468,9 +468,16 @@ const VideoCall = ({
 
     const playKey = `${streamId}_${containerId}`;
 
-    // ── Guard: skip if this exact stream is already playing ──────────────
-    if (playedRemoteContainerRef.current === playKey) {
-      console.log("[EnableX] ⏭️ Already playing stream:", streamId);
+    // ── Guard: skip only if the video is ACTUALLY rendering with data ─────
+    // (readyState >= 2 = HAVE_CURRENT_DATA, meaning frames are flowing)
+    const existingVideo = container.querySelector("video");
+    const isActuallyRendering =
+      existingVideo &&
+      existingVideo.readyState >= 2 &&
+      playedRemoteContainerRef.current === playKey;
+
+    if (isActuallyRendering) {
+      console.log("[EnableX] ⏭️ Video already rendering:", streamId);
       return;
     }
 
@@ -485,7 +492,6 @@ const VideoCall = ({
     console.log("[EnableX] 🎬 PLAYING PARTICIPANT VIDEO:", streamId);
 
     try {
-      // Mark as playing BEFORE the call so concurrent invocations are blocked
       playedRemoteContainerRef.current = playKey;
 
       if (typeof stream.play === "function") {
@@ -500,9 +506,7 @@ const VideoCall = ({
           },
           toolbar: {
             displayMode: false,
-            branding: {
-              display: false,
-            },
+            branding: { display: false },
           },
         });
 
@@ -510,7 +514,6 @@ const VideoCall = ({
       }
     } catch (error) {
       console.error("[EnableX] ❌ Remote video play failed:", error);
-      // Allow retry on error
       playedRemoteContainerRef.current = "";
     }
   }, [callType, isParticipantVideoStream, playRemoteAudio]);
@@ -986,13 +989,53 @@ const VideoCall = ({
             remoteId
           );
 
-          // Reset tracking so this new stream can play (deduplication key cleared)
+          // Reset tracking so this new stream can play fresh
           playedRemoteContainerRef.current = "";
 
-          // One immediate attempt + one retry in case the DOM container
-          // hasn't rendered yet when stream-subscribed fires
-          setTimeout(() => playRemotePreview(remoteStream), 100);
-          setTimeout(() => playRemotePreview(remoteStream), 800);
+          // ── Polling loop: retry every 500ms until the video element
+          //    has actual frame data (readyState >= 2).
+          //    This handles the common case where the EnableX SDK hasn't
+          //    fully settled the WebRTC media at the moment stream-subscribed fires.
+          let pollCount = 0;
+          const MAX_POLLS = 20; // 20 × 500ms = 10 seconds
+
+          const pollUntilPlaying = () => {
+            pollCount++;
+            if (pollCount > MAX_POLLS) {
+              console.warn("[EnableX] ⏰ Gave up polling for remote video after 10s");
+              return;
+            }
+
+            // Check if video is actually rendering already
+            const container = document.getElementById("remote_video_player");
+            const videoEl = container?.querySelector("video");
+            if (videoEl && videoEl.readyState >= 2) {
+              console.log("[EnableX] ✅ Remote video confirmed playing at poll", pollCount);
+              return; // Done — video is rendering
+            }
+
+            // Look up the live stream from remoteStreams (more reliable than event.stream)
+            let streamToPlay = remoteStream;
+            if (activeRoom?.remoteStreams) {
+              const fromRoom =
+                (typeof activeRoom.remoteStreams.get === "function"
+                  ? activeRoom.remoteStreams.get(remoteStream.getID?.()) ||
+                    activeRoom.remoteStreams.get(remoteId)
+                  : null) ||
+                activeRoom.remoteStreams[remoteStream.getID?.()] ||
+                activeRoom.remoteStreams[remoteId];
+              if (fromRoom) streamToPlay = fromRoom;
+            }
+
+            // Reset key so this poll attempt can proceed
+            playedRemoteContainerRef.current = "";
+            playRemotePreview(streamToPlay);
+
+            setTimeout(pollUntilPlaying, 500);
+          };
+
+          // First attempt after a short delay, then poll
+          setTimeout(pollUntilPlaying, 200);
         });
 
         // --------------------------------------------------
