@@ -207,8 +207,7 @@ const VideoCall = ({
     }
 
     const applyToEl = (el, muted = false) => {
-      if (!el || el._enxFixed) return;
-      el._enxFixed = true;
+      if (!el) return;
       el.setAttribute("playsinline", "true");
       el.setAttribute("webkit-playsinline", "true");
       el.muted = muted;
@@ -323,10 +322,24 @@ const VideoCall = ({
           console.log("[EnableX] Local video attached to", container.id);
         }
       }
+
+      // Force video element to play and track to be enabled after container swap
+      setTimeout(() => {
+        const vid = container.querySelector("video");
+        if (vid) {
+          vid.muted = true;
+          vid.play().catch(() => {});
+        }
+        if (videoActive && typeof stream.unmuteVideo === "function") {
+          try { stream.unmuteVideo(); } catch (e) {}
+        } else if (!videoActive && typeof stream.muteVideo === "function") {
+          try { stream.muteVideo(); } catch (e) {}
+        }
+      }, 500);
     } catch (error) {
       console.error("[EnableX] Local video playback failed:", error);
     }
-  }, [callType]);
+  }, [callType, videoActive]);
 
   const isParticipantVideoStream = useCallback((stream) => {
     if (!stream) return false;
