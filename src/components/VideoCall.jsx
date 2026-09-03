@@ -41,6 +41,7 @@ const VideoCall = ({
   const [chatInput, setChatInput] = useState("");
   const [isMutedSound, setIsMutedSound] = useState(false);
   const [remoteStreamActive, setRemoteStreamActive] = useState(false);
+  const [noRemoteVideoCountdown, setNoRemoteVideoCountdown] = useState(null);
 
   // Normalize targetUserId
   const targetUid = String(
@@ -170,6 +171,66 @@ const VideoCall = ({
   const handleDisconnect = useCallback(() => {
     finishCall({ notifyRemote: true });
   }, [finishCall]);
+
+  // ─── 10-Second No-Opponent-Video / Face Auto-Disconnect (Video Calls Only) ─
+  const noRemoteVideoDurationRef = useRef(0);
+  useEffect(() => {
+    // Only enforce on connected video calls
+    if (callStatus !== "connected" || callType !== "video") {
+      noRemoteVideoDurationRef.current = 0;
+      setNoRemoteVideoCountdown(null);
+      return;
+    }
+
+    const checkRemoteVideoInterval = setInterval(() => {
+      if (!isMountedRef.current || isDisconnectedRef.current) return;
+
+      const container = document.getElementById("remote_video_player");
+      const videoEl = container?.querySelector("video");
+
+      // Check if remote video element is actively rendering live video frames
+      const isRendering = Boolean(
+        remoteStreamActive &&
+          videoEl &&
+          videoEl.readyState >= 2 &&
+          !videoEl.paused &&
+          !videoEl.ended &&
+          videoEl.videoWidth > 0 &&
+          videoEl.videoHeight > 0,
+      );
+
+      if (!isRendering) {
+        noRemoteVideoDurationRef.current += 1;
+        const remaining = Math.max(0, 10 - noRemoteVideoDurationRef.current);
+        setNoRemoteVideoCountdown(remaining);
+
+        if (noRemoteVideoDurationRef.current >= 10) {
+          console.warn(
+            "[VideoCall] ❌ Opponent video/face not detected for 10s. Disconnecting call.",
+          );
+          toast.error(
+            "Call ended: The other person did not show their camera/face within 10 seconds.",
+            {
+              duration: 6000,
+              icon: "📹",
+            },
+          );
+          handleDisconnect();
+        }
+      } else {
+        if (noRemoteVideoDurationRef.current > 0) {
+          noRemoteVideoDurationRef.current = 0;
+          setNoRemoteVideoCountdown(null);
+        }
+      }
+    }, 1000);
+
+    return () => {
+      clearInterval(checkRemoteVideoInterval);
+      noRemoteVideoDurationRef.current = 0;
+      setNoRemoteVideoCountdown(null);
+    };
+  }, [callStatus, callType, remoteStreamActive, handleDisconnect]);
 
   // ─── Periodic Coin Deduction (every 20s while connected - CALLER ONLY) ─
   useEffect(() => {
@@ -1910,6 +1971,21 @@ const VideoCall = ({
                   <p className="text-slate-400 text-xs sm:text-sm">
                     Connecting video stream with {remoteUserName}...
                   </p>
+                  {noRemoteVideoCountdown !== null && (
+                    <p className="text-rose-400 text-xs font-bold mt-2 animate-pulse bg-rose-500/10 px-3 py-1 rounded-full border border-rose-500/20">
+                      ⚠️ Camera/face must be active in {noRemoteVideoCountdown}s
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Warning banner when opponent face/video is not detected */}
+              {noRemoteVideoCountdown !== null && (
+                <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 bg-rose-600/90 text-white px-4 py-1.5 rounded-full backdrop-blur-md shadow-2xl flex items-center gap-2 border border-rose-400/40 animate-pulse text-[11px] sm:text-xs font-bold pointer-events-auto">
+                  <VideoOff className="w-3.5 h-3.5 text-white shrink-0" />
+                  <span>
+                    Opponent camera/face not detected. Ending call in {noRemoteVideoCountdown}s...
+                  </span>
                 </div>
               )}
 
