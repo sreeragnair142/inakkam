@@ -35,6 +35,7 @@ import api from '../utils/api';
 import { getSocket, joinConversation, emitMessage } from '../utils/socket';
 import VideoCall from '../components/VideoCall';
 import RechargeModal from '../components/RechargeModal';
+import ScreenShield from '../components/ScreenShield';
 import { fetchMe } from '../redux/slices/authSlice';
 import toast from 'react-hot-toast';
 
@@ -386,10 +387,11 @@ const Chat = () => {
   };
 
   return (
-    <div className="fixed inset-0 bottom-[64px] lg:bottom-0 flex overflow-hidden bg-[#FAF9F6] z-30">
-      {/* Mesh gradients for premium glow */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-[#D51659]/5 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-[500px] h-[500px] rounded-full bg-[#B44DDC]/5 blur-[120px] pointer-events-none" />
+    <ScreenShield enabled={true} label="INAKKAM CHAT" userIdentifier={currentUser?.name || currentUser?.phone || ''}>
+      <div className="fixed inset-0 bottom-[64px] lg:bottom-0 flex overflow-hidden bg-[#FAF9F6] z-30">
+        {/* Mesh gradients for premium glow */}
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-[#D51659]/5 blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] rounded-full bg-[#B44DDC]/5 blur-[120px] pointer-events-none" />
 
       {/* LEFT PANE: Conversations list */}
       <div className={`w-full md:w-80 border-r shrink-0 flex flex-col justify-between
@@ -874,7 +876,8 @@ const Chat = () => {
         currentBalance={currentUser?.wallet?.balance || 0}
       />
 
-    </div>
+      </div>
+    </ScreenShield>
   );
 };
 

@@ -20,6 +20,7 @@ import api from "../utils/api";
 import toast from "react-hot-toast";
 import { fetchMe } from "../redux/slices/authSlice";
 import { getSocket } from "../utils/socket";
+import ScreenShield from "./ScreenShield";
 
 const VideoCall = ({
   roomId,
@@ -271,6 +272,9 @@ const VideoCall = ({
       if (!el) return;
       el.setAttribute("playsinline", "true");
       el.setAttribute("webkit-playsinline", "true");
+      el.setAttribute("disablePictureInPicture", "true");
+      el.setAttribute("controlsList", "nodownload noplaybackrate nofullscreen");
+      el.disablePictureInPicture = true;
       el.muted = muted;
       el.autoplay = true;
       el.playsInline = true;
@@ -1759,10 +1763,11 @@ const VideoCall = ({
   }, [isMutedSound]);
 
   return createPortal(
-    <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 z-[99999] flex bg-[#0A0A0A] text-white overflow-hidden font-sans select-none h-[100dvh] w-screen">
-      {/* Radial glow backgrounds */}
-      <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] rounded-full bg-[#D51659]/10 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] rounded-full bg-[#B44DDC]/10 blur-[120px] pointer-events-none" />
+    <ScreenShield enabled={true} label="INAKKAM SECURE CALL" userIdentifier={currentUser?.name || currentUser?.phone || ''}>
+      <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 z-[99999] flex bg-[#0A0A0A] text-white overflow-hidden font-sans select-none h-[100dvh] w-screen">
+        {/* Radial glow backgrounds */}
+        <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] rounded-full bg-[#D51659]/10 blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] rounded-full bg-[#B44DDC]/10 blur-[120px] pointer-events-none" />
 
       {/* ─── Connecting screen ─────────────────────────────── */}
       {callStatus === "connecting" && (
@@ -2227,7 +2232,8 @@ const VideoCall = ({
           </AnimatePresence>
         </div>
       )}
-    </div>,
+      </div>
+    </ScreenShield>,
     document.body,
   );
 };

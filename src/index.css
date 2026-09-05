@@ -234,3 +234,28 @@ body {
 img, a {
   -webkit-touch-callout: none;
 }
+
+/* ─── Anti-Screenshot & Privacy Shield Security ───────────────── */
+.no-screenshot {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.no-screenshot img,
+.no-screenshot video {
+  pointer-events: auto;
+  -webkit-user-drag: none;
+  user-drag: none;
+  -webkit-touch-callout: none;
+}
+
+/* Completely blank out screen on print / PDF snapshot */
+@media print {
+  body, html, #root, .no-screenshot {
+    display: none !important;
+    visibility: hidden !important;
+  }
+}
