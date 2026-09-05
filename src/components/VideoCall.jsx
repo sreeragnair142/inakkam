@@ -1674,7 +1674,15 @@ const VideoCall = ({
     e.preventDefault();
     if (!chatInput.trim()) return;
 
-    const messageText = chatInput.trim();
+    const isStaff = currentUser?.isStaff || currentUser?.isEliteAgent || currentUser?.role === 'staff' || currentUser?.role === 'admin';
+    const isCustomer = !isStaff;
+
+    if (isCustomer && chatInput.trim().length > 20) {
+      toast.error('Messages are limited to 20 characters or less.');
+      return;
+    }
+
+    const messageText = isCustomer && chatInput.trim().length > 20 ? chatInput.trim().slice(0, 20) : chatInput.trim();
     const timeStr = new Date().toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
@@ -2193,10 +2201,20 @@ const VideoCall = ({
                 >
                   <input
                     value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    placeholder="Type a message..."
+                    maxLength={(!currentUser?.isStaff && !currentUser?.isEliteAgent && currentUser?.role !== 'staff' && currentUser?.role !== 'admin') ? 20 : 2000}
+                    onChange={(e) => {
+                      const isCustomer = !currentUser?.isStaff && !currentUser?.isEliteAgent && currentUser?.role !== 'staff' && currentUser?.role !== 'admin';
+                      const val = e.target.value;
+                      setChatInput(isCustomer && val.length > 20 ? val.slice(0, 20) : val);
+                    }}
+                    placeholder={(!currentUser?.isStaff && !currentUser?.isEliteAgent && currentUser?.role !== 'staff' && currentUser?.role !== 'admin') ? "Type a message... (max 20 chars)" : "Type a message..."}
                     className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 outline-none focus:border-[#D51659]/40 transition-colors resize-none"
                   />
+                  {(!currentUser?.isStaff && !currentUser?.isEliteAgent && currentUser?.role !== 'staff' && currentUser?.role !== 'admin') && (
+                    <span className={`text-[10px] font-semibold px-1 py-1 rounded select-none shrink-0 ${chatInput.length >= 20 ? 'text-rose-400 font-bold' : 'text-slate-500'}`}>
+                      {chatInput.length}/20
+                    </span>
+                  )}
                   <button
                     type="submit"
                     className="p-2 rounded-xl bg-[#D51659] text-white hover:bg-[#D51659]/90 transition-colors shrink-0"

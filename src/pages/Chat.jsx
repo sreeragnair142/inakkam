@@ -48,6 +48,8 @@ const Chat = () => {
   const activeChatId = useSelector((state) => state.chat.activeChatId);
   const isTyping = useSelector((state) => state.chat.isTyping);
   const currentUser = useSelector((state) => state.auth.user);
+  const isStaff = currentUser?.isStaff || currentUser?.isEliteAgent || currentUser?.role === 'staff' || currentUser?.role === 'admin';
+  const isCustomer = !isStaff;
 
   const [showRechargeModal, setShowRechargeModal] = useState(false);
 
@@ -301,7 +303,14 @@ const Chat = () => {
     e.preventDefault();
     if (!inputMessage.trim() || !activeChat) return;
 
-    const isStaff = currentUser?.isStaff || currentUser?.isEliteAgent || currentUser?.role === 'staff';
+    const isStaff = currentUser?.isStaff || currentUser?.isEliteAgent || currentUser?.role === 'staff' || currentUser?.role === 'admin';
+    const isCustomer = !isStaff;
+
+    if (isCustomer && inputMessage.trim().length > 20) {
+      toast.error('Messages are limited to 20 characters or less.');
+      return;
+    }
+
     const recipientId = activeChat.user?._id || activeChat.userId;
 
     // Process message coin deduction (customer spends coins) or credit (agent earns coins)
@@ -715,10 +724,19 @@ const Chat = () => {
                 <input
                   type="text"
                   value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder={`Message ${activeChat.userName}...`}
+                  maxLength={isCustomer ? 20 : 2000}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setInputMessage(isCustomer && val.length > 20 ? val.slice(0, 20) : val);
+                  }}
+                  placeholder={isCustomer ? `Message ${activeChat.userName}... (max 20 chars)` : `Message ${activeChat.userName}...`}
                   className="flex-grow py-2.5 text-sm bg-transparent text-slate-800 placeholder-slate-400 outline-none"
                 />
+                {isCustomer && (
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded mr-1 select-none transition-colors ${inputMessage.length >= 20 ? 'text-rose-600 bg-rose-50 font-bold border border-rose-200' : 'text-slate-400'}`}>
+                    {inputMessage.length}/20
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
@@ -743,7 +761,14 @@ const Chat = () => {
                             key={emoji}
                             type="button"
                             onClick={() => {
-                              setInputMessage(prev => prev + emoji);
+                              setInputMessage(prev => {
+                                const nextVal = prev + emoji;
+                                if (isCustomer && nextVal.length > 20) {
+                                  toast.error('Messages are limited to 20 characters or less.');
+                                  return prev;
+                                }
+                                return nextVal;
+                              });
                               setShowEmojiPicker(false);
                             }}
                             className="text-base hover:scale-125 transition-transform"
