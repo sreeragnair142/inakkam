@@ -109,6 +109,8 @@ export default function Onboarding() {
     photos: ["https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=300", "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=300"]
   });
   const [otpSent, setOtpSent] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
+  const [otpNotice, setOtpNotice] = useState("");
 
   const handleVerifyOtp = async (codeToVerify) => {
     const code = codeToVerify || formData.otp;
@@ -131,6 +133,8 @@ export default function Onboarding() {
         setOtpSent(false);
         setOtpSuccess(false);
         setIsVerifying(false);
+        setPhoneError("");
+        setOtpNotice("");
         updateData('otp', ''); // Clear OTP input
       }, 1200);
 
@@ -145,12 +149,16 @@ export default function Onboarding() {
     
     setIsVerifying(true);
     setOtpError("");
+    setOtpNotice("");
     updateData('otp', ''); // Clear code
     
     const fullPhone = `${countryCode}${formData.phone.replace(/\D/g, '')}`;
     try {
-      await api.post('/auth/send-otp', { phone: fullPhone });
+      const res = await api.post('/auth/send-otp', { phone: fullPhone });
       setOtpCountdown(60); // Reset timer
+      if (res?.data?.message) {
+        setOtpNotice(res.data.message);
+      }
     } catch (err) {
       setOtpError(typeof err === 'string' ? err : 'Failed to resend OTP');
     } finally {
@@ -228,18 +236,22 @@ export default function Onboarding() {
     if (formStep === 2 && !otpSent) { 
       const sanitizedPhone = formData.phone.replace(/\D/g, '');
       if (!sanitizedPhone || sanitizedPhone.length < 7) {
-        alert("Please enter a valid phone number");
+        setPhoneError("Please enter a valid phone number");
         return;
       }
 
       setIsVerifying(true);
+      setPhoneError("");
       const fullPhone = `${countryCode}${sanitizedPhone}`;
       try {
-        await api.post('/auth/send-otp', { phone: fullPhone });
+        const res = await api.post('/auth/send-otp', { phone: fullPhone });
         setOtpSent(true); 
         setOtpCountdown(60); // 60s countdown
+        if (res?.data?.message) {
+          setOtpNotice(res.data.message);
+        }
       } catch (err) {
-        alert(err);
+        setPhoneError(typeof err === 'string' ? err : (err?.message || 'Failed to send OTP'));
       } finally {
         setIsVerifying(false);
       }
@@ -457,10 +469,24 @@ export default function Onboarding() {
                     type="tel"
                     placeholder="Mobile Number"
                     value={formData.phone}
-                    onChange={(e) => updateData('phone', e.target.value.replace(/\D/g, ''))}
+                    onChange={(e) => {
+                      setPhoneError("");
+                      updateData('phone', e.target.value.replace(/\D/g, ''));
+                    }}
                     className="w-full px-5 py-4 text-base font-bold outline-none text-white bg-transparent placeholder-white/40"
                   />
                 </div>
+
+                {/* Inline Phone Error */}
+                {phoneError && (
+                  <motion.p 
+                    initial={{ opacity: 0, y: -10 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    className="text-sm text-rose-500 font-bold text-center lg:text-left"
+                  >
+                    ⚠️ {phoneError}
+                  </motion.p>
+                )}
                 
                 <button
                   onClick={handleFormNext}
@@ -498,16 +524,23 @@ export default function Onboarding() {
                 ) : (
                   <>
                     <h2 className="text-2xl font-black text-white mb-2">Verify Number 📱</h2>
-                    <div className="flex items-center flex-wrap gap-1 text-sm text-white/50 font-medium mb-8">
+                    <div className="flex items-center flex-wrap gap-1 text-sm text-white/50 font-medium mb-4">
                       <span>We sent a 6-digit code to </span>
                       <strong className="text-white font-bold">{countryCode} {formData.phone}</strong>
                       <button 
-                        onClick={() => { setOtpSent(false); updateData('otp', ''); setOtpError(''); }} 
+                        onClick={() => { setOtpSent(false); updateData('otp', ''); setOtpError(''); setPhoneError(''); setOtpNotice(''); }} 
                         className="inline-flex items-center gap-1 ml-2 text-xs font-black text-[#D51659] hover:text-[#b44ddc] transition-colors cursor-pointer border border-[#D51659]/30 rounded-lg px-2 py-0.5 hover:bg-[#D51659]/10"
                       >
                         <Pencil className="w-3 h-3" /> Change
                       </button>
                     </div>
+
+                    {otpNotice && (
+                      <div className="mb-6 p-3 rounded-xl bg-pink-500/10 border border-[#D51659]/30 text-xs text-pink-200 font-medium flex items-start gap-2">
+                        <span className="text-sm">ℹ️</span>
+                        <span>{otpNotice}</span>
+                      </div>
+                    )}
 
                     {/* Code Container with Shake Effect on Error */}
                     <motion.div 
