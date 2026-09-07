@@ -151,8 +151,8 @@ const HostProgramModal = ({ isOpen, onClose, initialTab = 'overview' }) => {
                     <PhoneCall className="w-4 h-4" />
                   </div>
                   <span className="text-xs text-white/50 block font-medium">Audio Call Rate</span>
-                  <span className="text-base md:text-lg font-black text-amber-300">₹50 / min</span>
-                  <span className="text-[10px] text-white/40 block mt-0.5">150 coins/min earned</span>
+                  <span className="text-base md:text-lg font-black text-amber-300">₹5 / min</span>
+                  <span className="text-[10px] text-white/40 block mt-0.5">15 coins/min (₹300/hr)</span>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-center hover:border-[#D51659]/30 transition-all">
@@ -160,8 +160,8 @@ const HostProgramModal = ({ isOpen, onClose, initialTab = 'overview' }) => {
                     <Video className="w-4 h-4" />
                   </div>
                   <span className="text-xs text-white/50 block font-medium">Video Call Rate</span>
-                  <span className="text-base md:text-lg font-black text-emerald-300">₹140 / min</span>
-                  <span className="text-[10px] text-white/40 block mt-0.5">420 coins/min earned</span>
+                  <span className="text-base md:text-lg font-black text-emerald-300">₹17 / min</span>
+                  <span className="text-[10px] text-white/40 block mt-0.5">51 coins/min (₹1,000/hr)</span>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-center hover:border-blue-500/30 transition-all">
@@ -169,8 +169,8 @@ const HostProgramModal = ({ isOpen, onClose, initialTab = 'overview' }) => {
                     <MessageSquare className="w-4 h-4" />
                   </div>
                   <span className="text-xs text-white/50 block font-medium">Paid Chat</span>
-                  <span className="text-base md:text-lg font-black text-blue-300">₹5 / message</span>
-                  <span className="text-[10px] text-white/40 block mt-0.5">30 coins/msg earned</span>
+                  <span className="text-base md:text-lg font-black text-blue-300">₹1 / message</span>
+                  <span className="text-[10px] text-white/40 block mt-0.5">3 coins/msg earned</span>
                 </div>
               </div>
 

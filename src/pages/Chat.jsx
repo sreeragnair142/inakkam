@@ -317,7 +317,7 @@ const Chat = () => {
     try {
       if (!isStaff) {
         const userBalance = currentUser?.wallet?.balance || 0;
-        if (userBalance < 30) {
+        if (userBalance < 18) {
           setShowRechargeModal(true);
           return;
         }
