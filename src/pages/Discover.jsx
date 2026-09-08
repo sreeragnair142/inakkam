@@ -194,7 +194,7 @@ const Discover = () => {
   };
 
   return (
-    <div className="w-full h-[100dvh] sm:h-auto sm:flex-1 flex items-start justify-center relative pt-14 pb-[58px] sm:pt-28 sm:pb-16 lg:pt-36 lg:pb-20 px-2 sm:px-4">
+    <div className="w-full h-[100dvh] sm:h-auto sm:flex-1 flex items-start justify-center relative pt-14 pb-[84px] sm:pt-28 sm:pb-16 lg:pt-36 lg:pb-20 px-2 sm:px-4">
 
 
 
@@ -279,7 +279,7 @@ const Discover = () => {
 
           {/* Mobile Tinder-Style Swiping Stack */}
           <div className="block sm:hidden w-full h-full max-w-md px-1 mx-auto z-10 relative flex flex-col justify-between select-none">
-            <div className="relative w-full flex-1 min-h-0 rounded-[2rem] overflow-visible">
+            <div className="relative w-full flex-1 min-h-0 rounded-[2rem] overflow-visible mb-3">
               <AnimatePresence>
                 {localUsers[1] && (
                   <div

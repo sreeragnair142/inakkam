@@ -552,27 +552,27 @@ const MainLayout = ({ children }) => {
 
       {/* Elevated Premium Floating Bottom Nav Bar on Mobile */}
       {location.pathname !== '/chat' && (
-        <div className="fixed bottom-1.5 left-3 right-3 sm:left-6 sm:right-6 lg:hidden z-40" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-        <nav className="bg-[#D51659]/95 backdrop-blur-xl border border-white/20 shadow-xl shadow-[#D51659]/25 rounded-full px-1.5 py-1 flex items-center justify-around">
+        <div className="fixed bottom-2 left-3 right-3 sm:left-6 sm:right-6 lg:hidden z-40" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        <nav className="bg-[#D51659]/95 backdrop-blur-xl border border-white/20 shadow-2xl shadow-[#D51659]/30 rounded-full px-2 py-2 flex items-center justify-around">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => handleNavClick(item.path)}
-                className={`flex flex-col items-center justify-center flex-1 py-0.5 px-0.5 rounded-full transition-all relative border-none bg-transparent cursor-pointer ${
+                className={`flex flex-col items-center justify-center flex-1 py-1 px-0.5 rounded-full transition-all relative border-none bg-transparent cursor-pointer ${
                   isActive ? 'text-white font-extrabold scale-105' : 'text-white/70 hover:text-white font-medium'
                 }`}
               >
                 <div className="relative flex items-center justify-center">
-                  <item.icon className={`w-[18px] h-[18px] ${isActive ? 'stroke-[2.5px]' : 'stroke-2'}`} />
+                  <item.icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5px]' : 'stroke-2'}`} />
                   {item.id === 'likes' && receivedLikesCount > 0 && (
-                    <span className="absolute -top-1 -right-2 min-w-[15px] h-3.5 px-0.5 bg-white text-[#D51659] text-[8px] font-black rounded-full flex items-center justify-center shadow-md">
+                    <span className="absolute -top-1 -right-2 min-w-[16px] h-4 px-1 bg-white text-[#D51659] text-[9px] font-black rounded-full flex items-center justify-center shadow-md">
                       {receivedLikesCount}
                     </span>
                   )}
                 </div>
-                <span className="text-[9px] leading-tight tracking-tight mt-0.5 whitespace-nowrap">
+                <span className="text-[10px] tracking-tight mt-0.5 whitespace-nowrap">
                   {item.label}
                 </span>
               </button>
