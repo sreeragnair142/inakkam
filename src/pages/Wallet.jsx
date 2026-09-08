@@ -371,8 +371,8 @@ const Wallet = () => {
                 </div>
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
                   <span className="text-xs font-bold text-slate-500 block mb-1">💬 Chat Message</span>
-                  <span className="text-lg font-black text-emerald-600">30 Coins/msg</span>
-                  <span className="text-[10px] text-slate-400 block mt-1">₹5 = 30 coins</span>
+                  <span className="text-lg font-black text-emerald-600">18 Coins/msg</span>
+                  <span className="text-[10px] text-slate-400 block mt-1">₹3 = 18 coins</span>
                 </div>
               </div>
             </div>

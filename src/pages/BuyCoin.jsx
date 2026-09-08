@@ -79,7 +79,7 @@ const BuyCoin = () => {
 
   const currentUser = useSelector((state) => state.auth.user);
 
-  const [activeTab, setActiveTab] = useState('recharge');
+  const [activeTab, setActiveTab] = useState('recharge'); // 'recharge' | 'audio' | 'video'
   const [purchasingId, setPurchasingId] = useState(null);
 
   const userCoins = currentUser?.wallet?.balance || 0;

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ChevronRight, EyeOff, CheckCircle2, Plus, X, Search, Flame, Loader2, Pencil } from "lucide-react";
+import { ArrowLeft, ChevronRight, EyeOff, CheckCircle2, Plus, X, Search, Flame, Loader2, Pencil, ShieldCheck, Smartphone, Sparkles } from "lucide-react";
 import landscapeLogo from "../assets/landscapelogowhite.png";
 import { useDispatch, useSelector } from "react-redux";
 import api from "../utils/api";
@@ -536,10 +536,26 @@ export default function Onboarding() {
                     </div>
 
                     {otpNotice && (
-                      <div className="mb-6 p-3 rounded-xl bg-pink-500/10 border border-[#D51659]/30 text-xs text-pink-200 font-medium flex items-start gap-2">
-                        <span className="text-sm">ℹ️</span>
-                        <span>{otpNotice}</span>
-                      </div>
+                      <motion.div 
+                        initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-pink-500/10 to-purple-500/10 border border-emerald-500/30 backdrop-blur-xl text-xs text-white shadow-lg shadow-black/20"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center shrink-0 mt-0.5">
+                            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="font-bold text-white tracking-wide text-xs">Security Code Dispatched</span>
+                              <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                            </div>
+                            <p className="text-[12px] text-white/80 font-normal leading-relaxed">
+                              {otpNotice}
+                            </p>
+                          </div>
+                        </div>
+                      </motion.div>
                     )}
 
                     {/* Code Container with Shake Effect on Error */}

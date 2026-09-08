@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Coins, Sparkles, X, ArrowRight, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const RechargeModal = ({ isOpen, onClose, requiredCoins = 30, currentBalance = 0 }) => {
+const RechargeModal = ({ isOpen, onClose, requiredCoins = 18, currentBalance = 0 }) => {
   const navigate = useNavigate();
 
   if (!isOpen) return null;
