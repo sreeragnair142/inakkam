@@ -870,7 +870,7 @@ const Chat = () => {
       <RechargeModal
         isOpen={showRechargeModal}
         onClose={() => setShowRechargeModal(false)}
-        requiredCoins={30}
+        requiredCoins={18}
         currentBalance={currentUser?.wallet?.balance || 0}
       />
 

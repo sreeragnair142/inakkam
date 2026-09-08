@@ -17,29 +17,42 @@ import { fetchMe } from '../redux/slices/authSlice';
 import toast from 'react-hot-toast';
 
 /* =========================================================
-   RECHARGE PACKAGES
+   CUSTOMER RECHARGE PACKS
 ========================================================= */
 
-const coinPackages = [
-  { id: 'pkg_630', coins: 630, price: 49 },
-  { id: 'pkg_1500', coins: 1500, price: 250 },
-  { id: 'pkg_2010', coins: 2010, price: 149 },
-  { id: 'pkg_3000', coins: 3000, price: 500 },
-  { id: 'pkg_4080', coins: 4080, price: 299 },
-  { id: 'pkg_4194', coins: 4194, price: 699 },
-  { id: 'pkg_6990', coins: 6990, price: 499, badge: 'Hot' },
-  { id: 'pkg_11490', coins: 11490, price: 799 },
-  { id: 'pkg_14610', coins: 14610, price: 999, badge: 'Popular' },
-  { id: 'pkg_31050', coins: 31050, price: 2099 },
-  { id: 'pkg_60000', coins: 60000, price: 3999, badge: 'Best Value' },
-  { id: 'pkg_78000', coins: 78000, price: 4999 },
+const customerRechargePacks = [
+  { id: 'pkg_199', coins: 1194, price: 199 },
+  { id: 'pkg_399', coins: 2394, price: 399 },
+  { id: 'pkg_599', coins: 3594, price: 599 },
+  { id: 'pkg_799', coins: 4794, price: 799 },
+  { id: 'pkg_999', coins: 5994, price: 999, badge: 'Popular' },
+  { id: 'pkg_1199', coins: 7194, price: 1199 },
+  { id: 'pkg_1399', coins: 8394, price: 1399 },
+  { id: 'pkg_1599', coins: 9594, price: 1599 },
+  { id: 'pkg_1799', coins: 10794, price: 1799 },
+  { id: 'pkg_1999', coins: 11994, price: 1999, badge: 'Hot' },
+  { id: 'pkg_2199', coins: 13194, price: 2199 },
+  { id: 'pkg_2399', coins: 14394, price: 2399 },
+  { id: 'pkg_2599', coins: 15594, price: 2599 },
+  { id: 'pkg_2799', coins: 16794, price: 2799 },
+  { id: 'pkg_2999', coins: 17994, price: 2999 },
+  { id: 'pkg_3199', coins: 19194, price: 3199 },
+  { id: 'pkg_3399', coins: 20394, price: 3399 },
+  { id: 'pkg_3599', coins: 21594, price: 3599 },
+  { id: 'pkg_3799', coins: 22794, price: 3799 },
+  { id: 'pkg_3999', coins: 23994, price: 3999, badge: 'Best Value' },
+  { id: 'pkg_4199', coins: 25194, price: 4199 },
+  { id: 'pkg_4399', coins: 26394, price: 4399 },
+  { id: 'pkg_4599', coins: 27594, price: 4599 },
+  { id: 'pkg_4799', coins: 28794, price: 4799 },
+  { id: 'pkg_4999', coins: 29994, price: 4999 },
 ];
 
 /* =========================================================
-   AUDIO BUNDLES
+   AUDIO CALLING PACKAGES
 ========================================================= */
 
-const audioBundles = [
+const audioCallingPacks = [
   { id: 'audio_5', minutes: 5, coins: 750, price: 125 },
   { id: 'audio_10', minutes: 10, coins: 1500, price: 250 },
   { id: 'audio_20', minutes: 20, coins: 3000, price: 500 },
@@ -50,17 +63,17 @@ const audioBundles = [
 ];
 
 /* =========================================================
-   VIDEO BUNDLES
+   VIDEO CALLING PACKAGES
 ========================================================= */
 
-const videoBundles = [
-  { id: 'video_5', minutes: 5, coins: 1500, price: 250 },
-  { id: 'video_10', minutes: 10, coins: 3000, price: 500 },
-  { id: 'video_20', minutes: 20, coins: 6000, price: 1000 },
-  { id: 'video_30', minutes: 30, coins: 9000, price: 1500 },
-  { id: 'video_40', minutes: 40, coins: 12000, price: 2000 },
-  { id: 'video_50', minutes: 50, coins: 15000, price: 2500 },
-  { id: 'video_60', minutes: 60, coins: 18000, price: 3000 },
+const videoCallingPacks = [
+  { id: 'video_5', minutes: 5, coins: 2100, price: 350 },
+  { id: 'video_10', minutes: 10, coins: 4194, price: 699 },
+  { id: 'video_20', minutes: 20, coins: 8394, price: 1399 },
+  { id: 'video_30', minutes: 30, coins: 12594, price: 2099 },
+  { id: 'video_40', minutes: 40, coins: 16794, price: 2799 },
+  { id: 'video_50', minutes: 50, coins: 20994, price: 3499 },
+  { id: 'video_60', minutes: 60, coins: 25194, price: 4199 },
 ];
 
 const badgeStyles = {
@@ -98,14 +111,14 @@ const BuyCoin = () => {
       });
 
       if (res.data?.success) {
-        toast.success('Purchased successfully!');
+        toast.success(`Purchased ${pkg.coins.toLocaleString()} Coins! 🎉`);
         dispatch(fetchMe());
       } else {
         toast.error(res.data?.message || 'Purchase could not be completed');
       }
     } catch (err) {
       console.error('Purchase error:', err);
-      toast.success('Purchase successful!');
+      toast.success(`Purchased ${pkg.coins.toLocaleString()} Coins! 🎉`);
       dispatch(fetchMe());
     } finally {
       setPurchasingId(null);
@@ -113,9 +126,9 @@ const BuyCoin = () => {
   };
 
   const getPackages = () => {
-    if (activeTab === 'audio') return audioBundles;
-    if (activeTab === 'video') return videoBundles;
-    return coinPackages;
+    if (activeTab === 'audio') return audioCallingPacks;
+    if (activeTab === 'video') return videoCallingPacks;
+    return customerRechargePacks;
   };
 
   const packages = getPackages();
@@ -226,11 +239,15 @@ const BuyCoin = () => {
                   </span>
                 )}
 
-                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-amber-300 to-amber-500 flex items-center justify-center mb-3 shadow-md group-hover:scale-110 transition-transform">
+                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-amber-300 to-amber-500 flex items-center justify-center mb-2 shadow-md group-hover:scale-110 transition-transform">
                   <Coins className="w-5 h-5 text-slate-900" />
                 </div>
 
-                <span className="text-lg font-extrabold text-slate-900 tabular-nums">
+                <span className="text-sm font-extrabold text-slate-800 tracking-tight mb-1">
+                  {pkg.coins.toLocaleString()} coins
+                </span>
+
+                <span className="text-base font-black text-slate-900 tabular-nums">
                   ₹{pkg.price.toLocaleString()}
                 </span>
 

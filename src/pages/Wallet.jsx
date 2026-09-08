@@ -339,7 +339,7 @@ const Wallet = () => {
                   </h2>
                 </div>
                 <p className="text-[11px] text-white/70 mt-2">
-                  User Rate: ₹1 = 6 Coins (10 min audio call = 1,500 coins)
+                  Top up coins to connect with hosts via calls & chats
                 </p>
               </div>
 
@@ -372,7 +372,7 @@ const Wallet = () => {
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
                   <span className="text-xs font-bold text-slate-500 block mb-1">💬 Chat Message</span>
                   <span className="text-lg font-black text-emerald-600">18 Coins/msg</span>
-                  <span className="text-[10px] text-slate-400 block mt-1">₹3 = 18 coins</span>
+                  <span className="text-[10px] text-slate-400 block mt-1">Direct messaging</span>
                 </div>
               </div>
             </div>

@@ -16,7 +16,9 @@ import {
   HelpCircle,
   Building2,
   DollarSign,
-  ChevronRight
+  ChevronRight,
+  Gift,
+  Coins
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
@@ -152,7 +154,7 @@ const HostProgramModal = ({ isOpen, onClose, initialTab = 'overview' }) => {
                   </div>
                   <span className="text-xs text-white/50 block font-medium">Audio Call Rate</span>
                   <span className="text-base md:text-lg font-black text-amber-300">₹5 / min</span>
-                  <span className="text-[10px] text-white/40 block mt-0.5">15 coins/min (₹300/hr)</span>
+                  <span className="text-[10px] text-white/40 block mt-0.5">15 coins/min (₹300/hr = 900 coins)</span>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-center hover:border-[#D51659]/30 transition-all">
@@ -161,7 +163,7 @@ const HostProgramModal = ({ isOpen, onClose, initialTab = 'overview' }) => {
                   </div>
                   <span className="text-xs text-white/50 block font-medium">Video Call Rate</span>
                   <span className="text-base md:text-lg font-black text-emerald-300">₹17 / min</span>
-                  <span className="text-[10px] text-white/40 block mt-0.5">51 coins/min (₹1,000/hr)</span>
+                  <span className="text-[10px] text-white/40 block mt-0.5">51 coins/min (₹1,000/hr = 3000 coins)</span>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-center hover:border-blue-500/30 transition-all">
@@ -171,6 +173,60 @@ const HostProgramModal = ({ isOpen, onClose, initialTab = 'overview' }) => {
                   <span className="text-xs text-white/50 block font-medium">Paid Chat</span>
                   <span className="text-base md:text-lg font-black text-blue-300">₹1 / message</span>
                   <span className="text-[10px] text-white/40 block mt-0.5">3 coins/msg earned</span>
+                </div>
+              </div>
+
+              {/* Detailed Staff Rate Breakdown & Gifts */}
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                    <Coins className="w-3.5 h-3.5" /> Staff Conversion & Call Rates
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-400/10 text-amber-300 border border-amber-400/20">
+                    ₹1 = 3 Coins
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                  <div className="p-2.5 rounded-xl bg-black/20 border border-white/5 space-y-1">
+                    <span className="font-bold text-white/90 flex items-center gap-1.5">
+                      <PhoneCall className="w-3.5 h-3.5 text-purple-400" /> Audio Calling Rates
+                    </span>
+                    <p className="text-[11px] text-white/60 leading-relaxed">
+                      • 1 Hour: <strong className="text-white">₹300 (900 Coins)</strong><br />
+                      • 1 Min: <strong className="text-white">₹5 (15 Coins)</strong><br />
+                      • 20 Sec: <strong className="text-white">₹1.67 (5 Coins)</strong><br />
+                      • 6 Sec (0.1 Min): <strong className="text-white">₹0.50 (1.5 Coins)</strong>
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-black/20 border border-white/5 space-y-1">
+                    <span className="font-bold text-white/90 flex items-center gap-1.5">
+                      <Video className="w-3.5 h-3.5 text-[#D51659]" /> Video Calling Rates
+                    </span>
+                    <p className="text-[11px] text-white/60 leading-relaxed">
+                      • 1 Hour: <strong className="text-white">₹1,000 (3,000 Coins)</strong><br />
+                      • 1 Min: <strong className="text-white">₹17 (51 Coins)</strong><br />
+                      • 20 Sec: <strong className="text-white">₹5.67 (17 Coins)</strong><br />
+                      • 6 Sec (0.1 Min): <strong className="text-white">₹1.70 (5.1 Coins)</strong>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Gifts & Message Rates */}
+                <div className="p-2.5 rounded-xl bg-black/20 border border-white/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+                  <div>
+                    <span className="font-bold text-white/90 flex items-center gap-1.5">
+                      <Gift className="w-3.5 h-3.5 text-pink-400" /> Virtual Gifts Earning
+                    </span>
+                    <span className="text-[11px] text-white/60">
+                      ₹50 Gift = <strong className="text-white">150 Coins</strong> • ₹75 Gift = <strong className="text-white">225 Coins</strong> • ₹100 Gift = <strong className="text-white">300 Coins</strong>
+                    </span>
+                  </div>
+                  <div className="text-right sm:border-l sm:border-white/10 sm:pl-3">
+                    <span className="text-[10px] text-white/50 block">Chat Message</span>
+                    <strong className="text-emerald-300 text-xs">₹1 = 3 Coins / msg</strong>
+                  </div>
                 </div>
               </div>
 
