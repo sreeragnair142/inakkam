@@ -81,7 +81,7 @@ const MobileCard = ({ profile, active, onSwipe, swipeDirection, onClick }) => {
       </motion.div>
 
       {/* Info Container */}
-      <div className="absolute inset-x-0 bottom-10 px-5 flex justify-between items-end pointer-events-none select-none">
+      <div className="absolute inset-x-0 bottom-6 px-5 flex justify-between items-end pointer-events-none select-none">
         <h3 className="text-white font-black text-xl drop-shadow-md pb-1 truncate max-w-[60%]">
           {profile.name}, {profile.age}
         </h3>
@@ -194,7 +194,7 @@ const Discover = () => {
   };
 
   return (
-    <div className="flex-1 flex items-start justify-center relative h-[calc(100vh-115px)] sm:h-auto min-h-[0px] pt-14 pb-3 sm:pt-28 sm:pb-16 lg:pt-36 lg:pb-20 px-2 sm:px-4 overflow-hidden">
+    <div className="flex-1 flex items-start justify-center relative h-[calc(100dvh-180px)] sm:h-auto min-h-[0px] pt-14 pb-3 sm:pt-28 sm:pb-16 lg:pt-36 lg:pb-20 px-2 sm:px-4 overflow-hidden">
 
 
 

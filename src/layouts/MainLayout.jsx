@@ -391,7 +391,7 @@ const MainLayout = ({ children }) => {
 
         {/* MAIN CONTENT PORTAL (100% FULL-WIDTH CAPABLE VIEWPORT) */}
         <main
-          className="flex-grow w-full flex flex-col z-10 relative pb-20 lg:pb-0"
+          className="flex-grow w-full flex flex-col z-10 relative pb-24 lg:pb-0"
           onClickCapture={(e) => {
             if (isGuest) {
               e.stopPropagation();
@@ -546,15 +546,15 @@ const MainLayout = ({ children }) => {
 
       {/* Elevated Premium Floating Bottom Nav Bar on Mobile */}
       {location.pathname !== '/chat' && (
-        <div className="fixed bottom-4 left-3 right-3 sm:left-6 sm:right-6 lg:hidden z-40">
-        <nav className="bg-[#D51659]/95 backdrop-blur-xl border border-white/20 shadow-2xl shadow-[#D51659]/30 rounded-full px-2 py-2 flex items-center justify-around">
+        <div className="fixed bottom-0 left-0 right-0 lg:hidden z-40 px-3 sm:px-6" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
+        <nav className="bg-[#D51659]/95 backdrop-blur-xl border border-white/20 shadow-2xl shadow-[#D51659]/30 rounded-full px-2 py-2.5 flex items-center justify-around mb-1">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => handleNavClick(item.path)}
-                className={`flex flex-col items-center justify-center flex-1 py-1 px-0.5 rounded-full transition-all relative border-none bg-transparent cursor-pointer ${
+                className={`flex flex-col items-center justify-center flex-1 py-1.5 px-0.5 rounded-full transition-all relative border-none bg-transparent cursor-pointer ${
                   isActive ? 'text-white font-extrabold scale-105' : 'text-white/70 hover:text-white font-medium'
                 }`}
               >
