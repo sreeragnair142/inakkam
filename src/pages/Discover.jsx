@@ -194,7 +194,7 @@ const Discover = () => {
   };
 
   return (
-    <div className="sm:flex-1 flex items-start justify-center relative h-[calc(100dvh-340px)] sm:h-auto min-h-[0px] pt-14 pb-3 sm:pt-28 sm:pb-16 lg:pt-36 lg:pb-20 px-2 sm:px-4 sm:overflow-hidden">
+    <div className="w-full h-[100dvh] sm:h-auto sm:flex-1 flex items-start justify-center relative pt-14 pb-[76px] sm:pt-28 sm:pb-16 lg:pt-36 lg:pb-20 px-2 sm:px-4">
 
 
 
@@ -279,7 +279,7 @@ const Discover = () => {
 
           {/* Mobile Tinder-Style Swiping Stack */}
           <div className="block sm:hidden w-full h-full max-w-md px-1 mx-auto z-10 relative flex flex-col justify-between select-none">
-            <div className="relative w-full flex-grow rounded-[2rem] overflow-visible">
+            <div className="relative w-full flex-1 min-h-0 rounded-[2rem] overflow-visible">
               <AnimatePresence>
                 {localUsers[1] && (
                   <div
@@ -306,7 +306,7 @@ const Discover = () => {
 
             {/* Control action buttons - keep EXACT icons and colors */}
             {localUsers[0] && (
-              <div className="flex items-center justify-center gap-3.5 py-2 pb-2 z-20 shrink-0">
+              <div className="flex items-center justify-center gap-3.5 pt-2 pb-1 z-20 shrink-0">
                 <button onClick={() => handleMobileSwipe('pass')} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
                   <X className="w-5 h-5 text-yellow-500" strokeWidth={2.5} />
                 </button>

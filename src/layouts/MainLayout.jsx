@@ -128,7 +128,9 @@ const MainLayout = ({ children }) => {
     <>
       <div
         ref={scrollRef}
-        className="h-screen w-full flex flex-col text-[#2D2D2D] font-sans relative overflow-x-hidden overflow-y-auto scroll-smooth"
+        className={`h-screen w-full flex flex-col text-[#2D2D2D] font-sans relative overflow-x-hidden scroll-smooth ${
+          location.pathname === '/swipe' ? 'overflow-y-hidden sm:overflow-y-auto' : 'overflow-y-auto'
+        }`}
         style={{ background: 'linear-gradient(135deg, #FFF5F6 0%, #FFFDFD 50%, #FFEBEF 100%)' }}
       >
 
@@ -391,7 +393,9 @@ const MainLayout = ({ children }) => {
 
         {/* MAIN CONTENT PORTAL (100% FULL-WIDTH CAPABLE VIEWPORT) */}
         <main
-          className="flex-grow w-full flex flex-col z-10 relative pb-24 lg:pb-0"
+          className={`flex-grow w-full flex flex-col z-10 relative ${
+            location.pathname === '/swipe' ? 'h-full pb-0' : 'pb-24 lg:pb-0'
+          }`}
           onClickCapture={(e) => {
             if (isGuest) {
               e.stopPropagation();
@@ -408,7 +412,9 @@ const MainLayout = ({ children }) => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.25 }}
-              className="flex-grow w-full flex flex-col justify-start"
+              className={`flex-grow w-full flex flex-col ${
+                location.pathname === '/swipe' ? 'h-full' : 'justify-start'
+              }`}
             >
               {children}
             </motion.div>
