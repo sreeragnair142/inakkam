@@ -194,7 +194,7 @@ const Discover = () => {
   };
 
   return (
-    <div className="flex-1 flex items-start justify-center relative h-[calc(100dvh-180px)] sm:h-auto min-h-[0px] pt-14 pb-3 sm:pt-28 sm:pb-16 lg:pt-36 lg:pb-20 px-2 sm:px-4 overflow-hidden">
+    <div className="flex-1 flex items-start justify-center relative h-[calc(100dvh-260px)] sm:h-auto min-h-[0px] pt-14 pb-3 sm:pt-28 sm:pb-16 lg:pt-36 lg:pb-20 px-2 sm:px-4 sm:overflow-hidden">
 
 
 
@@ -306,7 +306,7 @@ const Discover = () => {
 
             {/* Control action buttons - keep EXACT icons and colors */}
             {localUsers[0] && (
-              <div className="flex items-center justify-center gap-3.5 py-4 z-20 shrink-0">
+              <div className="flex items-center justify-center gap-3.5 py-2 pb-2 z-20 shrink-0">
                 <button onClick={() => handleMobileSwipe('pass')} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
                   <X className="w-5 h-5 text-yellow-500" strokeWidth={2.5} />
                 </button>
