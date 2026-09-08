@@ -194,7 +194,7 @@ const Discover = () => {
   };
 
   return (
-    <div className="w-full h-[100dvh] sm:h-auto sm:flex-1 flex items-start justify-center relative pt-14 pb-[76px] sm:pt-28 sm:pb-16 lg:pt-36 lg:pb-20 px-2 sm:px-4">
+    <div className="w-full h-[100dvh] sm:h-auto sm:flex-1 flex items-start justify-center relative pt-14 pb-[58px] sm:pt-28 sm:pb-16 lg:pt-36 lg:pb-20 px-2 sm:px-4">
 
 
 
