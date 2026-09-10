@@ -10,7 +10,9 @@ export const registerUser = createAsyncThunk('auth/register', async (data, { rej
     if (json.token) localStorage.setItem('inakkam_token', json.token);
     return json;
   } catch (err) {
-    return rejectWithValue(err);
+    // Extract the server error message from the Axios response
+    const message = err?.response?.data?.message || err?.message || 'Registration failed. Please try again.';
+    return rejectWithValue(message);
   }
 });
 
@@ -21,7 +23,9 @@ export const loginUser = createAsyncThunk('auth/login', async (data, { rejectWit
     if (json.token) localStorage.setItem('inakkam_token', json.token);
     return json;
   } catch (err) {
-    return rejectWithValue(err);
+    // Extract the server error message from the Axios response
+    const message = err?.response?.data?.message || err?.message || 'Login failed. Please try again.';
+    return rejectWithValue(message);
   }
 });
 
