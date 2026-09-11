@@ -78,6 +78,11 @@ const Auth = () => {
     }
     setError(null);
 
+    // Clear any stale session token before attempting a new login.
+    // Without this, a failed login would still restore the previous account
+    // because App.jsx dispatches fetchMe() if a token exists in localStorage.
+    localStorage.removeItem('inakkam_token');
+
     const isPhone = !formData.email.includes('@');
     const authPayload = { password: formData.password };
     if (isPhone) {
@@ -101,6 +106,7 @@ const Auth = () => {
       setError(typeof err === 'string' ? err : err?.message || "An error occurred");
     }
   };
+
 
   return (
     <div style={{ background: 'linear-gradient(135deg, #FFF5F6 0%, #FFFDFD 50%, #FFEBEF 100%)' }} className="fixed inset-0 w-full h-[100dvh] overflow-hidden flex flex-col items-center justify-center">
