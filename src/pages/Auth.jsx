@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { loginUser, registerUser, guestLogin } from "../redux/slices/authSlice";
-import { Flame, ArrowRight, Eye, EyeOff, Sparkles } from "lucide-react";
+import { Flame, ArrowRight, Eye, EyeOff, Sparkles, AlertCircle } from "lucide-react";
+import toast from "react-hot-toast";
 import loaderLogo from "../assets/loaderinakkam.png";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -103,7 +104,9 @@ const Auth = () => {
         navigate("/swipe");
       }
     } catch (err) {
-      setError(typeof err === 'string' ? err : err?.message || "An error occurred");
+      const errMsg = typeof err === 'string' ? err : err?.message || "An error occurred";
+      setError(errMsg);
+      toast.error(errMsg, { id: 'auth-error', duration: 4500 });
     }
   };
 
@@ -517,9 +520,14 @@ const Auth = () => {
 
             <div className={isSignUp ? "space-y-3" : "space-y-4"}>
               {error && (
-                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs font-bold text-center">
-                  {error}
-                </div>
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-start gap-2.5 shadow-sm text-left"
+                >
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  <span className="leading-snug">{error}</span>
+                </motion.div>
               )}
               {isSignUp && (
                 <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
