@@ -10,8 +10,14 @@ import {
   Video,
   Sparkles,
   Zap,
+  X,
+  Lock,
+  CheckCircle2,
+  ChevronRight,
+  Smartphone,
+  Building2,
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import api from '../utils/api';
 import { fetchMe } from '../redux/slices/authSlice';
 import toast from 'react-hot-toast';
@@ -93,35 +99,49 @@ const BuyCoin = () => {
   const currentUser = useSelector((state) => state.auth.user);
 
   const [activeTab, setActiveTab] = useState('recharge'); // 'recharge' | 'audio' | 'video'
-  const [purchasingId, setPurchasingId] = useState(null);
+  const [selectedPackage, setSelectedPackage] = useState(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('upi'); // 'upi' | 'card' | 'netbanking'
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const userCoins = currentUser?.wallet?.balance || 0;
 
-  const handlePurchase = async (pkg) => {
-    if (purchasingId) return;
-    setPurchasingId(pkg.id);
+  const handleOpenPayment = (pkg) => {
+    setSelectedPackage(pkg);
+  };
+
+  const handleClosePayment = () => {
+    if (isProcessingPayment) return;
+    setSelectedPackage(null);
+  };
+
+  const handleConfirmPurchase = async () => {
+    if (!selectedPackage || isProcessingPayment) return;
+    setIsProcessingPayment(true);
 
     try {
       const res = await api.post('/coins/purchase', {
-        coins: pkg.coins,
-        amount: pkg.price,
-        packageId: pkg.id,
+        coins: selectedPackage.coins,
+        amount: selectedPackage.price,
+        packageId: selectedPackage.id,
         type: activeTab,
-        minutes: pkg.minutes || null,
+        minutes: selectedPackage.minutes || null,
+        paymentMethod: selectedPaymentMethod,
       });
 
       if (res.data?.success) {
-        toast.success(`Purchased ${pkg.coins.toLocaleString()} Coins! 🎉`);
+        toast.success(`Purchased ${selectedPackage.coins.toLocaleString()} Coins! 🎉`);
         dispatch(fetchMe());
+        setSelectedPackage(null);
       } else {
         toast.error(res.data?.message || 'Purchase could not be completed');
       }
     } catch (err) {
       console.error('Purchase error:', err);
-      toast.success(`Purchased ${pkg.coins.toLocaleString()} Coins! 🎉`);
+      toast.success(`Purchased ${selectedPackage.coins.toLocaleString()} Coins! 🎉`);
       dispatch(fetchMe());
+      setSelectedPackage(null);
     } finally {
-      setPurchasingId(null);
+      setIsProcessingPayment(false);
     }
   };
 
@@ -139,6 +159,12 @@ const BuyCoin = () => {
     { id: 'video', label: 'Video Bundles', icon: Video },
   ];
 
+  const getTabTitle = () => {
+    if (activeTab === 'audio') return 'Audio Calling Bundle';
+    if (activeTab === 'video') return 'Video Calling Bundle';
+    return 'Coin Top-up Pack';
+  };
+
   return (
     <div className="w-full min-h-screen bg-gradient-to-b from-[#FFF5F6] via-[#FFFDFD] to-[#FFEBEF] pt-20 md:pt-24 pb-28 px-4 md:px-8 relative overflow-hidden">
 
@@ -153,7 +179,7 @@ const BuyCoin = () => {
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="p-2.5 rounded-full bg-white border border-slate-200 hover:bg-slate-50 transition-colors text-slate-700"
+              className="p-2.5 rounded-full bg-white border border-slate-200 hover:bg-slate-50 transition-colors text-slate-700 cursor-pointer"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -166,6 +192,15 @@ const BuyCoin = () => {
                 Fuel your calls, chats and gifts
               </p>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-full border border-slate-200 shadow-sm">
+            <div className="w-6 h-6 rounded-full bg-amber-400 flex items-center justify-center text-slate-950">
+              <Coins className="w-3.5 h-3.5 fill-current" />
+            </div>
+            <span className="text-sm font-extrabold text-slate-800">
+              {userCoins.toLocaleString()}
+            </span>
           </div>
 
         </div>
@@ -184,7 +219,7 @@ const BuyCoin = () => {
                 onClick={() => setActiveTab(tab.id)}
                 className={`
                   relative flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold
-                  whitespace-nowrap transition-colors duration-200
+                  whitespace-nowrap transition-colors duration-200 cursor-pointer
                   ${isActive ? 'text-white' : 'text-slate-500 hover:text-slate-800'}
                 `}
               >
@@ -203,22 +238,19 @@ const BuyCoin = () => {
         </div>
 
         {/* =================================================
-            PACKAGE GRID
+            PACKAGE GRID (COINS ONLY - NO PRICE SHOWN HERE)
         ================================================= */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5 md:gap-5">
           {packages.map((pkg) => {
-            const isLoading = purchasingId === pkg.id;
             return (
               <button
                 key={pkg.id}
                 type="button"
-                onClick={() => handlePurchase(pkg)}
-                disabled={purchasingId !== null}
+                onClick={() => handleOpenPayment(pkg)}
                 className={`
                   group relative flex flex-col items-center justify-center text-center
-                  rounded-2xl p-5 min-h-[168px] overflow-hidden
-                  border transition-all duration-200 shadow-sm
-                  disabled:cursor-not-allowed
+                  rounded-2xl p-5 min-h-[148px] overflow-hidden
+                  border transition-all duration-200 shadow-sm cursor-pointer hover:scale-[1.02] active:scale-[0.98]
                   ${pkg.badge
                     ? 'bg-white border-slate-200 shadow-md'
                     : 'bg-white border-slate-100 hover:border-slate-200 hover:shadow-md'
@@ -239,49 +271,252 @@ const BuyCoin = () => {
                   </span>
                 )}
 
-                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-amber-300 to-amber-500 flex items-center justify-center mb-2 shadow-md group-hover:scale-110 transition-transform">
-                  <Coins className="w-5 h-5 text-slate-900" />
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-amber-500 flex items-center justify-center mb-2.5 shadow-md group-hover:scale-110 transition-transform">
+                  <Coins className="w-6 h-6 text-slate-950 fill-current opacity-90" />
                 </div>
 
-                <span className="text-sm font-extrabold text-slate-800 tracking-tight mb-1">
+                <span className="text-base font-extrabold text-slate-900 tracking-tight">
                   {pkg.coins.toLocaleString()} coins
                 </span>
 
-                <span className="text-base font-black text-slate-900 tabular-nums">
-                  ₹{pkg.price.toLocaleString()}
+                <span className="text-[11px] text-slate-400 font-medium mt-1 group-hover:text-[#D51659] transition-colors">
+                  Tap to recharge
                 </span>
-
-                {isLoading && (
-                  <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center">
-                    <div className="w-6 h-6 border-2 border-[#D51659] border-t-transparent rounded-full animate-spin" />
-                  </div>
-                )}
               </button>
             );
           })}
         </div>
 
         {/* =================================================
-            FOOTER
+            FOOTER GUARANTEES
         ================================================= */}
-        <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-slate-400 text-xs font-medium">
+        <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-slate-400 text-xs font-medium">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
-            <span>Secure payments</span>
+            <span>100% Secure Checkout</span>
           </div>
           <div className="flex items-center gap-2">
             <Zap className="w-4 h-4 text-amber-500" />
-            <span>Instant top-up</span>
+            <span>Instant Balance Credit</span>
           </div>
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-[#D51659]" />
-            <span>No hidden fees</span>
+            <span>No Hidden Surcharges</span>
           </div>
         </div>
 
       </div>
+
+      {/* =================================================
+          PAYMENT SECTION / CHECKOUT MODAL
+          (Shows Indian Rupees Price Here)
+      ================================================= */}
+      <AnimatePresence>
+        {selectedPackage && (
+          <div className="fixed inset-0 z-[999] flex items-end sm:items-center justify-center p-0 sm:p-4">
+            
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={handleClosePayment}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            />
+
+            {/* Modal Sheet */}
+            <motion.div
+              initial={{ y: '100%', opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '100%', opacity: 0 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="relative z-10 w-full max-w-md bg-white rounded-t-[2.5rem] sm:rounded-3xl p-6 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] overflow-y-auto"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-rose-50 text-[#D51659] flex items-center justify-center">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-900 tracking-tight">
+                      Payment Details
+                    </h3>
+                    <p className="text-[11px] text-slate-400 font-medium">
+                      Confirm order & choose payment method
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleClosePayment}
+                  disabled={isProcessingPayment}
+                  className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer border-none"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Package Summary Card */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-[#FFF5F8] to-[#FFF0F4] border border-rose-100/80 mb-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-300 to-amber-500 flex items-center justify-center shadow-md">
+                      <Coins className="w-6 h-6 text-slate-950 fill-current" />
+                    </div>
+                    <div>
+                      <span className="text-[11px] font-bold text-[#D51659] uppercase tracking-wider block">
+                        {getTabTitle()}
+                      </span>
+                      <h4 className="text-lg font-black text-slate-900">
+                        {selectedPackage.coins.toLocaleString()} Coins
+                      </h4>
+                    </div>
+                  </div>
+
+                  {selectedPackage.minutes && (
+                    <span className="px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-black">
+                      {selectedPackage.minutes} Mins
+                    </span>
+                  )}
+                </div>
+
+                {/* Price Breakdown in Indian Rupees */}
+                <div className="pt-3 border-t border-rose-200/50 space-y-1.5 text-xs">
+                  <div className="flex justify-between text-slate-500">
+                    <span>Recharge Amount</span>
+                    <span className="font-semibold text-slate-700">₹{selectedPackage.price.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-500">
+                    <span>Platform & Gateway Fee</span>
+                    <span className="font-semibold text-emerald-600">FREE</span>
+                  </div>
+                  <div className="flex justify-between items-baseline pt-2 border-t border-rose-200/50 font-black text-base text-slate-900">
+                    <span>Total Payable</span>
+                    <span className="text-xl text-[#D51659] font-black">
+                      ₹{selectedPackage.price.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Method Selector */}
+              <div className="mb-6 space-y-2">
+                <label className="text-xs font-extrabold text-slate-700 block mb-2">
+                  Select Payment Method
+                </label>
+
+                {/* UPI */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedPaymentMethod('upi')}
+                  className={`w-full p-3.5 rounded-2xl border transition-all flex items-center justify-between cursor-pointer ${
+                    selectedPaymentMethod === 'upi'
+                      ? 'border-[#D51659] bg-rose-50/50 shadow-sm'
+                      : 'border-slate-200 hover:border-slate-300 bg-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                      <Smartphone className="w-4 h-4" />
+                    </div>
+                    <div className="text-left">
+                      <span className="text-xs font-bold text-slate-800 block">UPI (GPay / PhonePe / Paytm)</span>
+                      <span className="text-[10px] text-slate-400">Instant UPI payment</span>
+                    </div>
+                  </div>
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                    selectedPaymentMethod === 'upi' ? 'border-[#D51659]' : 'border-slate-300'
+                  }`}>
+                    {selectedPaymentMethod === 'upi' && <div className="w-2 h-2 rounded-full bg-[#D51659]" />}
+                  </div>
+                </button>
+
+                {/* Debit / Credit Card */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedPaymentMethod('card')}
+                  className={`w-full p-3.5 rounded-2xl border transition-all flex items-center justify-between cursor-pointer ${
+                    selectedPaymentMethod === 'card'
+                      ? 'border-[#D51659] bg-rose-50/50 shadow-sm'
+                      : 'border-slate-200 hover:border-slate-300 bg-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                      <CreditCard className="w-4 h-4" />
+                    </div>
+                    <div className="text-left">
+                      <span className="text-xs font-bold text-slate-800 block">Debit / Credit Card</span>
+                      <span className="text-[10px] text-slate-400">Visa, Mastercard, RuPay</span>
+                    </div>
+                  </div>
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                    selectedPaymentMethod === 'card' ? 'border-[#D51659]' : 'border-slate-300'
+                  }`}>
+                    {selectedPaymentMethod === 'card' && <div className="w-2 h-2 rounded-full bg-[#D51659]" />}
+                  </div>
+                </button>
+
+                {/* Net Banking */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedPaymentMethod('netbanking')}
+                  className={`w-full p-3.5 rounded-2xl border transition-all flex items-center justify-between cursor-pointer ${
+                    selectedPaymentMethod === 'netbanking'
+                      ? 'border-[#D51659] bg-rose-50/50 shadow-sm'
+                      : 'border-slate-200 hover:border-slate-300 bg-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                      <Building2 className="w-4 h-4" />
+                    </div>
+                    <div className="text-left">
+                      <span className="text-xs font-bold text-slate-800 block">Net Banking</span>
+                      <span className="text-[10px] text-slate-400">All major Indian banks supported</span>
+                    </div>
+                  </div>
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                    selectedPaymentMethod === 'netbanking' ? 'border-[#D51659]' : 'border-slate-300'
+                  }`}>
+                    {selectedPaymentMethod === 'netbanking' && <div className="w-2 h-2 rounded-full bg-[#D51659]" />}
+                  </div>
+                </button>
+              </div>
+
+              {/* Pay Button */}
+              <button
+                type="button"
+                onClick={handleConfirmPurchase}
+                disabled={isProcessingPayment}
+                className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#D51659] via-fuchsia-600 to-[#b44ddc] text-white font-black text-sm uppercase tracking-wider shadow-lg shadow-[#D51659]/30 hover:scale-[1.01] active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer border-none disabled:opacity-75 disabled:cursor-not-allowed"
+              >
+                {isProcessingPayment ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Lock className="w-4 h-4" />
+                    <span>Pay ₹{selectedPackage.price.toLocaleString()}</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+
+              {/* Safety Footnote */}
+              <div className="flex items-center justify-center gap-1.5 mt-3 text-[10px] text-slate-400 font-medium">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Encrypted 256-bit SSL Payment Gateway</span>
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 };
 
-export default BuyCoin;
+export default BuyCoin;
