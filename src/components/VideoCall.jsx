@@ -1735,9 +1735,24 @@ const VideoCall = ({
         gifUrl: gifUrl,
         senderName: currentUserNameRef.current,
       });
-      // Show GIF locally
+      // Show GIF locally as animated popup
       setActiveGif(gifUrl);
-      setTimeout(() => setActiveGif(null), 5000);
+      setTimeout(() => setActiveGif(null), 6000);
+
+      // Also add to in-call chat drawer
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          id: `me_gif_${Date.now()}`,
+          sender: "me",
+          senderName: currentUserNameRef.current || "Me",
+          gifUrl: gifUrl,
+          time: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        },
+      ]);
     }
   };
 
@@ -1755,7 +1770,21 @@ const VideoCall = ({
 
       if (type === 'gif' && gifUrl) {
         setRemoteGif(gifUrl);
-        setTimeout(() => setRemoteGif(null), 5000);
+        setTimeout(() => setRemoteGif(null), 6000);
+
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            id: `remote_gif_${Date.now()}`,
+            sender: "remote",
+            senderName: senderName || remoteUserName || "Opponent",
+            gifUrl: gifUrl,
+            time: new Date().toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          },
+        ]);
       }
 
       if (message) {
@@ -2237,7 +2266,11 @@ const VideoCall = ({
                               : "bg-white/10 text-white/90 rounded-bl-sm border border-white/10"
                           }`}
                         >
-                          {msg.text}
+                          {msg.gifUrl ? (
+                            <img src={msg.gifUrl} alt="GIF" className="rounded-xl max-w-[160px] max-h-[160px] object-cover" />
+                          ) : (
+                            msg.text
+                          )}
                         </div>
                         <span className="text-[9px] text-slate-600 mt-0.5 px-1">
                           {msg.time}
