@@ -1309,7 +1309,7 @@ const VideoCall = ({
             // backend may silently return null/undefined as the token.
             const tokenRes = await api.post("/enablex/get-token", {
               roomId,
-              role: isCaller ? "moderator" : "participant",
+              role: "participant",
               name: currentUserNameRef.current || "Inakkam User",
               userRef: currentUser?._id || currentUser?.id || "unknown",
             });
@@ -1871,8 +1871,16 @@ const VideoCall = ({
           });
 
           // --------------------------------------------------
-          // Detect "room deleted" (needs a brand new room)
+          // Detect "room deleted" or "room capacity full" (needs a brand new room)
           // --------------------------------------------------
+          const isRoomCapacityError =
+            enablexErrorCode === 2101 ||
+            enablexErrorCode === 2102 ||
+            enablexErrorCode === 2103 ||
+            errorText.includes("room is full") ||
+            errorText.includes("full for moderators") ||
+            errorText.includes("full for participants");
+
           const isRoomDeletedError =
             enablexErrorCode === 4118 ||
             errorText.includes("room has been deleted") ||
@@ -1903,8 +1911,14 @@ const VideoCall = ({
             enablexErrorCode === 401 ||
             enablexErrorCode === 4011; // EnableX auth-failure code — verify against EnableX docs/logs for your account
 
-          if (isRoomDeletedError) {
-            console.warn("[EnableX] 🚨 ROOM 4118: room has been deleted");
+          if (isRoomDeletedError || isRoomCapacityError) {
+            console.warn(
+              `[EnableX] 🚨 ${
+                isRoomDeletedError
+                  ? "ROOM 4118: room has been deleted"
+                  : "ROOM CAPACITY FULL (" + enablexErrorCode + "): " + errorText
+              }. Creating replacement room...`,
+            );
 
             // Do NOT try to reconnect to the old room.
             // A completely NEW room is required.
