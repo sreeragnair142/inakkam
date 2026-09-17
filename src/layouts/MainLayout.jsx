@@ -88,10 +88,10 @@ const MainLayout = ({ children }) => {
     spotlight: true,
   });
   const [distanceValue, setDistanceValue] = useState(25);
-  const [selectedSound, setSelectedSound] = useState(user?.notificationSound || 'default');
+  const [selectedSound, setSelectedSound] = useState(() => localStorage.getItem('inakkam_notification_sound') || user?.notificationSound || 'default');
 
   useEffect(() => {
-    if (user?.notificationSound) {
+    if (user?.notificationSound && !localStorage.getItem('inakkam_notification_sound')) {
       setSelectedSound(user.notificationSound);
     }
   }, [user?.notificationSound]);
@@ -569,13 +569,14 @@ const MainLayout = ({ children }) => {
                             type="button"
                             onClick={async () => {
                               setSelectedSound(sound.key);
+                              localStorage.setItem('inakkam_notification_sound', sound.key);
                               previewSound(sound.key);
                               try {
                                 await api.put('/users/notification-sound', { sound: sound.key });
-                                toast.success(`Sound set to ${sound.label.split(' ')[1]}`);
                               } catch (err) {
-                                toast.error('Failed to update sound');
+                                console.warn('Backend sync pending, saved to local device:', err?.message);
                               }
+                              toast.success(`Sound set to ${sound.label.split(' ')[1] || sound.label}`);
                             }}
                             className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all duration-200 flex items-center justify-between gap-1.5 cursor-pointer text-left
                               ${selectedSound === sound.key

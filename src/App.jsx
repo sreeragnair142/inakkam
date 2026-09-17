@@ -146,8 +146,8 @@ function AppContent() {
 
       socket.on('new_message', (message) => {
         dispatch(addMessage(message));
-        // Play user's preferred notification sound
-        const soundPref = user?.notificationSound || 'default';
+        // Play user's preferred notification sound (localStorage fallback if backend pending)
+        const soundPref = localStorage.getItem('inakkam_notification_sound') || user?.notificationSound || 'default';
         playNotificationSound(soundPref);
       });
 
@@ -165,7 +165,7 @@ function AppContent() {
 
       socket.on('new_notification', (notif) => {
         dispatch(addNotification(notif));
-        const soundPref = user?.notificationSound || 'default';
+        const soundPref = localStorage.getItem('inakkam_notification_sound') || user?.notificationSound || 'default';
         playNotificationSound(soundPref);
       });
 
