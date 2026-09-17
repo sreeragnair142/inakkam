@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -111,7 +111,6 @@ function StepPayment({ pkg, tabTitle, onBack, onPaid }) {
           <p className="text-xl font-black text-[#D51659]">₹{pkg.price.toLocaleString()}</p>
         </div>
       </div>
-
       {/* Instructions */}
       <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 flex items-start gap-3">
         <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
