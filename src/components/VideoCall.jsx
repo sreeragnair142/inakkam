@@ -25,7 +25,7 @@ import { fetchMe } from "../redux/slices/authSlice";
 import { getSocket } from "../utils/socket";
 import ScreenShield from "./ScreenShield";
 import GifPicker from "./GifPicker";
-import { resolveGifMediaUrl, EVERGREEN_FALLBACK_GIF } from "../utils/gifHelper";
+import { resolveGifMediaUrl, getAlternativeGiphyUrls } from "../utils/gifHelper";
 import {
   checkPhoneNumber,
   SpeechPhoneDetector,
@@ -3197,12 +3197,26 @@ const VideoCall = ({
                                   referrerPolicy="no-referrer"
                                   loading="lazy"
                                   onError={(e) => {
-                                    if (!e.currentTarget.dataset.fallback) {
-                                      e.currentTarget.dataset.fallback = 'true';
-                                      e.currentTarget.src = EVERGREEN_FALLBACK_GIF;
+                                    const target = e.currentTarget;
+                                    const altUrls = getAlternativeGiphyUrls(displayGifUrl);
+                                    const retryIdx = parseInt(target.dataset.retryIdx || '0', 10);
+                                    if (retryIdx < altUrls.length) {
+                                      target.dataset.retryIdx = String(retryIdx + 1);
+                                      target.src = altUrls[retryIdx];
+                                    } else {
+                                      target.style.display = 'none';
+                                      if (target.nextElementSibling) {
+                                        target.nextElementSibling.style.display = 'flex';
+                                      }
                                     }
                                   }}
                                 />
+                                <div
+                                  style={{ display: 'none' }}
+                                  className="flex flex-col items-center justify-center p-3 text-center text-white/50 text-[10px]"
+                                >
+                                  <span>🎬 GIF unavailable</span>
+                                </div>
                               </div>
                             ) : (
                               msg.text

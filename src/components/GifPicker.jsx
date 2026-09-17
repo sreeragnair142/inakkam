@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, X, Loader2, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { resolveGifMediaUrl, EVERGREEN_FALLBACK_GIF } from '../utils/gifHelper';
+import { resolveGifMediaUrl, getAlternativeGiphyUrls } from '../utils/gifHelper';
 
 // GIPHY verified public key for instant live searching across millions of GIFs
 const GIPHY_API_KEY = 'sXpGFDGZs0Dv1mmNFvYaGUvYwKX0PWIh';
@@ -10,28 +10,28 @@ const GIPHY_BASE_URL = 'https://api.giphy.com/v1/gifs';
 // Quick reaction categories for 1-click discovery
 const CATEGORIES = [
   { label: '🔥 Hot', q: '' },
-  { label: '❤️ Love', q: 'love romance' },
   { label: '😂 Funny', q: 'funny lol' },
-  { label: '😘 Kiss', q: 'kiss romantic' },
+  { label: '👋 Hi', q: 'hello wave' },
   { label: '💃 Dance', q: 'dance party' },
   { label: '🎉 Party', q: 'celebrate cheer' },
+  { label: '❤️ Love', q: 'love romance' },
+  { label: '😘 Kiss', q: 'kiss romantic' },
   { label: '🥺 Cute', q: 'cute puppy' },
   { label: '🔥 Lit', q: 'fire hype' },
-  { label: '👋 Hi', q: 'hello wave' },
 ];
 
 // Curated fallback reaction GIFs (offline/failover safe, 100% verified live)
 const FALLBACK_GIFS = [
-  { id: 'fb_1', url: 'https://media.giphy.com/media/paXjnIZYvglz2/giphy.gif', desc: 'Heart Love' },
-  { id: 'fb_2', url: 'https://media.giphy.com/media/CjzllG1RAnY3K/giphy.gif', desc: 'Kiss Love' },
-  { id: 'fb_3', url: 'https://media.giphy.com/media/BPJmthQ3YRwD6QqcVD/giphy.gif', desc: 'Cheers' },
-  { id: 'fb_4', url: 'https://media.giphy.com/media/10JhviFuU2gWD6/giphy.gif', desc: 'Haha Laugh' },
-  { id: 'fb_5', url: 'https://media.giphy.com/media/blSTtZehjAZ8I/giphy.gif', desc: 'Happy Dance' },
-  { id: 'fb_6', url: 'https://media.giphy.com/media/artj92V8o75VPL7AeQ/giphy.gif', desc: 'Party Confetti' },
-  { id: 'fb_7', url: 'https://media.giphy.com/media/26ufdipQqU2lhNA4g/giphy.gif', desc: 'Wow' },
-  { id: 'fb_8', url: 'https://media.giphy.com/media/111ebonMs90YLu/giphy.gif', desc: 'Thumbs Up' },
-  { id: 'fb_9', url: 'https://media.giphy.com/media/3oEdv4hwWTzBhWvaU0/giphy.gif', desc: 'Warm Hug' },
-  { id: 'fb_10', url: 'https://media.giphy.com/media/nrXif9YExO9EI/giphy.gif', desc: 'Fire' },
+  { id: 'fb_1', url: 'https://i.giphy.com/111ebonMs90YLu.gif', desc: 'Thumbs Up' },
+  { id: 'fb_2', url: 'https://i.giphy.com/10JhviFuU2gWD6.gif', desc: 'Haha Laugh' },
+  { id: 'fb_3', url: 'https://i.giphy.com/BPJmthQ3YRwD6QqcVD.gif', desc: 'Cheers' },
+  { id: 'fb_4', url: 'https://i.giphy.com/blSTtZehjAZ8I.gif', desc: 'Happy Dance' },
+  { id: 'fb_5', url: 'https://i.giphy.com/paXjnIZYvglz2.gif', desc: 'Heart Love' },
+  { id: 'fb_6', url: 'https://i.giphy.com/CjzllG1RAnY3K.gif', desc: 'Kiss Love' },
+  { id: 'fb_7', url: 'https://i.giphy.com/artj92V8o75VPL7AeQ.gif', desc: 'Party Confetti' },
+  { id: 'fb_8', url: 'https://i.giphy.com/26ufdipQqU2lhNA4g.gif', desc: 'Wow' },
+  { id: 'fb_9', url: 'https://i.giphy.com/3oEdv4hwWTzBhWvaU0.gif', desc: 'Warm Hug' },
+  { id: 'fb_10', url: 'https://i.giphy.com/nrXif9YExO9EI.gif', desc: 'Fire' },
 ];
 
 const GifPicker = ({ isOpen, onClose, onSelect }) => {
@@ -92,17 +92,19 @@ const GifPicker = ({ isOpen, onClose, onSelect }) => {
   };
 
   const getGifUrl = (gif) => {
-    if (gif?.id && !String(gif.id).startsWith('fb_')) {
-      return `https://media.giphy.com/media/${gif.id}/giphy.gif`;
+    if (gif?.images?.fixed_height?.url) {
+      return gif.images.fixed_height.url;
     }
-    const raw = (
-      gif?.images?.fixed_height?.url ||
-      gif?.images?.fixed_height_small?.url ||
-      gif?.images?.original?.url ||
-      gif?.url ||
-      ''
-    );
-    return resolveGifMediaUrl(raw);
+    if (gif?.images?.original?.url) {
+      return gif.images.original.url;
+    }
+    if (gif?.id && !String(gif.id).startsWith('fb_')) {
+      return `https://i.giphy.com/${gif.id}.gif`;
+    }
+    if (gif?.url) {
+      return gif.url;
+    }
+    return '';
   };
 
   if (!isOpen) return null;
@@ -216,9 +218,12 @@ const GifPicker = ({ isOpen, onClose, onSelect }) => {
                       loading="lazy"
                       referrerPolicy="no-referrer"
                       onError={(e) => {
-                        if (!e.currentTarget.dataset.fallback) {
-                          e.currentTarget.dataset.fallback = 'true';
-                          e.currentTarget.src = EVERGREEN_FALLBACK_GIF;
+                        const target = e.currentTarget;
+                        const altUrls = getAlternativeGiphyUrls(gifUrl);
+                        const retryIdx = parseInt(target.dataset.retryIdx || '0', 10);
+                        if (retryIdx < altUrls.length) {
+                          target.dataset.retryIdx = String(retryIdx + 1);
+                          target.src = altUrls[retryIdx];
                         }
                       }}
                     />

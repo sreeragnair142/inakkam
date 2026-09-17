@@ -33,7 +33,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../utils/api';
 import { getSocket, joinConversation, emitMessage } from '../utils/socket';
-import { resolveGifMediaUrl, EVERGREEN_FALLBACK_GIF } from '../utils/gifHelper';
+import { resolveGifMediaUrl, getAlternativeGiphyUrls } from '../utils/gifHelper';
 import VideoCall from '../components/VideoCall';
 import RechargeModal from '../components/RechargeModal';
 import { fetchMe } from '../redux/slices/authSlice';
@@ -690,12 +690,26 @@ const Chat = () => {
                               loading="lazy"
                               referrerPolicy="no-referrer"
                               onError={(e) => {
-                                if (!e.currentTarget.dataset.failed) {
-                                  e.currentTarget.dataset.failed = 'true';
-                                  e.currentTarget.src = EVERGREEN_FALLBACK_GIF;
+                                const target = e.currentTarget;
+                                const altUrls = getAlternativeGiphyUrls(msg.text);
+                                const retryIdx = parseInt(target.dataset.retryIdx || '0', 10);
+                                if (retryIdx < altUrls.length) {
+                                  target.dataset.retryIdx = String(retryIdx + 1);
+                                  target.src = altUrls[retryIdx];
+                                } else {
+                                  target.style.display = 'none';
+                                  if (target.nextElementSibling) {
+                                    target.nextElementSibling.style.display = 'flex';
+                                  }
                                 }
                               }}
                             />
+                            <div
+                              style={{ display: 'none' }}
+                              className="flex flex-col items-center justify-center p-3 text-center text-slate-400 text-xs"
+                            >
+                              <span>🎬 GIF unavailable</span>
+                            </div>
                           </div>
                         ) : (
                           <p className="leading-relaxed break-words text-left">{msg.text}</p>
