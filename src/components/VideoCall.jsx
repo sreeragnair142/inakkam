@@ -1717,11 +1717,20 @@ const VideoCall = ({
     }
   };
 
+  // Join the call session room so both sides can exchange in-call messages & GIFs
+  useEffect(() => {
+    const socket = getSocket();
+    if (socket && roomId) {
+      socket.emit('join_room', String(roomId));
+    }
+  }, [roomId]);
+
   const handleSendGif = (gifUrl) => {
     const socket = getSocket();
-    if (socket && targetUid) {
+    if (socket) {
       socket.emit('webrtc_chat', {
         targetUserId: targetUid,
+        roomId: String(roomId || ''),
         type: 'gif',
         gifUrl: gifUrl,
         senderName: currentUserNameRef.current,
@@ -1732,14 +1741,16 @@ const VideoCall = ({
     }
   };
 
-  // ─── Receive In-Room Chat Messages ──────────────────────
+  // ─── Receive In-Room Chat Messages & GIFs ────────────────
   useEffect(() => {
     const socket = getSocket();
     if (!socket) return;
 
     const handleChatMsg = (data) => {
-      const { senderId, message, type, gifUrl } = data;
-      if (targetUid && senderId && String(senderId) !== targetUid) return;
+      const { senderId, message, type, gifUrl, senderName } = data;
+      const myId = String(currentUser?._id || currentUser?.id || '');
+      // Do not process messages reflected back from ourselves
+      if (senderId && myId && String(senderId) === myId) return;
       if (!isMountedRef.current) return;
 
       if (type === 'gif' && gifUrl) {
@@ -1753,7 +1764,7 @@ const VideoCall = ({
           {
             id: `remote_msg_${Date.now()}`,
             sender: "remote",
-            senderName: remoteUserName,
+            senderName: senderName || remoteUserName || "Opponent",
             text: message,
             time: new Date().toLocaleTimeString([], {
               hour: "2-digit",
@@ -1766,7 +1777,7 @@ const VideoCall = ({
 
     socket.on("webrtc_chat", handleChatMsg);
     return () => socket.off("webrtc_chat", handleChatMsg);
-  }, [targetUid, remoteUserName]);
+  }, [roomId, remoteUserName, currentUser]);
   const handleUnlockAudio = useCallback(() => {
     const audioContainer = document.getElementById("remote_audio_player");
     if (audioContainer) {
@@ -2283,12 +2294,12 @@ const VideoCall = ({
           initial={{ opacity: 0, scale: 0.5, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.5 }}
-          className="absolute bottom-32 right-4 z-40"
+          className="absolute bottom-32 right-4 sm:right-8 z-[100] pointer-events-none"
         >
-          <div className="rounded-2xl overflow-hidden shadow-2xl border-2 border-[#D51659]/50 bg-black/50 backdrop-blur-sm">
-            <img src={activeGif} alt="Sent GIF" className="w-32 h-32 object-cover" />
-            <div className="text-center py-1 bg-black/60">
-              <span className="text-[9px] text-white/50">You sent</span>
+          <div className="rounded-2xl overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.8)] border-2 border-[#D51659] bg-black/80 backdrop-blur-md">
+            <img src={activeGif} alt="Sent GIF" className="w-36 h-36 sm:w-44 sm:h-44 object-cover" />
+            <div className="text-center py-1.5 bg-[#D51659]/90">
+              <span className="text-[10px] font-bold text-white uppercase tracking-wider">✨ You sent</span>
             </div>
           </div>
         </motion.div>
@@ -2300,12 +2311,12 @@ const VideoCall = ({
           initial={{ opacity: 0, scale: 0.5, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.5 }}
-          className="absolute bottom-32 left-4 z-40"
+          className="absolute bottom-32 left-4 sm:left-8 z-[100] pointer-events-none"
         >
-          <div className="rounded-2xl overflow-hidden shadow-2xl border-2 border-yellow-400/50 bg-black/50 backdrop-blur-sm">
-            <img src={remoteGif} alt="Received GIF" className="w-32 h-32 object-cover" />
-            <div className="text-center py-1 bg-black/60">
-              <span className="text-[9px] text-white/50">Received</span>
+          <div className="rounded-2xl overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.8)] border-2 border-yellow-400 bg-black/80 backdrop-blur-md">
+            <img src={remoteGif} alt="Received GIF" className="w-36 h-36 sm:w-44 sm:h-44 object-cover" />
+            <div className="text-center py-1.5 bg-yellow-500/90">
+              <span className="text-[10px] font-bold text-black uppercase tracking-wider">🎉 {remoteUserName || 'Opponent'} sent</span>
             </div>
           </div>
         </motion.div>

@@ -108,7 +108,21 @@ const chatSlice = createSlice({
         };
       } else {
         const activeIdStr = String(state.activeChatId || '');
-        if (!state.activeChatId || activeIdStr === targetId || activeIdStr.endsWith(targetId) || targetId.endsWith(activeIdStr.replace('chat_', ''))) {
+        const activeChat = state.chats.find(c => {
+          const cConvId = String(c.conversationId || c.id || '');
+          const cUserId = String(c.userId || c.user?._id || '');
+          return cConvId === activeIdStr || cUserId === activeIdStr || activeIdStr.includes(cConvId);
+        });
+        const activeOtherUserId = activeChat ? String(activeChat.user?._id || activeChat.userId || '') : activeIdStr.replace('chat_', '');
+
+        const isForActiveChat =
+          !state.activeChatId ||
+          activeIdStr === targetId ||
+          activeIdStr.endsWith(targetId) ||
+          targetId.endsWith(activeIdStr.replace('chat_', '')) ||
+          (activeOtherUserId && (senderId === activeOtherUserId || (msg.recipientId && String(msg.recipientId) === activeOtherUserId)));
+
+        if (isForActiveChat) {
           state.activeChatMessages.push(msg);
         }
       }
