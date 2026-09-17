@@ -45,6 +45,10 @@ const VideoCall = ({
   const dispatch = useDispatch();
   const [callStatus, setCallStatus] = useState("connecting"); // connecting | connected | disconnected
   const [duration, setDuration] = useState(0);
+  const durationRef = useRef(0);
+  useEffect(() => {
+    durationRef.current = duration;
+  }, [duration]);
   const [micActive, setMicActive] = useState(true);
   const [videoActive, setVideoActive] = useState(callType === "video");
   const [showChat, setShowChat] = useState(false);
@@ -224,11 +228,22 @@ const VideoCall = ({
         setCallStatus("disconnected");
       }
 
+      const finalDuration = durationRef.current || duration;
       if (onEndCallRef.current) {
-        setTimeout(() => onEndCallRef.current(), 50);
+        setTimeout(
+          () =>
+            onEndCallRef.current({
+              duration: finalDuration,
+              callType,
+              remoteUserName,
+              roomId,
+              conversationId,
+            }),
+          50,
+        );
       }
     },
-    [roomId, targetUid],
+    [roomId, targetUid, callType, remoteUserName, conversationId, duration],
   );
 
   const handleDisconnect = useCallback(() => {
@@ -2134,10 +2149,6 @@ const VideoCall = ({
     const socket = getSocket();
 
     const handleRemoteCallEnded = () => {
-      toast("Call ended by the other person", {
-        icon: "📞",
-      });
-
       if (isMountedRef.current && !isDisconnectedRef.current) {
         finishCall({ notifyRemote: false });
       }
@@ -2256,6 +2267,13 @@ const VideoCall = ({
     const s = str.trim().toLowerCase();
     return (s.startsWith('http://') || s.startsWith('https://')) &&
       (s.includes('giphy') || s.includes('tenor') || s.includes('.gif') || s.includes('.webp') || s.includes('/media/') || s.includes('/images/'));
+  };
+
+  const isMediaGifStr = (str) => {
+    if (!str || typeof str !== 'string') return false;
+    const s = str.trim().toLowerCase();
+    return s.includes('giphy') || s.includes('tenor') || s.includes('.gif') || s.includes('.webp') ||
+      ((s.startsWith('http://') || s.startsWith('https://')) && (s.includes('/media') || s.includes('image') || s.includes('giphy')));
   };
 
   // ─── Send In-Room Chat Message ───────────────────────────
@@ -2459,15 +2477,14 @@ const VideoCall = ({
       }
 
       const senderDisplayName = senderName || remoteUserNameRef.current || "Call Partner";
-      const isMediaGifStr = (str) => {
-        if (!str || typeof str !== 'string') return false;
-        const s = str.trim().toLowerCase();
-        return s.includes('giphy') || s.includes('tenor') || s.includes('.gif') || s.includes('.webp') ||
-          ((s.startsWith('http://') || s.startsWith('https://')) && (s.includes('/media') || s.includes('image')));
-      };
+      const rawText = String(message || '');
+      let resolvedGifUrl =
+        gifUrl ||
+        (type === 'gif' ? rawText : null) ||
+        (isMediaGifStr(rawText) ? rawText : null) ||
+        (rawText.includes('giphy') || rawText.includes('tenor') || rawText.includes('.gif') ? rawText : null);
 
-      let resolvedGifUrl = gifUrl || (type === 'gif' ? message : null) || (isMediaGifStr(message) ? message : null);
-      if (resolvedGifUrl && typeof resolvedGifUrl === 'string' && resolvedGifUrl.startsWith('https://media') && resolvedGifUrl.endsWith('giphy')) {
+      if (resolvedGifUrl && typeof resolvedGifUrl === 'string' && resolvedGifUrl.startsWith('https://media') && (resolvedGifUrl.endsWith('giphy') || !resolvedGifUrl.includes('.com'))) {
         resolvedGifUrl = "https://media.giphy.com/media/26BRv0ThflsDTjq4E/giphy.gif";
       }
       const isGif = Boolean(type === 'gif' || resolvedGifUrl);
@@ -2571,7 +2588,7 @@ const VideoCall = ({
       if (!resolvedGif && isMediaGifStr(rawText)) {
         resolvedGif = rawText;
       }
-      if (resolvedGif && typeof resolvedGif === 'string' && resolvedGif.startsWith('https://media') && resolvedGif.endsWith('giphy')) {
+      if (resolvedGif && typeof resolvedGif === 'string' && resolvedGif.startsWith('https://media') && (resolvedGif.endsWith('giphy') || !resolvedGif.includes('.com'))) {
         resolvedGif = "https://media.giphy.com/media/26BRv0ThflsDTjq4E/giphy.gif";
       }
 
@@ -3196,7 +3213,7 @@ const VideoCall = ({
                         ))
                       );
                       let displayGifUrl = msg.gifUrl || (msg.type === 'gif' ? msg.text : null) || (hasGif && typeof msg.text === 'string' ? msg.text : null);
-                      if (displayGifUrl && typeof displayGifUrl === 'string' && displayGifUrl.startsWith('https://media') && displayGifUrl.endsWith('giphy')) {
+                      if (displayGifUrl && typeof displayGifUrl === 'string' && displayGifUrl.startsWith('https://media') && (displayGifUrl.endsWith('giphy') || !displayGifUrl.includes('.com'))) {
                         displayGifUrl = "https://media.giphy.com/media/26BRv0ThflsDTjq4E/giphy.gif";
                       }
 
