@@ -602,7 +602,25 @@ const Chat = () => {
                             : 'bg-white text-slate-800 rounded-bl-[4px] border border-slate-200/80 shadow-[0_2px_8px_rgba(0,0,0,0.01)]'
                           }`}
                       >
-                        <p className="leading-relaxed break-words text-left">{msg.text}</p>
+                        {Boolean(typeof msg.text === 'string' && (msg.text.includes('giphy') || msg.text.includes('tenor') || msg.text.includes('.gif') || msg.text.includes('.webp') || ((msg.text.startsWith('http://') || msg.text.startsWith('https://')) && (msg.text.includes('/media') || msg.text.includes('image'))))) ? (
+                          <div className="rounded-xl overflow-hidden my-1 max-w-[220px] max-h-[220px] flex items-center justify-center bg-black/5">
+                            <img
+                              src={(typeof msg.text === 'string' && msg.text.startsWith('https://media') && msg.text.endsWith('giphy')) ? 'https://media.giphy.com/media/26BRv0ThflsDTjq4E/giphy.gif' : msg.text}
+                              alt="GIF"
+                              className="rounded-xl w-full h-full object-cover"
+                              loading="lazy"
+                              referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                if (!e.currentTarget.dataset.failed) {
+                                  e.currentTarget.dataset.failed = 'true';
+                                  e.currentTarget.src = 'https://media.giphy.com/media/26BRv0ThflsDTjq4E/giphy.gif';
+                                }
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <p className="leading-relaxed break-words text-left">{msg.text}</p>
+                        )}
 
                         {/* Emoji Reactions row */}
                         {msg.reactions && msg.reactions.length > 0 && (
@@ -730,17 +748,37 @@ const Chat = () => {
                 <input
                   type="text"
                   value={inputMessage}
-                  maxLength={isCustomer ? 20 : 2000}
+                  maxLength={
+                    (inputMessage.startsWith('http://') || inputMessage.startsWith('https://') || inputMessage.includes('giphy') || inputMessage.includes('tenor'))
+                      ? 2000
+                      : (isCustomer ? 20 : 2000)
+                  }
                   onChange={(e) => {
                     const val = e.target.value;
-                    setInputMessage(isCustomer && val.length > 20 ? val.slice(0, 20) : val);
+                    const isUrl = val.startsWith('http://') || val.startsWith('https://') || val.includes('giphy') || val.includes('tenor') || val.includes('.gif');
+                    setInputMessage(isCustomer && !isUrl && val.length > 20 ? val.slice(0, 20) : val);
+                  }}
+                  onPaste={(e) => {
+                    const pasted = e.clipboardData?.getData('text') || '';
+                    if (pasted && (pasted.startsWith('http') || pasted.includes('giphy') || pasted.includes('tenor'))) {
+                      e.preventDefault();
+                      setInputMessage(pasted.trim());
+                    }
                   }}
                   placeholder={isCustomer ? `Message (max 20 chars)...` : `Message ${activeChat.userName}...`}
                   className="flex-1 min-w-0 py-2 sm:py-2.5 text-xs sm:text-sm bg-transparent text-slate-800 placeholder-slate-400 outline-none"
                 />
                 {isCustomer && (
-                  <span className={`text-[9px] sm:text-[10px] font-semibold px-1.5 py-0.5 rounded mr-1 select-none shrink-0 transition-colors ${inputMessage.length >= 20 ? 'text-rose-600 bg-rose-50 font-bold border border-rose-200' : 'text-slate-400'}`}>
-                    {inputMessage.length}/20
+                  <span className={`text-[9px] sm:text-[10px] font-semibold px-1.5 py-0.5 rounded mr-1 select-none shrink-0 transition-colors ${
+                    (inputMessage.startsWith('http') || inputMessage.includes('giphy') || inputMessage.includes('tenor'))
+                      ? 'text-yellow-600 font-bold'
+                      : inputMessage.length >= 20
+                        ? 'text-rose-600 bg-rose-50 font-bold border border-rose-200'
+                        : 'text-slate-400'
+                  }`}>
+                    {(inputMessage.startsWith('http') || inputMessage.includes('giphy') || inputMessage.includes('tenor'))
+                      ? 'GIF'
+                      : `${inputMessage.length}/20`}
                   </span>
                 )}
                 <button

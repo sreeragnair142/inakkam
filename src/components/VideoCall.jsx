@@ -2250,13 +2250,29 @@ const VideoCall = ({
     }
   };
 
+  // Helper to recognize GIF and image URLs
+  const isGifUrlString = (str) => {
+    if (!str || typeof str !== 'string') return false;
+    const s = str.trim().toLowerCase();
+    return (s.startsWith('http://') || s.startsWith('https://')) &&
+      (s.includes('giphy') || s.includes('tenor') || s.includes('.gif') || s.includes('.webp') || s.includes('/media/') || s.includes('/images/'));
+  };
+
   // ─── Send In-Room Chat Message ───────────────────────────
   const handleSendMessage = (e) => {
     e.preventDefault();
-    if (!chatInput.trim()) return;
+    const rawInput = chatInput.trim();
+    if (!rawInput) return;
+
+    // If user sent a GIF URL (e.g. from Gboard, keyboard GIF search, or pasted link), route directly to handleSendGif
+    if (isGifUrlString(rawInput)) {
+      setChatInput("");
+      handleSendGif(rawInput);
+      return;
+    }
 
     // Strict Phone Number Check in in-call chat
-    const phoneCheck = checkPhoneNumber(chatInput);
+    const phoneCheck = checkPhoneNumber(rawInput);
     if (phoneCheck.detected) {
       toast.error("Sharing phone numbers is strictly prohibited! Audio blocked.", {
         id: "phone_chat_blocked_toast",
@@ -2270,12 +2286,12 @@ const VideoCall = ({
     const isStaff = currentUser?.isStaff || currentUser?.isEliteAgent || currentUser?.role === 'staff' || currentUser?.role === 'admin';
     const isCustomer = !isStaff;
 
-    if (isCustomer && chatInput.trim().length > 20) {
+    if (isCustomer && rawInput.length > 20) {
       toast.error('Messages are limited to 20 characters or less.');
       return;
     }
 
-    const messageText = isCustomer && chatInput.trim().length > 20 ? chatInput.trim().slice(0, 20) : chatInput.trim();
+    const messageText = isCustomer && rawInput.length > 20 ? rawInput.slice(0, 20) : rawInput;
     const timeStr = new Date().toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
@@ -2363,7 +2379,7 @@ const VideoCall = ({
         senderName: currentUserNameRef.current || currentUser?.name || "Me",
         gifUrl: gifUrl,
         type: "gif",
-        text: "",
+        text: gifUrl,
         time: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
@@ -2443,7 +2459,17 @@ const VideoCall = ({
       }
 
       const senderDisplayName = senderName || remoteUserNameRef.current || "Call Partner";
-      const resolvedGifUrl = gifUrl || (type === 'gif' ? message : null) || (typeof message === 'string' && (message.includes('giphy.com') || message.includes('.gif')) ? message : null);
+      const isMediaGifStr = (str) => {
+        if (!str || typeof str !== 'string') return false;
+        const s = str.trim().toLowerCase();
+        return s.includes('giphy') || s.includes('tenor') || s.includes('.gif') || s.includes('.webp') ||
+          ((s.startsWith('http://') || s.startsWith('https://')) && (s.includes('/media') || s.includes('image')));
+      };
+
+      let resolvedGifUrl = gifUrl || (type === 'gif' ? message : null) || (isMediaGifStr(message) ? message : null);
+      if (resolvedGifUrl && typeof resolvedGifUrl === 'string' && resolvedGifUrl.startsWith('https://media') && resolvedGifUrl.endsWith('giphy')) {
+        resolvedGifUrl = "https://media.giphy.com/media/26BRv0ThflsDTjq4E/giphy.gif";
+      }
       const isGif = Boolean(type === 'gif' || resolvedGifUrl);
 
       if (isGif && resolvedGifUrl) {
@@ -2475,6 +2501,7 @@ const VideoCall = ({
             sender: "remote",
             senderName: senderDisplayName,
             gifUrl: resolvedGifUrl,
+            text: resolvedGifUrl,
             type: "gif",
             time: new Date().toLocaleTimeString([], {
               hour: "2-digit",
@@ -2537,7 +2564,16 @@ const VideoCall = ({
 
       const senderDisplayName = msgData.sender?.name || remoteUserNameRef.current || "Call Partner";
       const rawText = msgData.text || '';
-      const resolvedGif = (rawText.startsWith('http://') || rawText.startsWith('https://')) && (rawText.includes('giphy.com') || rawText.includes('.gif')) ? rawText : null;
+      let resolvedGif = (msgData.type === 'gif' || msgData.mediaType === 'gif')
+        ? (msgData.mediaUrl || msgData.gifUrl || rawText)
+        : null;
+
+      if (!resolvedGif && isMediaGifStr(rawText)) {
+        resolvedGif = rawText;
+      }
+      if (resolvedGif && typeof resolvedGif === 'string' && resolvedGif.startsWith('https://media') && resolvedGif.endsWith('giphy')) {
+        resolvedGif = "https://media.giphy.com/media/26BRv0ThflsDTjq4E/giphy.gif";
+      }
 
       if (resolvedGif) {
         setRemoteGif({
@@ -2571,7 +2607,7 @@ const VideoCall = ({
           id: msgId || `newmsg_${Date.now()}`,
           sender: "remote",
           senderName: senderDisplayName,
-          text: resolvedGif ? '' : masked,
+          text: resolvedGif ? resolvedGif : masked,
           gifUrl: resolvedGif || null,
           type: resolvedGif ? 'gif' : 'text',
           time: new Date().toLocaleTimeString([], {
@@ -3148,8 +3184,21 @@ const VideoCall = ({
                           </div>
                         );
                       }
-                      const hasGif = Boolean(msg.gifUrl || (msg.type === 'gif' && msg.text) || (typeof msg.text === 'string' && (msg.text.includes('giphy.com') || msg.text.includes('.gif'))));
-                      const displayGifUrl = msg.gifUrl || (msg.type === 'gif' ? msg.text : null) || (typeof msg.text === 'string' && (msg.text.includes('giphy.com') || msg.text.includes('.gif')) ? msg.text : null);
+                      const hasGif = Boolean(
+                        msg.gifUrl ||
+                        msg.type === 'gif' ||
+                        (typeof msg.text === 'string' && (
+                          msg.text.includes('giphy') ||
+                          msg.text.includes('tenor') ||
+                          msg.text.includes('.gif') ||
+                          msg.text.includes('.webp') ||
+                          ((msg.text.startsWith('http://') || msg.text.startsWith('https://')) && (msg.text.includes('/media') || msg.text.includes('image')))
+                        ))
+                      );
+                      let displayGifUrl = msg.gifUrl || (msg.type === 'gif' ? msg.text : null) || (hasGif && typeof msg.text === 'string' ? msg.text : null);
+                      if (displayGifUrl && typeof displayGifUrl === 'string' && displayGifUrl.startsWith('https://media') && displayGifUrl.endsWith('giphy')) {
+                        displayGifUrl = "https://media.giphy.com/media/26BRv0ThflsDTjq4E/giphy.gif";
+                      }
 
                       return (
                         <div
@@ -3175,6 +3224,12 @@ const VideoCall = ({
                                   className="rounded-xl w-full h-full object-cover"
                                   referrerPolicy="no-referrer"
                                   loading="lazy"
+                                  onError={(e) => {
+                                    if (!e.currentTarget.dataset.fallback) {
+                                      e.currentTarget.dataset.fallback = 'true';
+                                      e.currentTarget.src = 'https://media.giphy.com/media/26BRv0ThflsDTjq4E/giphy.gif';
+                                    }
+                                  }}
                                 />
                               </div>
                             ) : (
@@ -3206,18 +3261,44 @@ const VideoCall = ({
                   </button>
                   <input
                     value={chatInput}
-                    maxLength={(!currentUser?.isStaff && !currentUser?.isEliteAgent && currentUser?.role !== 'staff' && currentUser?.role !== 'admin') ? 20 : 2000}
+                    maxLength={
+                      (chatInput.startsWith('http://') || chatInput.startsWith('https://') || chatInput.includes('giphy') || chatInput.includes('tenor'))
+                        ? 2000
+                        : (!currentUser?.isStaff && !currentUser?.isEliteAgent && currentUser?.role !== 'staff' && currentUser?.role !== 'admin')
+                          ? 20
+                          : 2000
+                    }
                     onChange={(e) => {
-                      const isCustomer = !currentUser?.isStaff && !currentUser?.isEliteAgent && currentUser?.role !== 'staff' && currentUser?.role !== 'admin';
                       const val = e.target.value;
-                      setChatInput(isCustomer && val.length > 20 ? val.slice(0, 20) : val);
+                      const isCustomer = !currentUser?.isStaff && !currentUser?.isEliteAgent && currentUser?.role !== 'staff' && currentUser?.role !== 'admin';
+                      const isUrl = val.startsWith('http://') || val.startsWith('https://') || val.includes('giphy') || val.includes('tenor') || val.includes('.gif');
+                      if (isCustomer && !isUrl && val.length > 20) {
+                        setChatInput(val.slice(0, 20));
+                      } else {
+                        setChatInput(val);
+                      }
+                    }}
+                    onPaste={(e) => {
+                      const pasted = e.clipboardData?.getData('text') || '';
+                      if (pasted && (pasted.startsWith('http') || pasted.includes('giphy') || pasted.includes('tenor'))) {
+                        e.preventDefault();
+                        setChatInput(pasted.trim());
+                      }
                     }}
                     placeholder={(!currentUser?.isStaff && !currentUser?.isEliteAgent && currentUser?.role !== 'staff' && currentUser?.role !== 'admin') ? "Type a message... (max 20 chars)" : "Type a message..."}
                     className="flex-1 bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-400 outline-none focus:border-[#D51659] transition-colors"
                   />
                   {(!currentUser?.isStaff && !currentUser?.isEliteAgent && currentUser?.role !== 'staff' && currentUser?.role !== 'admin') && (
-                    <span className={`text-[10px] font-semibold px-1 py-1 rounded select-none shrink-0 ${chatInput.length >= 20 ? 'text-rose-400 font-bold' : 'text-slate-400'}`}>
-                      {chatInput.length}/20
+                    <span className={`text-[10px] font-semibold px-1 py-1 rounded select-none shrink-0 ${
+                      (chatInput.startsWith('http://') || chatInput.startsWith('https://') || chatInput.includes('giphy'))
+                        ? 'text-yellow-400 font-bold'
+                        : chatInput.length >= 20
+                          ? 'text-rose-400 font-bold'
+                          : 'text-slate-400'
+                    }`}>
+                      {(chatInput.startsWith('http://') || chatInput.startsWith('https://') || chatInput.includes('giphy'))
+                        ? 'GIF'
+                        : `${chatInput.length}/20`}
                     </span>
                   )}
                   <button
