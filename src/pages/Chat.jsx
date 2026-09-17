@@ -128,16 +128,8 @@ const Chat = () => {
 
     const handleCallEnded = (data) => {
       console.log('📞 Socket event: call_ended', data);
-      // If an active call is mounted, VideoCall handles the Call Ended UI smoothly.
-      // Only show a single deduplicated toast if no active call was underway (e.g. caller cancelled while ringing)
-      if (!activeCall) {
-        toast('Call ended', { id: 'call_ended_single_toast', icon: '📞' });
-      } else {
-        // Safety timeout to ensure activeCall is cleared if onEndCall callback fails
-        setTimeout(() => {
-          setActiveCall((prev) => (prev ? null : prev));
-        }, 4000);
-      }
+      toast('Call ended', { icon: '📞' });
+      setActiveCall(null);
       setIncomingCall(null);
     };
 
@@ -150,32 +142,12 @@ const Chat = () => {
       toast.error(data.message || 'Messaging error');
     };
 
-    const handleRoomRecreated = (data) => {
-      console.log('📞 Socket event: enablex_room_recreated', data);
-      if (data?.roomId) {
-        setActiveCall((prev) => (prev ? { ...prev, roomId: data.roomId } : prev));
-      }
-    };
-
     socket.on('incoming_call', handleIncomingCall);
     socket.on('call_accepted', handleCallAccepted);
     socket.on('call_rejected', handleCallRejected);
     socket.on('call_ended', handleCallEnded);
     socket.on('call_error', handleCallError);
     socket.on('message_error', handleMessageError);
-    socket.on('enablex_room_recreated', handleRoomRecreated);
-
-    const handleRoomRecreatedWindow = (event) => {
-      const newRoomId = event?.detail?.roomId;
-      if (newRoomId) {
-        console.log('🔄 Window event: enablex-room-recreated', newRoomId);
-        setActiveCall((prev) => (prev ? { ...prev, roomId: newRoomId } : prev));
-      }
-    };
-
-    if (typeof window !== 'undefined') {
-      window.addEventListener('enablex-room-recreated', handleRoomRecreatedWindow);
-    }
 
     return () => {
       socket.off('incoming_call', handleIncomingCall);
@@ -184,10 +156,6 @@ const Chat = () => {
       socket.off('call_ended', handleCallEnded);
       socket.off('call_error', handleCallError);
       socket.off('message_error', handleMessageError);
-      socket.off('enablex_room_recreated', handleRoomRecreated);
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('enablex-room-recreated', handleRoomRecreatedWindow);
-      }
     };
   }, [activeChat, currentUser]);
 

@@ -10,8 +10,6 @@ import {
   Send,
   X,
   ArrowLeft,
-  ArrowRight,
-  Clock,
   Volume2,
   VolumeX,
   Sparkles,
@@ -65,9 +63,6 @@ const VideoCall = ({
   const processedChatMsgIdsRef = useRef(new Set());
   const chatMessagesEndRef = useRef(null);
   const chatScrollContainerRef = useRef(null);
-  const [callEndSummary, setCallEndSummary] = useState(null); // { endedBy, subtitle, duration }
-  const callEndedAutoCloseTimerRef = useRef(null);
-  const durationRef = useRef(0);
 
   // ─── Contact Sharing & Audio Security Protection ─────────
   const [isAudioSecurityBlocked, setIsAudioSecurityBlocked] = useState(false);
@@ -128,10 +123,6 @@ const VideoCall = ({
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
-      if (callEndedAutoCloseTimerRef.current) {
-        clearTimeout(callEndedAutoCloseTimerRef.current);
-        callEndedAutoCloseTimerRef.current = null;
-      }
     };
   }, []);
 
@@ -139,13 +130,7 @@ const VideoCall = ({
   useEffect(() => {
     if (callStatus !== "connected") return;
     const timer = setInterval(() => {
-      if (isMountedRef.current) {
-        setDuration((prev) => {
-          const next = prev + 1;
-          durationRef.current = next;
-          return next;
-        });
-      }
+      if (isMountedRef.current) setDuration((prev) => prev + 1);
     }, 1000);
     return () => clearInterval(timer);
   }, [callStatus]);
@@ -168,23 +153,17 @@ const VideoCall = ({
   }, [showChat]);
 
   // ─── Core Disconnect / Hang Up Handler ───────────────────
+  // (Declared above the coin-deduction effect below, since that
+  // effect now calls handleDisconnect() and needs it defined
+  // first — referencing a later `const` in the same component
+  // scope throws "Cannot access before initialization".)
   const onEndCallRef = useRef(onEndCall);
   useEffect(() => {
     onEndCallRef.current = onEndCall;
   }, [onEndCall]);
 
-  const dismissCallEnded = useCallback(() => {
-    if (callEndedAutoCloseTimerRef.current) {
-      clearTimeout(callEndedAutoCloseTimerRef.current);
-      callEndedAutoCloseTimerRef.current = null;
-    }
-    if (onEndCallRef.current) {
-      onEndCallRef.current();
-    }
-  }, []);
-
   const finishCall = useCallback(
-    ({ notifyRemote = true, endedBy = "me", subtitle = null } = {}) => {
+    ({ notifyRemote = true } = {}) => {
       if (isDisconnectedRef.current) return;
 
       isDisconnectedRef.current = true;
@@ -208,7 +187,6 @@ const VideoCall = ({
         speechRecognitionRef.current = null;
       }
 
-      // Disconnect EnableX room
       const room = roomRef.current;
       roomRef.current = null;
       if (room) {
@@ -219,7 +197,6 @@ const VideoCall = ({
         }
       }
 
-      // Close local hardware tracks
       const localStream = localStreamRef.current;
       localStreamRef.current = null;
       remoteStreamRef.current = null;
@@ -232,19 +209,6 @@ const VideoCall = ({
         }
       }
 
-      // Instantly mute and pause all audio/video elements in DOM
-      const audioContainer = document.getElementById("remote_audio_player");
-      const videoContainer = document.getElementById("remote_video_player");
-      [audioContainer, videoContainer].forEach((c) => {
-        if (c) {
-          c.querySelectorAll("audio, video").forEach((el) => {
-            el.muted = true;
-            el.volume = 0;
-            try { el.pause(); } catch (e) {}
-          });
-        }
-      });
-
       if (notifyRemote) {
         const socket = getSocket();
         if (socket && targetUid) {
@@ -255,38 +219,20 @@ const VideoCall = ({
         }
       }
 
-      const finalDuration = durationRef.current || duration;
-      const endSubtitle =
-        subtitle ||
-        (endedBy === "remote"
-          ? `Call ended by ${remoteUserName || "other person"}`
-          : "Call ended");
-
       if (isMountedRef.current) {
         setRemoteStreamActive(false);
-        setCallStatus("ended");
-        setCallEndSummary({
-          endedBy,
-          subtitle: endSubtitle,
-          duration: finalDuration,
-        });
+        setCallStatus("disconnected");
       }
 
-      // Auto dismiss to return to chat in 2.5 seconds
-      if (callEndedAutoCloseTimerRef.current) {
-        clearTimeout(callEndedAutoCloseTimerRef.current);
+      if (onEndCallRef.current) {
+        setTimeout(() => onEndCallRef.current(), 50);
       }
-      callEndedAutoCloseTimerRef.current = setTimeout(() => {
-        if (isMountedRef.current && onEndCallRef.current) {
-          onEndCallRef.current();
-        }
-      }, 2500);
     },
-    [roomId, targetUid, duration, remoteUserName],
+    [roomId, targetUid],
   );
 
   const handleDisconnect = useCallback(() => {
-    finishCall({ notifyRemote: true, endedBy: "me", subtitle: "Call ended" });
+    finishCall({ notifyRemote: true });
   }, [finishCall]);
 
   // ─── Trigger Hard Audio Mute & Security Lockout ─────────
@@ -1309,7 +1255,7 @@ const VideoCall = ({
             // backend may silently return null/undefined as the token.
             const tokenRes = await api.post("/enablex/get-token", {
               roomId,
-              role: "participant",
+              role: isCaller ? "moderator" : "participant",
               name: currentUserNameRef.current || "Inakkam User",
               userRef: currentUser?._id || currentUser?.id || "unknown",
             });
@@ -1871,16 +1817,8 @@ const VideoCall = ({
           });
 
           // --------------------------------------------------
-          // Detect "room deleted" or "room capacity full" (needs a brand new room)
+          // Detect "room deleted" (needs a brand new room)
           // --------------------------------------------------
-          const isRoomCapacityError =
-            enablexErrorCode === 2101 ||
-            enablexErrorCode === 2102 ||
-            enablexErrorCode === 2103 ||
-            errorText.includes("room is full") ||
-            errorText.includes("full for moderators") ||
-            errorText.includes("full for participants");
-
           const isRoomDeletedError =
             enablexErrorCode === 4118 ||
             errorText.includes("room has been deleted") ||
@@ -1911,14 +1849,8 @@ const VideoCall = ({
             enablexErrorCode === 401 ||
             enablexErrorCode === 4011; // EnableX auth-failure code — verify against EnableX docs/logs for your account
 
-          if (isRoomDeletedError || isRoomCapacityError) {
-            console.warn(
-              `[EnableX] 🚨 ${
-                isRoomDeletedError
-                  ? "ROOM 4118: room has been deleted"
-                  : "ROOM CAPACITY FULL (" + enablexErrorCode + "): " + errorText
-              }. Creating replacement room...`,
-            );
+          if (isRoomDeletedError) {
+            console.warn("[EnableX] 🚨 ROOM 4118: room has been deleted");
 
             // Do NOT try to reconnect to the old room.
             // A completely NEW room is required.
@@ -2202,12 +2134,12 @@ const VideoCall = ({
     const socket = getSocket();
 
     const handleRemoteCallEnded = () => {
+      toast("Call ended by the other person", {
+        icon: "📞",
+      });
+
       if (isMountedRef.current && !isDisconnectedRef.current) {
-        finishCall({
-          notifyRemote: false,
-          endedBy: "remote",
-          subtitle: `Call ended by ${remoteUserName || "other person"}`,
-        });
+        finishCall({ notifyRemote: false });
       }
     };
 
@@ -3381,81 +3313,6 @@ const VideoCall = ({
             )}
           </AnimatePresence>
         </div>
-      )}
-
-      {/* ─── Call Ended Summary Screen ──────────────────────── */}
-      {callStatus === "ended" && callEndSummary && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.25 }}
-          className="flex-1 h-full w-full relative flex flex-col items-center justify-center p-4 sm:p-6 bg-[#0B0B12]/95 backdrop-blur-2xl z-50 overflow-hidden select-none"
-        >
-          {/* Ambient Glow */}
-          <div className="absolute w-72 h-72 rounded-full bg-[#D51659]/15 blur-3xl pointer-events-none" />
-          <div className="absolute w-60 h-60 rounded-full bg-[#B44DDC]/10 blur-3xl pointer-events-none translate-y-12" />
-
-          {/* Center Card */}
-          <motion.div
-            initial={{ scale: 0.9, y: 15, opacity: 0 }}
-            animate={{ scale: 1, y: 0, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 350, damping: 25 }}
-            className="relative z-10 bg-white/[0.04] border border-white/10 rounded-3xl p-6 sm:p-8 max-w-xs sm:max-w-sm w-full shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-xl flex flex-col items-center text-center"
-          >
-            {/* Top Icon Badge */}
-            <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/25 flex items-center justify-center mb-4 shadow-inner">
-              <PhoneOff className="w-7 h-7 text-rose-500" />
-            </div>
-
-            {/* Remote Avatar */}
-            <div className="relative mb-3">
-              <div className="w-16 h-16 rounded-full p-1 bg-gradient-to-tr from-[#D51659] to-[#B44DDC] shadow-md">
-                <img
-                  src={remoteUserPhoto || "https://via.placeholder.com/150"}
-                  alt={remoteUserName}
-                  className="w-full h-full rounded-full object-cover bg-black"
-                />
-              </div>
-            </div>
-
-            {/* Title & Name */}
-            <h3 className="text-xl font-black text-white mb-1 tracking-tight">
-              {remoteUserName || "Call Partner"}
-            </h3>
-
-            {/* Status Subtitle */}
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/5 border border-white/10 text-slate-300 mb-5">
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
-              <span>{callEndSummary.subtitle}</span>
-            </div>
-
-            {/* Duration Block */}
-            <div className="w-full flex items-center justify-between py-3 px-4 rounded-2xl bg-black/40 border border-white/5 mb-6">
-              <div className="flex items-center gap-2 text-slate-400 text-xs font-medium">
-                <Clock className="w-4 h-4 text-[#D51659]" />
-                <span>Call Duration</span>
-              </div>
-              <span className="text-sm font-black text-white tracking-wider font-mono">
-                {formatTime(callEndSummary.duration || duration)}
-              </span>
-            </div>
-
-            {/* Done / Back to Chat Action */}
-            <button
-              type="button"
-              onClick={dismissCallEnded}
-              className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[#D51659] via-[#E11D48] to-[#EC3F7B] hover:brightness-110 active:scale-[0.98] text-white text-xs sm:text-sm font-bold shadow-lg shadow-[#D51659]/30 transition-all cursor-pointer flex items-center justify-center gap-2"
-            >
-              <span>Back to Chat</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-
-            <p className="text-[10px] text-slate-500 mt-3 font-medium">
-              Closing automatically in a moment...
-            </p>
-          </motion.div>
-        </motion.div>
       )}
 
       {/* GIF Picker */}
