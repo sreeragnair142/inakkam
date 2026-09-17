@@ -9,6 +9,7 @@ import {
   MessageSquare,
   Send,
   X,
+  ArrowLeft,
   Volume2,
   VolumeX,
   Sparkles,
@@ -61,6 +62,7 @@ const VideoCall = ({
   const activeGifTimerRef = useRef(null);
   const processedChatMsgIdsRef = useRef(new Set());
   const chatMessagesEndRef = useRef(null);
+  const chatScrollContainerRef = useRef(null);
 
   // ─── Contact Sharing & Audio Security Protection ─────────
   const [isAudioSecurityBlocked, setIsAudioSecurityBlocked] = useState(false);
@@ -133,10 +135,13 @@ const VideoCall = ({
     return () => clearInterval(timer);
   }, [callStatus]);
 
-  // Auto scroll in-call session chat to latest message
+  // Auto scroll in-call session chat to latest message (container-only, prevents page scroll)
   useEffect(() => {
-    if (showChat && chatMessagesEndRef.current) {
-      chatMessagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (showChat && chatScrollContainerRef.current) {
+      chatScrollContainerRef.current.scrollTo({
+        top: chatScrollContainerRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
     }
   }, [chatMessages, showChat]);
 
@@ -452,7 +457,7 @@ const VideoCall = ({
     }
   }, [roomId, targetUid, videoActive]);
 
-  // ─── Real-Time Continuous Speech Recognition ────────────
+  // ─── Real-Time Continuous Speech Recognition (Desktop & Web Speech API) ──
   useEffect(() => {
     if (callStatus !== "connected") {
       if (speechRecognitionRef.current) {
@@ -462,6 +467,15 @@ const VideoCall = ({
         } catch (e) {}
         speechRecognitionRef.current = null;
       }
+      return;
+    }
+
+    // On Android mobile, Web Speech API delegates to Google Speech Services which conflicts
+    // with Chrome's active WebRTC mic stream, triggering "Speech Recognition cannot record now as Chrome is recording".
+    // On Android, we rely on the in-memory Web Audio chunk analysis below to detect spoken numbers cleanly without OS conflicts.
+    const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
+    if (isAndroid) {
+      console.log("[Security Shield] Mobile Android active: Using in-memory Web Audio chunk analysis.");
       return;
     }
 
@@ -502,8 +516,9 @@ const VideoCall = ({
       };
 
       recognition.onerror = (event) => {
-        if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-          console.warn("[SpeechRecognition] Permission not allowed:", event.error);
+        if (event.error === "not-allowed" || event.error === "service-not-allowed" || event.error === "audio-capture") {
+          console.warn("[SpeechRecognition] Capture unavailable, stopping native STT loop:", event.error);
+          isStoppedManually = true;
           return;
         }
         console.log("[SpeechRecognition] Notice:", event.error);
@@ -516,7 +531,6 @@ const VideoCall = ({
           !isDisconnectedRef.current &&
           callStatus === "connected"
         ) {
-          // Restart continuously
           try {
             recognition.start();
           } catch (e) {
@@ -555,6 +569,161 @@ const VideoCall = ({
       }
     };
   }, [callStatus, triggerAudioSecurityBlock]);
+
+  // ─── Real-Time Audio Chunk Stream for AI Speech Security (Seamless on Android & All Browsers) ──
+  useEffect(() => {
+    if (callStatus !== "connected") return;
+
+    let audioContext = null;
+    let sourceNode = null;
+    let processorNode = null;
+    let pcmChunkBuffer = [];
+    let isStreamActive = true;
+    let chunkIntervalTimer = null;
+
+    const startAudioStreamProcessor = () => {
+      try {
+        const localEnxStream = localStreamRef.current;
+        if (!localEnxStream) return;
+
+        const nativeStream =
+          localEnxStream.stream ||
+          (typeof localEnxStream.getMediaStream === "function"
+            ? localEnxStream.getMediaStream()
+            : null);
+
+        const audioTracks = nativeStream?.getAudioTracks?.() || [];
+        if (audioTracks.length === 0) return;
+
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+
+        audioContext = new AudioCtx({ sampleRate: 16000 });
+        const mediaStreamSource = audioContext.createMediaStreamSource(
+          new MediaStream([audioTracks[0]])
+        );
+        sourceNode = mediaStreamSource;
+
+        // ScriptProcessorNode taps in-memory 16kHz PCM audio without triggering Android OS mic conflicts
+        processorNode = audioContext.createScriptProcessor(4096, 1, 1);
+
+        processorNode.onaudioprocess = (event) => {
+          if (!isStreamActive || isAudioSecurityBlockedRef.current) return;
+          const inputData = event.inputBuffer.getChannelData(0);
+
+          // Convert Float32 [-1, 1] to 16-bit signed PCM integers
+          const pcm16 = new Int16Array(inputData.length);
+          for (let i = 0; i < inputData.length; i++) {
+            const s = Math.max(-1, Math.min(1, inputData[i]));
+            pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+          }
+
+          pcmChunkBuffer.push(pcm16);
+        };
+
+        mediaStreamSource.connect(processorNode);
+        // Connect to a muted gain to keep processing active without audio loopback
+        const muteGain = audioContext.createGain();
+        muteGain.gain.value = 0;
+        processorNode.connect(muteGain);
+        muteGain.connect(audioContext.destination);
+
+        // Every 3 seconds, package and send accumulated PCM audio to backend Whisper pipeline
+        chunkIntervalTimer = setInterval(() => {
+          if (!isStreamActive || pcmChunkBuffer.length === 0) return;
+          if (isAudioSecurityBlockedRef.current) {
+            pcmChunkBuffer = [];
+            return;
+          }
+
+          let totalSamples = 0;
+          for (const chunk of pcmChunkBuffer) {
+            totalSamples += chunk.length;
+          }
+
+          if (totalSamples < 8000) return; // At least ~0.5s of audio
+
+          const mergedPcm = new Int16Array(totalSamples);
+          let offset = 0;
+          for (const chunk of pcmChunkBuffer) {
+            mergedPcm.set(chunk, offset);
+            offset += chunk.length;
+          }
+          pcmChunkBuffer = [];
+
+          const socket = getSocket();
+          if (socket && socket.connected) {
+            socket.emit("call_audio_chunk", {
+              audio: mergedPcm.buffer,
+              roomId: String(roomId || ""),
+              conversationId: String(conversationId || ""),
+              targetUserId: targetUid,
+            });
+          }
+        }, 3000);
+      } catch (e) {
+        console.warn("[AudioSecurity] Web Audio stream processing notice:", e);
+      }
+    };
+
+    const initTimer = setTimeout(startAudioStreamProcessor, 1200);
+
+    return () => {
+      isStreamActive = false;
+      clearTimeout(initTimer);
+      if (chunkIntervalTimer) clearInterval(chunkIntervalTimer);
+      if (processorNode) {
+        try {
+          processorNode.disconnect();
+        } catch (e) {}
+      }
+      if (sourceNode) {
+        try {
+          sourceNode.disconnect();
+        } catch (e) {}
+      }
+      if (audioContext && audioContext.state !== "closed") {
+        try {
+          audioContext.close();
+        } catch (e) {}
+      }
+    };
+  }, [callStatus, roomId, conversationId, targetUid]);
+
+  // ─── Mobile App Switching / Notification Shade Pull-down Video Blanking ─
+  useEffect(() => {
+    if (callStatus !== "connected") return;
+
+    const handleWindowBlur = () => {
+      const remotePlayer = document.getElementById("remote_video_player");
+      const localPip = document.getElementById("local_pip_video");
+      if (remotePlayer) remotePlayer.style.display = "none";
+      if (localPip) localPip.style.display = "none";
+    };
+
+    const handleWindowFocus = () => {
+      setTimeout(() => {
+        const remotePlayer = document.getElementById("remote_video_player");
+        const localPip = document.getElementById("local_pip_video");
+        if (remotePlayer) remotePlayer.style.display = "";
+        if (localPip) localPip.style.display = "";
+      }, 1000);
+    };
+
+    window.addEventListener("blur", handleWindowBlur);
+    window.addEventListener("focus", handleWindowFocus);
+    const handleVis = () => {
+      if (document.hidden) handleWindowBlur();
+      else handleWindowFocus();
+    };
+    document.addEventListener("visibilitychange", handleVis);
+
+    return () => {
+      window.removeEventListener("blur", handleWindowBlur);
+      window.removeEventListener("focus", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleVis);
+    };
+  }, [callStatus]);
 
   // ─── 10-Second No-Opponent-Video / Face Auto-Disconnect (Video Calls Only) ─
   const noRemoteVideoDurationRef = useRef(0);
@@ -2113,6 +2282,8 @@ const VideoCall = ({
     });
 
     const msgId = `my_msg_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    processedChatMsgIdsRef.current.add(msgId);
+
     setChatMessages((prev) => [
       ...prev,
       {
@@ -2133,7 +2304,19 @@ const VideoCall = ({
         roomId: String(roomId || ''),
         conversationId: String(conversationId || ''),
         message: messageText,
+        type: 'text',
+        senderName: currentUserNameRef.current || currentUser?.name || 'Inakkam User',
+        senderId: String(currentUser?._id || currentUser?.id || ''),
       });
+
+      if (conversationId) {
+        socket.emit("send_message", {
+          conversationId: String(conversationId),
+          text: messageText,
+          tempId: msgId,
+          targetUserId: targetUid,
+        });
+      }
     }
   };
 
@@ -2160,6 +2343,7 @@ const VideoCall = ({
     if (!gifUrl) return;
     const socket = getSocket();
     const msgId = `gif_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    processedChatMsgIdsRef.current.add(msgId);
 
     console.log('🎁 [VideoCall] Sending GIF:', { gifUrl, targetUid, roomId, conversationId });
 
@@ -2197,9 +2381,40 @@ const VideoCall = ({
         gifUrl: gifUrl,
         message: gifUrl,
         senderName: currentUserNameRef.current || currentUser?.name || 'Inakkam User',
+        senderId: String(currentUser?._id || currentUser?.id || ''),
       });
+
+      if (conversationId) {
+        socket.emit("send_message", {
+          conversationId: String(conversationId),
+          text: gifUrl,
+          tempId: msgId,
+          targetUserId: targetUid,
+        });
+      }
     }
   };
+
+  // ─── Ref sync for socket listeners to avoid unmount/remount churn ──
+  const showChatRef = useRef(showChat);
+  useEffect(() => {
+    showChatRef.current = showChat;
+  }, [showChat]);
+
+  const currentUserRef = useRef(currentUser);
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
+  const remoteUserNameRef = useRef(remoteUserName);
+  useEffect(() => {
+    remoteUserNameRef.current = remoteUserName;
+  }, [remoteUserName]);
+
+  const muteRemoteAudioRef = useRef(muteRemoteAudioElements);
+  useEffect(() => {
+    muteRemoteAudioRef.current = muteRemoteAudioElements;
+  }, [muteRemoteAudioElements]);
 
   // ─── Receive In-Room Chat Messages & GIFs ────────────────
   useEffect(() => {
@@ -2210,7 +2425,7 @@ const VideoCall = ({
       if (!data || !isMountedRef.current) return;
       console.log('💬 [VideoCall] webrtc_chat received:', data);
       const { id: msgId, socketId, senderId, message, type, gifUrl, senderName } = data;
-      const myId = String(currentUser?._id || currentUser?.id || '');
+      const myId = String(currentUserRef.current?._id || currentUserRef.current?.id || '');
 
       // Do not process messages reflected back to our exact socket
       if (socketId && socket?.id && socketId === socket.id) return;
@@ -2227,7 +2442,7 @@ const VideoCall = ({
         }
       }
 
-      const senderDisplayName = senderName || remoteUserName || "Call Partner";
+      const senderDisplayName = senderName || remoteUserNameRef.current || "Call Partner";
       const resolvedGifUrl = gifUrl || (type === 'gif' ? message : null) || (typeof message === 'string' && (message.includes('giphy.com') || message.includes('.gif')) ? message : null);
       const isGif = Boolean(type === 'gif' || resolvedGifUrl);
 
@@ -2249,7 +2464,7 @@ const VideoCall = ({
           duration: 4000,
         });
 
-        if (!showChat) {
+        if (!showChatRef.current) {
           setUnreadCount((prev) => prev + 1);
         }
 
@@ -2271,11 +2486,16 @@ const VideoCall = ({
         // Mask any phone numbers in incoming messages and mute remote audio if present
         const masked = maskPhoneNumbers(message);
         if (masked !== message) {
-          muteRemoteAudioElements();
+          muteRemoteAudioRef.current?.();
         }
 
-        if (!showChat) {
+        if (!showChatRef.current) {
           setUnreadCount((prev) => prev + 1);
+          toast(`💬 ${senderDisplayName}: ${masked}`, {
+            id: `toast_${msgId || Date.now()}`,
+            icon: '💬',
+            duration: 4000,
+          });
         }
 
         setChatMessages((prev) => [
@@ -2295,9 +2515,80 @@ const VideoCall = ({
       }
     };
 
+    const handleNewMessage = (msgData) => {
+      if (!msgData || !isMountedRef.current) return;
+      const msgConvId = String(msgData.conversationId || msgData.conversation || '');
+      const currentConvId = String(conversationId || '');
+      if (currentConvId && msgConvId && currentConvId !== msgConvId) return;
+
+      const myId = String(currentUserRef.current?._id || currentUserRef.current?.id || '');
+      const senderId = String(msgData.sender?._id || msgData.sender || '');
+      if (senderId && myId && senderId === myId) return;
+
+      const msgId = msgData._id || msgData.tempId;
+      if (msgId && processedChatMsgIdsRef.current.has(msgId)) return;
+      if (msgId) {
+        processedChatMsgIdsRef.current.add(msgId);
+        if (processedChatMsgIdsRef.current.size > 200) {
+          const first = processedChatMsgIdsRef.current.values().next().value;
+          processedChatMsgIdsRef.current.delete(first);
+        }
+      }
+
+      const senderDisplayName = msgData.sender?.name || remoteUserNameRef.current || "Call Partner";
+      const rawText = msgData.text || '';
+      const resolvedGif = (rawText.startsWith('http://') || rawText.startsWith('https://')) && (rawText.includes('giphy.com') || rawText.includes('.gif')) ? rawText : null;
+
+      if (resolvedGif) {
+        setRemoteGif({
+          url: resolvedGif,
+          senderName: senderDisplayName,
+          timestamp: Date.now(),
+        });
+        if (remoteGifTimerRef.current) clearTimeout(remoteGifTimerRef.current);
+        remoteGifTimerRef.current = setTimeout(() => {
+          if (isMountedRef.current) setRemoteGif(null);
+        }, 7000);
+      }
+
+      const masked = maskPhoneNumbers(rawText);
+      if (masked !== rawText) {
+        muteRemoteAudioRef.current?.();
+      }
+
+      if (!showChatRef.current) {
+        setUnreadCount((prev) => prev + 1);
+        toast(resolvedGif ? `🎉 ${senderDisplayName} sent a GIF!` : `💬 ${senderDisplayName}: ${masked}`, {
+          id: `toast_${msgId || Date.now()}`,
+          icon: resolvedGif ? '✨' : '💬',
+          duration: 4000,
+        });
+      }
+
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          id: msgId || `newmsg_${Date.now()}`,
+          sender: "remote",
+          senderName: senderDisplayName,
+          text: resolvedGif ? '' : masked,
+          gifUrl: resolvedGif || null,
+          type: resolvedGif ? 'gif' : 'text',
+          time: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        },
+      ]);
+    };
+
     socket.on("webrtc_chat", handleChatMsg);
-    return () => socket.off("webrtc_chat", handleChatMsg);
-  }, [roomId, conversationId, remoteUserName, currentUser?._id, currentUser?.id, muteRemoteAudioElements, showChat]);
+    socket.on("new_message", handleNewMessage);
+    return () => {
+      socket.off("webrtc_chat", handleChatMsg);
+      socket.off("new_message", handleNewMessage);
+    };
+  }, [roomId, conversationId]);
   const handleUnlockAudio = useCallback(() => {
     const audioContainer = document.getElementById("remote_audio_player");
     if (audioContainer) {
@@ -2786,95 +3077,133 @@ const VideoCall = ({
           <AnimatePresence>
             {showChat && (
               <motion.div
-                initial={{ x: "100%" }}
-                animate={{ x: 0 }}
-                exit={{ x: "100%" }}
-                transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="w-full sm:w-80 h-full bg-[#0F0F16]/95 border-l border-white/10 backdrop-blur-xl flex flex-col z-30 relative shadow-[-10px_0_30px_rgba(0,0,0,0.5)]"
+                initial={{ x: "100%", opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: "100%", opacity: 0 }}
+                transition={{ type: "spring", damping: 28, stiffness: 280 }}
+                className="fixed inset-0 sm:absolute sm:inset-y-0 sm:right-0 sm:left-auto sm:w-96 w-full h-[100dvh] sm:h-full bg-[#0D0D15]/98 border-l border-white/10 backdrop-blur-2xl flex flex-col z-[100] shadow-[-20px_0_50px_rgba(0,0,0,0.8)]"
               >
                 {/* Chat header */}
-                <div className="h-16 px-4 border-b border-white/5 flex items-center justify-between bg-black/30">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4 text-[#D51659]" />
-                    <span className="font-extrabold text-sm tracking-wider uppercase">
-                      Session Chat
-                    </span>
+                <div className="h-16 sm:h-18 px-4 sm:px-5 border-b border-white/10 flex items-center justify-between bg-black/60 backdrop-blur-xl shrink-0 pt-safe">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowChat(false)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white text-xs font-bold transition-all border border-white/15 cursor-pointer shadow-sm"
+                      title="Return to call"
+                    >
+                      <ArrowLeft className="w-4 h-4 text-[#D51659]" />
+                      <span>Back to Call</span>
+                    </button>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-1.5">
+                        <MessageSquare className="w-3.5 h-3.5 text-[#D51659]" />
+                        <span className="font-extrabold text-xs sm:text-sm tracking-wider uppercase text-white">
+                          Session Chat
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-medium truncate max-w-[120px] sm:max-w-[160px]">
+                        with {remoteUserName}
+                      </span>
+                    </div>
                   </div>
                   <button
+                    type="button"
                     onClick={() => setShowChat(false)}
-                    className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                    className="p-2 rounded-xl bg-white/5 hover:bg-white/15 active:scale-95 text-slate-300 hover:text-white transition-all border border-white/10 cursor-pointer"
+                    title="Close chat"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
 
-                {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-3.5 no-scrollbar">
-                  {chatMessages.length === 0 && (
-                    <p className="text-center text-slate-600 text-xs mt-8">
-                      Say hi to {remoteUserName}!
-                    </p>
-                  )}
-                  {chatMessages.map((msg) => {
-                    const isSystem = msg.sender === "system";
-                    const isMe = msg.sender === "me";
-                    if (isSystem) {
+                {/* Messages list */}
+                <div
+                  ref={chatScrollContainerRef}
+                  className="flex-1 overflow-y-auto p-4 space-y-3.5 no-scrollbar"
+                >
+                  {chatMessages.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-center px-4 py-8">
+                      <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-3">
+                        <MessageSquare className="w-7 h-7 text-[#D51659]/70" />
+                      </div>
+                      <p className="text-white font-bold text-sm mb-1">
+                        In-Call Chat
+                      </p>
+                      <p className="text-slate-400 text-xs max-w-[220px]">
+                        Say hi to {remoteUserName}! Send messages or GIFs without interrupting your call.
+                      </p>
+                    </div>
+                  ) : (
+                    chatMessages.map((msg) => {
+                      const isSystem = msg.sender === "system";
+                      const isMe = msg.sender === "me";
+                      if (isSystem) {
+                        return (
+                          <div
+                            key={msg.id}
+                            className="text-center text-[10px] text-slate-500 uppercase tracking-widest py-1"
+                          >
+                            {msg.text}
+                          </div>
+                        );
+                      }
+                      const hasGif = Boolean(msg.gifUrl || (msg.type === 'gif' && msg.text) || (typeof msg.text === 'string' && (msg.text.includes('giphy.com') || msg.text.includes('.gif'))));
+                      const displayGifUrl = msg.gifUrl || (msg.type === 'gif' ? msg.text : null) || (typeof msg.text === 'string' && (msg.text.includes('giphy.com') || msg.text.includes('.gif')) ? msg.text : null);
+
                       return (
                         <div
                           key={msg.id}
-                          className="text-center text-[10px] text-slate-500 uppercase tracking-widest py-1"
+                          className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
                         >
-                          {msg.text}
+                          <span className="text-[9px] text-slate-400 font-semibold mb-0.5 px-1 flex items-center gap-1">
+                            {msg.senderName}
+                            {hasGif && <span className="text-[9px] text-yellow-400 font-bold">• GIF</span>}
+                          </span>
+                          <div
+                            className={`p-2.5 rounded-2xl text-xs max-w-[85%] break-words leading-relaxed shadow-sm ${
+                              isMe
+                                ? "bg-gradient-to-tr from-[#D51659] to-[#EC3F7B] text-white rounded-br-sm"
+                                : "bg-white/10 text-white/90 rounded-bl-sm border border-white/10"
+                            }`}
+                          >
+                            {hasGif ? (
+                              <div className="relative rounded-xl overflow-hidden bg-black/50 min-w-[140px] min-h-[140px] max-w-[200px] max-h-[200px] flex items-center justify-center">
+                                <img
+                                  src={displayGifUrl}
+                                  alt="GIF"
+                                  className="rounded-xl w-full h-full object-cover"
+                                  referrerPolicy="no-referrer"
+                                  loading="lazy"
+                                />
+                              </div>
+                            ) : (
+                              msg.text
+                            )}
+                          </div>
+                          <span className="text-[9px] text-slate-500 mt-0.5 px-1">
+                            {msg.time}
+                          </span>
                         </div>
                       );
-                    }
-                    const hasGif = Boolean(msg.gifUrl || (msg.type === 'gif' && msg.text) || (typeof msg.text === 'string' && (msg.text.includes('giphy.com') || msg.text.includes('.gif'))));
-                    const displayGifUrl = msg.gifUrl || (msg.type === 'gif' ? msg.text : null) || (typeof msg.text === 'string' && (msg.text.includes('giphy.com') || msg.text.includes('.gif')) ? msg.text : null);
-
-                    return (
-                      <div
-                        key={msg.id}
-                        className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
-                      >
-                        <span className="text-[9px] text-slate-400 font-semibold mb-0.5 px-1 flex items-center gap-1">
-                          {msg.senderName}
-                          {hasGif && <span className="text-[9px] text-yellow-400 font-bold">• GIF</span>}
-                        </span>
-                        <div
-                          className={`p-2 rounded-2xl text-xs max-w-[85%] break-words leading-relaxed ${
-                            isMe
-                              ? "bg-gradient-to-tr from-[#D51659] to-[#EC3F7B] text-white rounded-br-sm"
-                              : "bg-white/10 text-white/90 rounded-bl-sm border border-white/10"
-                          }`}
-                        >
-                          {hasGif ? (
-                            <div className="relative rounded-xl overflow-hidden bg-black/50 min-w-[140px] min-h-[140px] max-w-[200px] max-h-[200px] flex items-center justify-center">
-                              <img
-                                src={displayGifUrl}
-                                alt="GIF"
-                                className="rounded-xl w-full h-full object-cover"
-                                referrerPolicy="no-referrer"
-                                loading="lazy"
-                              />
-                            </div>
-                          ) : (
-                            msg.text
-                          )}
-                        </div>
-                        <span className="text-[9px] text-slate-500 mt-0.5 px-1">
-                          {msg.time}
-                        </span>
-                      </div>
-                    );
-                  })}
+                    })
+                  )}
                   <div ref={chatMessagesEndRef} />
                 </div>
 
                 {/* Chat input */}
                 <form
                   onSubmit={handleSendMessage}
-                  className="p-3 border-t border-white/5 flex gap-2 items-end bg-black/20"
+                  className="p-3 sm:p-4 border-t border-white/10 flex gap-2 items-center bg-black/50 backdrop-blur-xl shrink-0 pb-safe"
                 >
+                  <button
+                    type="button"
+                    onClick={() => setShowGifPicker(true)}
+                    className="p-2.5 rounded-xl bg-white/5 hover:bg-white/15 text-yellow-400 border border-white/10 transition-colors shrink-0 cursor-pointer"
+                    title="Send GIF"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                  </button>
                   <input
                     value={chatInput}
                     maxLength={(!currentUser?.isStaff && !currentUser?.isEliteAgent && currentUser?.role !== 'staff' && currentUser?.role !== 'admin') ? 20 : 2000}
@@ -2884,16 +3213,17 @@ const VideoCall = ({
                       setChatInput(isCustomer && val.length > 20 ? val.slice(0, 20) : val);
                     }}
                     placeholder={(!currentUser?.isStaff && !currentUser?.isEliteAgent && currentUser?.role !== 'staff' && currentUser?.role !== 'admin') ? "Type a message... (max 20 chars)" : "Type a message..."}
-                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 outline-none focus:border-[#D51659]/40 transition-colors resize-none"
+                    className="flex-1 bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-400 outline-none focus:border-[#D51659] transition-colors"
                   />
                   {(!currentUser?.isStaff && !currentUser?.isEliteAgent && currentUser?.role !== 'staff' && currentUser?.role !== 'admin') && (
-                    <span className={`text-[10px] font-semibold px-1 py-1 rounded select-none shrink-0 ${chatInput.length >= 20 ? 'text-rose-400 font-bold' : 'text-slate-500'}`}>
+                    <span className={`text-[10px] font-semibold px-1 py-1 rounded select-none shrink-0 ${chatInput.length >= 20 ? 'text-rose-400 font-bold' : 'text-slate-400'}`}>
                       {chatInput.length}/20
                     </span>
                   )}
                   <button
                     type="submit"
-                    className="p-2 rounded-xl bg-[#D51659] text-white hover:bg-[#D51659]/90 transition-colors shrink-0"
+                    disabled={!chatInput.trim()}
+                    className="p-2.5 rounded-xl bg-[#D51659] hover:bg-[#D51659]/90 disabled:opacity-40 disabled:hover:bg-[#D51659] text-white transition-all shrink-0 cursor-pointer active:scale-95"
                   >
                     <Send className="w-4 h-4" />
                   </button>

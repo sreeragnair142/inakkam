@@ -122,23 +122,30 @@ const ScreenShield = ({
   useEffect(() => {
     if (!enabled) return;
 
-    // 1. Obscure content and blank video on window blur / visibility loss
+    // 1. Obscure content and blank video on window blur / visibility loss (e.g. pulling down notification shade to record)
+    let hadBlurEvent = false;
+
     const handleVisibilityChange = () => {
       if (document.hidden) {
+        hadBlurEvent = true;
         setIsObscured(true);
         setVideosVisibility(true);
         if (onBlackoutChangeRef.current) onBlackoutChangeRef.current(true);
       } else {
         clearTimeout(blurTimeoutRef.current);
+        // On mobile, if returning from notification shade, hold privacy shield for 1.2s to prevent race-condition screenshots
+        const delay = hadBlurEvent ? 1200 : 350;
+        hadBlurEvent = false;
         blurTimeoutRef.current = setTimeout(() => {
           setIsObscured(false);
           setVideosVisibility(false);
           if (onBlackoutChangeRef.current) onBlackoutChangeRef.current(false);
-        }, 350);
+        }, delay);
       }
     };
 
     const handleBlur = () => {
+      hadBlurEvent = true;
       setIsObscured(true);
       setVideosVisibility(true);
       if (onBlackoutChangeRef.current) onBlackoutChangeRef.current(true);
@@ -146,11 +153,13 @@ const ScreenShield = ({
 
     const handleFocus = () => {
       clearTimeout(blurTimeoutRef.current);
+      const delay = hadBlurEvent ? 1200 : 350;
+      hadBlurEvent = false;
       blurTimeoutRef.current = setTimeout(() => {
         setIsObscured(false);
         setVideosVisibility(false);
         if (onBlackoutChangeRef.current) onBlackoutChangeRef.current(false);
-      }, 350);
+      }, delay);
     };
 
     // 2. Comprehensive OS and Browser recording shortcut interception
@@ -296,11 +305,30 @@ const ScreenShield = ({
       return false;
     };
 
+    // 7. Mobile Multi-Touch Screenshot Gesture Interception (3-finger swipe down)
+    const handleTouchStart = (e) => {
+      if (e.touches && e.touches.length >= 3) {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerSecurityBlackout('mobile_multitouch_screenshot');
+      }
+    };
+
+    const handleTouchMove = (e) => {
+      if (e.touches && e.touches.length >= 3) {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerSecurityBlackout('mobile_multitouch_screenshot');
+      }
+    };
+
     window.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('blur', handleBlur);
     window.addEventListener('focus', handleFocus);
     window.addEventListener('keydown', handleKeyDown, true);
     window.addEventListener('keyup', handleKeyUp, true);
+    window.addEventListener('touchstart', handleTouchStart, { passive: false, capture: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
     document.addEventListener('contextmenu', handleContextMenu);
 
     return () => {
@@ -309,6 +337,8 @@ const ScreenShield = ({
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('keydown', handleKeyDown, true);
       window.removeEventListener('keyup', handleKeyUp, true);
+      window.removeEventListener('touchstart', handleTouchStart, { capture: true });
+      window.removeEventListener('touchmove', handleTouchMove, { capture: true });
       document.removeEventListener('contextmenu', handleContextMenu);
       clearTimeout(blurTimeoutRef.current);
 
@@ -354,24 +384,33 @@ const ScreenShield = ({
         {children}
       </div>
 
-      {/* Dynamic Anti-Recording Watermark Grid (Resistant to external camera filming) */}
+      {/* Dynamic Anti-Recording High-Visibility Watermark Grid (Destroys video capture utility) */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-30 overflow-hidden flex flex-wrap gap-10 p-6 select-none"
+        className="pointer-events-none absolute inset-0 z-30 overflow-hidden flex flex-wrap gap-8 sm:gap-12 p-4 sm:p-6 select-none"
         style={{
-          transform: 'rotate(-15deg) scale(1.15)',
+          transform: 'rotate(-15deg) scale(1.2)',
           userSelect: 'none',
           WebkitUserSelect: 'none',
         }}
       >
-        {Array.from({ length: 42 }).map((_, i) => (
+        {Array.from({ length: 48 }).map((_, i) => (
           <div
             key={i}
-            className="text-[11px] font-black uppercase tracking-widest text-white/[0.07] drop-shadow-sm whitespace-nowrap"
+            className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] whitespace-nowrap ${
+              i % 3 === 0 ? 'text-rose-400/25' : 'text-white/20'
+            }`}
           >
-            {watermarkText} • {currentTime} • CONFIDENTIAL
+            {watermarkText} • {currentTime} • NO RECORDING
           </div>
         ))}
+      </div>
+
+      {/* Persistent Traceable Security Bar (Burns identity into any mobile screen capture) */}
+      <div className="pointer-events-none absolute top-1 left-0 right-0 z-35 flex justify-center px-4 select-none">
+        <div className="text-[9px] font-extrabold uppercase tracking-widest text-white/30 bg-black/40 px-3 py-0.5 rounded-full border border-white/5 backdrop-blur-sm shadow-sm">
+          🔒 ENCRYPTED CALL • CAPTURE PROHIBITED • TRACEABLE: {watermarkText}
+        </div>
       </div>
 
       {/* Full-Screen Blackout Overlay for Recording Block & App-Switching */}
