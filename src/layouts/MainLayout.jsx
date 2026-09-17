@@ -9,7 +9,7 @@ import { logout } from '../redux/slices/authSlice';
 import { setTheme } from '../redux/slices/themeSlice';
 import { markAsRead } from '../redux/slices/notificationSlice';
 import api from '../utils/api';
-import { previewSound } from '../utils/notificationSounds';
+import { previewSound, getAvailableSounds } from '../utils/notificationSounds';
 import {
   Flame,
   MessageSquare,
@@ -562,15 +562,8 @@ const MainLayout = ({ children }) => {
                         </div>
                         <Volume2 className="w-4 h-4 text-purple-600" />
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
-                        {[
-                          { key: 'default', label: '🔔 Default' },
-                          { key: 'chime', label: '🎵 Chime' },
-                          { key: 'bell', label: '🛎️ Bell' },
-                          { key: 'pop', label: '💫 Pop' },
-                          { key: 'ding', label: '✨ Ding' },
-                          { key: 'melody', label: '🎶 Melody' },
-                        ].map((sound) => (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 max-h-56 overflow-y-auto pr-1 scrollbar-thin">
+                        {getAvailableSounds().map((sound) => (
                           <button
                             key={sound.key}
                             type="button"
@@ -584,13 +577,13 @@ const MainLayout = ({ children }) => {
                                 toast.error('Failed to update sound');
                               }
                             }}
-                            className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer
+                            className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all duration-200 flex items-center justify-between gap-1.5 cursor-pointer text-left
                               ${selectedSound === sound.key
                                 ? 'bg-purple-600 text-white border-transparent shadow-sm'
                                 : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
                               }`}
                           >
-                            <span>{sound.label}</span>
+                            <span className="truncate">{sound.label}</span>
                             {selectedSound === sound.key && <Check className="w-3.5 h-3.5 shrink-0" />}
                           </button>
                         ))}

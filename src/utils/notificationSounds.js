@@ -117,13 +117,115 @@ const sounds = {
       { freq: 1319, start: 0.39, duration: 0.3, type: 'sine', volume: 0.25 }, // E6
     ]);
   },
+
+  // 🫧 Bubble — crisp aquatic droplet
+  bubble: () => {
+    const ctx = getAudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(900, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1600, ctx.currentTime + 0.08);
+
+    gain.gain.setValueAtTime(0.35, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.18);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.18);
+  },
+
+  // 🪕 Cosmic Harp — shimmering ascending arpeggio
+  harp: () => {
+    playSequence([
+      { freq: 523, start: 0, duration: 0.2, type: 'triangle', volume: 0.2 },    // C5
+      { freq: 659, start: 0.06, duration: 0.2, type: 'triangle', volume: 0.2 }, // E5
+      { freq: 784, start: 0.12, duration: 0.2, type: 'triangle', volume: 0.2 }, // G5
+      { freq: 987, start: 0.18, duration: 0.2, type: 'triangle', volume: 0.2 }, // B5
+      { freq: 1174, start: 0.24, duration: 0.35, type: 'sine', volume: 0.25 },  // D6
+    ]);
+  },
+
+  // 💎 Crystal Glass — sparkling high resonance chime
+  crystal: () => {
+    playSequence([
+      { freq: 2093, start: 0, duration: 0.45, type: 'sine', volume: 0.25 },
+      { freq: 4186, start: 0, duration: 0.25, type: 'sine', volume: 0.08 },
+    ]);
+  },
+
+  // 🪄 Magic Wand — twinkling fairy star cluster
+  magic: () => {
+    playSequence([
+      { freq: 1760, start: 0, duration: 0.08, type: 'sine', volume: 0.15 },
+      { freq: 2200, start: 0.06, duration: 0.08, type: 'sine', volume: 0.18 },
+      { freq: 2640, start: 0.12, duration: 0.1, type: 'sine', volume: 0.2 },
+      { freq: 3520, start: 0.18, duration: 0.3, type: 'sine', volume: 0.22 },
+    ]);
+  },
+
+  // 🎐 Breeze Whistle — airy playful double-tone
+  whistle: () => {
+    playSequence([
+      { freq: 987, start: 0, duration: 0.1, type: 'sine', volume: 0.2 },
+      { freq: 1318, start: 0.1, duration: 0.22, type: 'sine', volume: 0.25 },
+    ]);
+  },
+
+  // 💓 Soft Pulse — modern warm subtle bass thump
+  pulse: () => {
+    const ctx = getAudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(240, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.15);
+
+    gain.gain.setValueAtTime(0.4, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.25);
+  },
+
+  // 🎋 Zen Tone — peaceful calming chime
+  flute: () => {
+    playSequence([
+      { freq: 523, start: 0, duration: 0.3, type: 'sine', volume: 0.25 },
+      { freq: 1046, start: 0.05, duration: 0.35, type: 'sine', volume: 0.15 },
+    ]);
+  },
+
+  // ⚡ Cyber Blip — futuristic digital laser notch
+  cyber: () => {
+    const ctx = getAudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(2200, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.12);
+
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.15);
+  },
 };
 
 // ─── Public API ──────────────────────────────────────────
 
 /**
  * Play a notification sound by key
- * @param {string} soundKey - One of: 'default', 'chime', 'bell', 'pop', 'ding', 'melody'
+ * @param {string} soundKey - Sound preset identifier
  */
 export const playNotificationSound = (soundKey = 'default') => {
   const soundFn = sounds[soundKey] || sounds.default;
@@ -151,6 +253,14 @@ export const getAvailableSounds = () => [
   { key: 'pop', label: '💫 Pop', description: 'Bubbly pop sound' },
   { key: 'ding', label: '✨ Ding', description: 'Short bright ding' },
   { key: 'melody', label: '🎶 Melody', description: 'Short musical phrase' },
+  { key: 'bubble', label: '🫧 Bubble', description: 'Crisp aquatic drop' },
+  { key: 'harp', label: '🪕 Harp', description: 'Shimmering arpeggio' },
+  { key: 'crystal', label: '💎 Crystal', description: 'Sparkling high chime' },
+  { key: 'magic', label: '🪄 Magic', description: 'Twinkling fairy dust' },
+  { key: 'whistle', label: '🎐 Breeze', description: 'Airy double-tone' },
+  { key: 'pulse', label: '💓 Pulse', description: 'Warm subtle beat' },
+  { key: 'flute', label: '🎋 Zen Tone', description: 'Calming peaceful chime' },
+  { key: 'cyber', label: '⚡ Cyber', description: 'Futuristic digital blip' },
 ];
 
 export default playNotificationSound;

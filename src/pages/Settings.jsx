@@ -8,7 +8,7 @@ import { VerificationCard } from '../components/VerificationStatus';
 import HostProgramModal from '../components/HostProgramModal';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
-import { previewSound } from '../utils/notificationSounds';
+import { previewSound, getAvailableSounds } from '../utils/notificationSounds';
 import { 
   Palette, 
   Bell, 
@@ -244,15 +244,8 @@ const Settings = () => {
             <span className="text-sm font-bold block text-bumble-charcoal">Notification Sound</span>
             <span className="text-xs text-slate-500 block mt-0.5">Choose your preferred alert tone for incoming notifications.</span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {[
-              { key: 'default', label: '🔔 Default' },
-              { key: 'chime', label: '🎵 Chime' },
-              { key: 'bell', label: '🛎️ Bell' },
-              { key: 'pop', label: '💫 Pop' },
-              { key: 'ding', label: '✨ Ding' },
-              { key: 'melody', label: '🎶 Melody' },
-            ].map((sound) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1 scrollbar-thin">
+            {getAvailableSounds().map((sound) => (
               <button
                 key={sound.key}
                 onClick={async () => {
@@ -265,13 +258,13 @@ const Settings = () => {
                     toast.error('Failed to update sound');
                   }
                 }}
-                className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer
+                className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all duration-200 flex items-center justify-between gap-1.5 cursor-pointer text-left
                   ${selectedSound === sound.key
                     ? 'bg-bumble-charcoal text-white border-transparent shadow-md'
                     : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
                   }`}
               >
-                {sound.label}
+                <span className="truncate">{sound.label}</span>
                 {selectedSound === sound.key && <Check className="w-3.5 h-3.5 shrink-0" />}
               </button>
             ))}
