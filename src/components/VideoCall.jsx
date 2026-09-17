@@ -55,10 +55,12 @@ const VideoCall = ({
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [activeGif, setActiveGif] = useState(null);
   const [remoteGif, setRemoteGif] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const remoteGifTimerRef = useRef(null);
   const activeGifTimerRef = useRef(null);
   const processedChatMsgIdsRef = useRef(new Set());
+  const chatMessagesEndRef = useRef(null);
 
   // ─── Contact Sharing & Audio Security Protection ─────────
   const [isAudioSecurityBlocked, setIsAudioSecurityBlocked] = useState(false);
@@ -130,6 +132,20 @@ const VideoCall = ({
     }, 1000);
     return () => clearInterval(timer);
   }, [callStatus]);
+
+  // Auto scroll in-call session chat to latest message
+  useEffect(() => {
+    if (showChat && chatMessagesEndRef.current) {
+      chatMessagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages, showChat]);
+
+  // Reset unread count when chat drawer is opened
+  useEffect(() => {
+    if (showChat) {
+      setUnreadCount(0);
+    }
+  }, [showChat]);
 
   // ─── Core Disconnect / Hang Up Handler ───────────────────
   // (Declared above the coin-deduction effect below, since that
@@ -2145,6 +2161,8 @@ const VideoCall = ({
     const socket = getSocket();
     const msgId = `gif_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
 
+    console.log('🎁 [VideoCall] Sending GIF:', { gifUrl, targetUid, roomId, conversationId });
+
     // Show GIF locally as animated popup
     setActiveGif(gifUrl);
     if (activeGifTimerRef.current) clearTimeout(activeGifTimerRef.current);
@@ -2152,7 +2170,7 @@ const VideoCall = ({
       if (isMountedRef.current) setActiveGif(null);
     }, 7000);
 
-    // Also add to in-call chat drawer
+    // Also add to in-call chat drawer locally
     setChatMessages((prev) => [
       ...prev,
       {
@@ -2160,6 +2178,8 @@ const VideoCall = ({
         sender: "me",
         senderName: currentUserNameRef.current || currentUser?.name || "Me",
         gifUrl: gifUrl,
+        type: "gif",
+        text: "",
         time: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
@@ -2175,6 +2195,7 @@ const VideoCall = ({
         conversationId: String(conversationId || ''),
         type: 'gif',
         gifUrl: gifUrl,
+        message: gifUrl,
         senderName: currentUserNameRef.current || currentUser?.name || 'Inakkam User',
       });
     }
@@ -2187,11 +2208,14 @@ const VideoCall = ({
 
     const handleChatMsg = (data) => {
       if (!data || !isMountedRef.current) return;
-      const { id: msgId, senderId, message, type, gifUrl, senderName } = data;
+      console.log('💬 [VideoCall] webrtc_chat received:', data);
+      const { id: msgId, socketId, senderId, message, type, gifUrl, senderName } = data;
       const myId = String(currentUser?._id || currentUser?.id || '');
 
-      // Do not process messages reflected back from ourselves
-      if (senderId && myId && String(senderId) === myId) return;
+      // Do not process messages reflected back to our exact socket
+      if (socketId && socket?.id && socketId === socket.id) return;
+      // Prevent self-reflection if senderId matches our own ID on the same socket
+      if (senderId && myId && String(senderId) === myId && (!socketId || (socket?.id && socketId === socket.id))) return;
 
       // Deduplicate if already processed via another channel/room
       if (msgId && processedChatMsgIdsRef.current.has(msgId)) return;
@@ -2204,10 +2228,12 @@ const VideoCall = ({
       }
 
       const senderDisplayName = senderName || remoteUserName || "Call Partner";
+      const resolvedGifUrl = gifUrl || (type === 'gif' ? message : null) || (typeof message === 'string' && (message.includes('giphy.com') || message.includes('.gif')) ? message : null);
+      const isGif = Boolean(type === 'gif' || resolvedGifUrl);
 
-      if (type === 'gif' && gifUrl) {
+      if (isGif && resolvedGifUrl) {
         setRemoteGif({
-          url: gifUrl,
+          url: resolvedGifUrl,
           senderName: senderDisplayName,
           timestamp: Date.now(),
         });
@@ -2223,27 +2249,35 @@ const VideoCall = ({
           duration: 4000,
         });
 
+        if (!showChat) {
+          setUnreadCount((prev) => prev + 1);
+        }
+
         setChatMessages((prev) => [
           ...prev,
           {
             id: msgId || `remote_gif_${Date.now()}`,
             sender: "remote",
             senderName: senderDisplayName,
-            gifUrl: gifUrl,
+            gifUrl: resolvedGifUrl,
+            type: "gif",
             time: new Date().toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
             }),
           },
         ]);
-      }
-
-      if (message) {
+      } else if (message) {
         // Mask any phone numbers in incoming messages and mute remote audio if present
         const masked = maskPhoneNumbers(message);
         if (masked !== message) {
           muteRemoteAudioElements();
         }
+
+        if (!showChat) {
+          setUnreadCount((prev) => prev + 1);
+        }
+
         setChatMessages((prev) => [
           ...prev,
           {
@@ -2251,6 +2285,7 @@ const VideoCall = ({
             sender: "remote",
             senderName: senderDisplayName,
             text: masked,
+            type: "text",
             time: new Date().toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
@@ -2262,7 +2297,7 @@ const VideoCall = ({
 
     socket.on("webrtc_chat", handleChatMsg);
     return () => socket.off("webrtc_chat", handleChatMsg);
-  }, [roomId, conversationId, remoteUserName, currentUser?._id, currentUser?.id, muteRemoteAudioElements]);
+  }, [roomId, conversationId, remoteUserName, currentUser?._id, currentUser?.id, muteRemoteAudioElements, showChat]);
   const handleUnlockAudio = useCallback(() => {
     const audioContainer = document.getElementById("remote_audio_player");
     if (audioContainer) {
@@ -2719,11 +2754,11 @@ const VideoCall = ({
               title="Session Chat"
             >
               <MessageSquare className="w-5 h-5" />
-              {!showChat &&
-                chatMessages.filter((m) => m.sender === "remote").length >
-                  0 && (
-                  <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-[#D51659] rounded-full border-2 border-black animate-pulse" />
-                )}
+              {!showChat && unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-[#D51659] text-white text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center border-2 border-black animate-pulse shadow-md">
+                  {unreadCount}
+                </span>
+              )}
             </button>
 
             {/* Send GIF */}
@@ -2793,39 +2828,46 @@ const VideoCall = ({
                         </div>
                       );
                     }
+                    const hasGif = Boolean(msg.gifUrl || (msg.type === 'gif' && msg.text) || (typeof msg.text === 'string' && (msg.text.includes('giphy.com') || msg.text.includes('.gif'))));
+                    const displayGifUrl = msg.gifUrl || (msg.type === 'gif' ? msg.text : null) || (typeof msg.text === 'string' && (msg.text.includes('giphy.com') || msg.text.includes('.gif')) ? msg.text : null);
+
                     return (
                       <div
                         key={msg.id}
                         className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
                       >
-                        <span className="text-[9px] text-slate-500 font-semibold mb-0.5 px-1">
+                        <span className="text-[9px] text-slate-400 font-semibold mb-0.5 px-1 flex items-center gap-1">
                           {msg.senderName}
+                          {hasGif && <span className="text-[9px] text-yellow-400 font-bold">• GIF</span>}
                         </span>
                         <div
-                          className={`p-2.5 rounded-2xl text-xs max-w-[85%] break-words leading-relaxed ${
+                          className={`p-2 rounded-2xl text-xs max-w-[85%] break-words leading-relaxed ${
                             isMe
                               ? "bg-gradient-to-tr from-[#D51659] to-[#EC3F7B] text-white rounded-br-sm"
                               : "bg-white/10 text-white/90 rounded-bl-sm border border-white/10"
                           }`}
                         >
-                          {msg.gifUrl ? (
-                            <img
-                              src={msg.gifUrl}
-                              alt="GIF"
-                              className="rounded-xl max-w-[160px] max-h-[160px] object-cover"
-                              referrerPolicy="no-referrer"
-                              loading="lazy"
-                            />
+                          {hasGif ? (
+                            <div className="relative rounded-xl overflow-hidden bg-black/50 min-w-[140px] min-h-[140px] max-w-[200px] max-h-[200px] flex items-center justify-center">
+                              <img
+                                src={displayGifUrl}
+                                alt="GIF"
+                                className="rounded-xl w-full h-full object-cover"
+                                referrerPolicy="no-referrer"
+                                loading="lazy"
+                              />
+                            </div>
                           ) : (
                             msg.text
                           )}
                         </div>
-                        <span className="text-[9px] text-slate-600 mt-0.5 px-1">
+                        <span className="text-[9px] text-slate-500 mt-0.5 px-1">
                           {msg.time}
                         </span>
                       </div>
                     );
                   })}
+                  <div ref={chatMessagesEndRef} />
                 </div>
 
                 {/* Chat input */}
