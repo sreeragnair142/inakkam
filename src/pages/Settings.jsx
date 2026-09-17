@@ -253,9 +253,13 @@ const Settings = () => {
                   localStorage.setItem('inakkam_notification_sound', sound.key);
                   previewSound(sound.key);
                   try {
-                    await api.put('/users/notification-sound', { sound: sound.key });
+                    await api.put('/users/me', { notificationSound: sound.key });
                   } catch (err) {
-                    console.warn('Backend sync pending, saved to local device:', err?.message);
+                    try {
+                      await api.put('/users/notification-sound', { sound: sound.key, notificationSound: sound.key });
+                    } catch (fallbackErr) {
+                      console.warn('Backend sync deferred, saved to local storage:', fallbackErr?.message || err?.message);
+                    }
                   }
                   toast.success(`Sound set to ${sound.label.split(' ')[1] || sound.label}`);
                 }}
