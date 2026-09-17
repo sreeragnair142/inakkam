@@ -128,8 +128,16 @@ const Chat = () => {
 
     const handleCallEnded = (data) => {
       console.log('📞 Socket event: call_ended', data);
-      toast('Call ended', { icon: '📞' });
-      setActiveCall(null);
+      // If an active call is mounted, VideoCall handles the Call Ended UI smoothly.
+      // Only show a single deduplicated toast if no active call was underway (e.g. caller cancelled while ringing)
+      if (!activeCall) {
+        toast('Call ended', { id: 'call_ended_single_toast', icon: '📞' });
+      } else {
+        // Safety timeout to ensure activeCall is cleared if onEndCall callback fails
+        setTimeout(() => {
+          setActiveCall((prev) => (prev ? null : prev));
+        }, 4000);
+      }
       setIncomingCall(null);
     };
 
