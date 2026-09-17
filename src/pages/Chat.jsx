@@ -213,6 +213,7 @@ const Chat = () => {
         remoteUserPhoto: activeChat.userImage,
         callType: type,
         targetUserId,
+        conversationId: activeChat.id || activeChat.conversationId,
         isCaller: true,  // We initiated the call
       });
 
@@ -245,6 +246,7 @@ const Chat = () => {
         remoteUserPhoto: incomingCall.callerPhoto,
         callType: incomingCall.callType,
         targetUserId: incomingCall.callerId,
+        conversationId: incomingCall.conversationId,
         isCaller: false,  // We received the call
       });
 
@@ -818,6 +820,7 @@ const Chat = () => {
       {activeCall && (
         <VideoCall
           roomId={activeCall.roomId}
+          conversationId={activeCall.conversationId || activeChat?.id || activeChat?.conversationId}
           token={activeCall.token}
           remoteUserName={activeCall.remoteUserName}
           remoteUserPhoto={activeCall.remoteUserPhoto}

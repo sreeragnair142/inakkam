@@ -32,6 +32,7 @@ import {
 
 const VideoCall = ({
   roomId,
+  conversationId,
   remoteUserName,
   remoteUserPhoto,
   callType = "video",
@@ -54,6 +55,10 @@ const VideoCall = ({
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [activeGif, setActiveGif] = useState(null);
   const [remoteGif, setRemoteGif] = useState(null);
+
+  const remoteGifTimerRef = useRef(null);
+  const activeGifTimerRef = useRef(null);
+  const processedChatMsgIdsRef = useRef(new Set());
 
   // ─── Contact Sharing & Audio Security Protection ─────────
   const [isAudioSecurityBlocked, setIsAudioSecurityBlocked] = useState(false);
@@ -2091,10 +2096,11 @@ const VideoCall = ({
       minute: "2-digit",
     });
 
+    const msgId = `my_msg_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
     setChatMessages((prev) => [
       ...prev,
       {
-        id: `my_msg_${Date.now()}`,
+        id: msgId,
         sender: "me",
         senderName: currentUser?.name || "Me",
         text: messageText,
@@ -2104,9 +2110,12 @@ const VideoCall = ({
     setChatInput("");
 
     const socket = getSocket();
-    if (socket && targetUid) {
+    if (socket) {
       socket.emit("webrtc_chat", {
+        id: msgId,
         targetUserId: targetUid,
+        roomId: String(roomId || ''),
+        conversationId: String(conversationId || ''),
         message: messageText,
       });
     }
@@ -2115,39 +2124,59 @@ const VideoCall = ({
   // Join the call session room so both sides can exchange in-call messages & GIFs
   useEffect(() => {
     const socket = getSocket();
-    if (socket && roomId) {
-      socket.emit('join_room', String(roomId));
-    }
-  }, [roomId]);
+    if (!socket) return;
+
+    const joinRooms = () => {
+      if (roomId) socket.emit('join_room', String(roomId));
+      if (conversationId && String(conversationId) !== String(roomId)) {
+        socket.emit('join_room', String(conversationId));
+      }
+    };
+
+    joinRooms();
+    socket.on('connect', joinRooms);
+    return () => {
+      socket.off('connect', joinRooms);
+    };
+  }, [roomId, conversationId]);
 
   const handleSendGif = (gifUrl) => {
+    if (!gifUrl) return;
     const socket = getSocket();
+    const msgId = `gif_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+
+    // Show GIF locally as animated popup
+    setActiveGif(gifUrl);
+    if (activeGifTimerRef.current) clearTimeout(activeGifTimerRef.current);
+    activeGifTimerRef.current = setTimeout(() => {
+      if (isMountedRef.current) setActiveGif(null);
+    }, 7000);
+
+    // Also add to in-call chat drawer
+    setChatMessages((prev) => [
+      ...prev,
+      {
+        id: msgId,
+        sender: "me",
+        senderName: currentUserNameRef.current || currentUser?.name || "Me",
+        gifUrl: gifUrl,
+        time: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      },
+    ]);
+
     if (socket) {
       socket.emit('webrtc_chat', {
+        id: msgId,
         targetUserId: targetUid,
         roomId: String(roomId || ''),
+        conversationId: String(conversationId || ''),
         type: 'gif',
         gifUrl: gifUrl,
-        senderName: currentUserNameRef.current,
+        senderName: currentUserNameRef.current || currentUser?.name || 'Inakkam User',
       });
-      // Show GIF locally as animated popup
-      setActiveGif(gifUrl);
-      setTimeout(() => setActiveGif(null), 6000);
-
-      // Also add to in-call chat drawer
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          id: `me_gif_${Date.now()}`,
-          sender: "me",
-          senderName: currentUserNameRef.current || "Me",
-          gifUrl: gifUrl,
-          time: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        },
-      ]);
     }
   };
 
@@ -2157,22 +2186,49 @@ const VideoCall = ({
     if (!socket) return;
 
     const handleChatMsg = (data) => {
-      const { senderId, message, type, gifUrl, senderName } = data;
+      if (!data || !isMountedRef.current) return;
+      const { id: msgId, senderId, message, type, gifUrl, senderName } = data;
       const myId = String(currentUser?._id || currentUser?.id || '');
+
       // Do not process messages reflected back from ourselves
       if (senderId && myId && String(senderId) === myId) return;
-      if (!isMountedRef.current) return;
+
+      // Deduplicate if already processed via another channel/room
+      if (msgId && processedChatMsgIdsRef.current.has(msgId)) return;
+      if (msgId) {
+        processedChatMsgIdsRef.current.add(msgId);
+        if (processedChatMsgIdsRef.current.size > 200) {
+          const first = processedChatMsgIdsRef.current.values().next().value;
+          processedChatMsgIdsRef.current.delete(first);
+        }
+      }
+
+      const senderDisplayName = senderName || remoteUserName || "Call Partner";
 
       if (type === 'gif' && gifUrl) {
-        setRemoteGif(gifUrl);
-        setTimeout(() => setRemoteGif(null), 6000);
+        setRemoteGif({
+          url: gifUrl,
+          senderName: senderDisplayName,
+          timestamp: Date.now(),
+        });
+
+        if (remoteGifTimerRef.current) clearTimeout(remoteGifTimerRef.current);
+        remoteGifTimerRef.current = setTimeout(() => {
+          if (isMountedRef.current) setRemoteGif(null);
+        }, 7000);
+
+        toast(`🎉 ${senderDisplayName} sent a GIF!`, {
+          id: `toast_${msgId || Date.now()}`,
+          icon: '✨',
+          duration: 4000,
+        });
 
         setChatMessages((prev) => [
           ...prev,
           {
-            id: `remote_gif_${Date.now()}`,
+            id: msgId || `remote_gif_${Date.now()}`,
             sender: "remote",
-            senderName: senderName || remoteUserName || "Opponent",
+            senderName: senderDisplayName,
             gifUrl: gifUrl,
             time: new Date().toLocaleTimeString([], {
               hour: "2-digit",
@@ -2191,9 +2247,9 @@ const VideoCall = ({
         setChatMessages((prev) => [
           ...prev,
           {
-            id: `remote_msg_${Date.now()}`,
+            id: msgId || `remote_msg_${Date.now()}`,
             sender: "remote",
-            senderName: senderName || remoteUserName || "Opponent",
+            senderName: senderDisplayName,
             text: masked,
             time: new Date().toLocaleTimeString([], {
               hour: "2-digit",
@@ -2206,7 +2262,7 @@ const VideoCall = ({
 
     socket.on("webrtc_chat", handleChatMsg);
     return () => socket.off("webrtc_chat", handleChatMsg);
-  }, [roomId, remoteUserName, currentUser, muteRemoteAudioElements]);
+  }, [roomId, conversationId, remoteUserName, currentUser?._id, currentUser?.id, muteRemoteAudioElements]);
   const handleUnlockAudio = useCallback(() => {
     const audioContainer = document.getElementById("remote_audio_player");
     if (audioContainer) {
@@ -2753,7 +2809,13 @@ const VideoCall = ({
                           }`}
                         >
                           {msg.gifUrl ? (
-                            <img src={msg.gifUrl} alt="GIF" className="rounded-xl max-w-[160px] max-h-[160px] object-cover" />
+                            <img
+                              src={msg.gifUrl}
+                              alt="GIF"
+                              className="rounded-xl max-w-[160px] max-h-[160px] object-cover"
+                              referrerPolicy="no-referrer"
+                              loading="lazy"
+                            />
                           ) : (
                             msg.text
                           )}
@@ -2808,38 +2870,76 @@ const VideoCall = ({
       />
 
       {/* Active GIF Overlay (sent by me) */}
-      {activeGif && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.5, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.5 }}
-          className="absolute bottom-32 right-4 sm:right-8 z-[100] pointer-events-none"
-        >
-          <div className="rounded-2xl overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.8)] border-2 border-[#D51659] bg-black/80 backdrop-blur-md">
-            <img src={activeGif} alt="Sent GIF" className="w-36 h-36 sm:w-44 sm:h-44 object-cover" />
-            <div className="text-center py-1.5 bg-[#D51659]/90">
-              <span className="text-[10px] font-bold text-white uppercase tracking-wider">✨ You sent</span>
+      <AnimatePresence>
+        {activeGif && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.6, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.6, y: 10 }}
+            transition={{ type: "spring", damping: 20, stiffness: 300 }}
+            className="fixed bottom-28 sm:bottom-32 right-4 sm:right-8 z-[120] pointer-events-auto"
+          >
+            <div className="rounded-2xl overflow-hidden shadow-[0_12px_45px_rgba(0,0,0,0.85)] border-2 border-[#D51659] bg-black/90 backdrop-blur-xl relative max-w-[200px] sm:max-w-[240px]">
+              <button
+                type="button"
+                onClick={() => setActiveGif(null)}
+                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/70 hover:bg-black text-white/80 hover:text-white flex items-center justify-center transition-all z-10 cursor-pointer"
+                title="Dismiss"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+              <img
+                src={activeGif}
+                alt="Sent GIF"
+                referrerPolicy="no-referrer"
+                loading="eager"
+                className="w-40 h-40 sm:w-48 sm:h-48 object-cover"
+              />
+              <div className="text-center py-1.5 bg-gradient-to-r from-[#D51659] to-[#EC3F7B]">
+                <span className="text-[11px] font-extrabold text-white tracking-wider flex items-center justify-center gap-1">
+                  ✨ You sent a GIF
+                </span>
+              </div>
             </div>
-          </div>
-        </motion.div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Remote GIF Overlay (received) */}
-      {remoteGif && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.5, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.5 }}
-          className="absolute bottom-32 left-4 sm:left-8 z-[100] pointer-events-none"
-        >
-          <div className="rounded-2xl overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.8)] border-2 border-yellow-400 bg-black/80 backdrop-blur-md">
-            <img src={remoteGif} alt="Received GIF" className="w-36 h-36 sm:w-44 sm:h-44 object-cover" />
-            <div className="text-center py-1.5 bg-yellow-500/90">
-              <span className="text-[10px] font-bold text-black uppercase tracking-wider">🎉 {remoteUserName || 'Opponent'} sent</span>
+      {/* Remote GIF Overlay (received from call partner) */}
+      <AnimatePresence>
+        {remoteGif && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.6, y: -20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.6, y: -20 }}
+            transition={{ type: "spring", damping: 20, stiffness: 300 }}
+            className="fixed top-20 sm:top-24 left-1/2 -translate-x-1/2 z-[130] pointer-events-auto"
+          >
+            <div className="rounded-2xl overflow-hidden shadow-[0_16px_50px_rgba(0,0,0,0.9)] border-2 border-yellow-400 bg-black/90 backdrop-blur-xl relative max-w-[240px] sm:max-w-[280px]">
+              <button
+                type="button"
+                onClick={() => setRemoteGif(null)}
+                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/70 hover:bg-black text-white/80 hover:text-white flex items-center justify-center transition-all z-10 cursor-pointer"
+                title="Dismiss"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+              <img
+                src={typeof remoteGif === 'string' ? remoteGif : remoteGif.url}
+                alt="Received GIF"
+                referrerPolicy="no-referrer"
+                loading="eager"
+                className="w-48 h-48 sm:w-56 sm:h-56 object-cover"
+              />
+              <div className="text-center py-1.5 bg-gradient-to-r from-yellow-500 to-amber-400">
+                <span className="text-[11px] font-extrabold text-black tracking-wider flex items-center justify-center gap-1">
+                  🎉 {typeof remoteGif === 'object' ? remoteGif.senderName : (remoteUserName || 'Partner')} sent a GIF
+                </span>
+              </div>
             </div>
-          </div>
-        </motion.div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       </div>
     </ScreenShield>,
