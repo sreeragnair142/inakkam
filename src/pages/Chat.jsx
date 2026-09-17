@@ -551,6 +551,11 @@ const Chat = () => {
                 backgroundImage: 'radial-gradient(circle at 0% 0%, rgba(213,22,89,0.06) 0%, transparent 45%), radial-gradient(circle at 100% 100%, rgba(180,77,220,0.06) 0%, transparent 45%), #F4F3ED'
               }}
             >
+              <div className="text-center py-2 px-4">
+                <span className="text-[10px] font-semibold text-white/30 bg-white/5 px-3 py-1 rounded-full">
+                  💬 Messages auto-clear after 24 hours
+                </span>
+              </div>
               {activeChatMessages.map((msg) => {
                 const senderId = typeof msg.sender === 'object' ? (msg.sender?._id || msg.sender?.id) : msg.sender;
                 const myId = currentUser?._id || currentUser?.id;

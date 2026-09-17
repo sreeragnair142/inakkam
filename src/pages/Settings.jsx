@@ -7,6 +7,8 @@ import { logout } from '../redux/slices/authSlice';
 import { VerificationCard } from '../components/VerificationStatus';
 import HostProgramModal from '../components/HostProgramModal';
 import toast from 'react-hot-toast';
+import api from '../utils/api';
+import { previewSound } from '../utils/notificationSounds';
 import { 
   Palette, 
   Bell, 
@@ -18,7 +20,10 @@ import {
   Globe,
   ShieldCheck,
   LogOut,
-  Sparkles
+  Sparkles,
+  FileText,
+  ChevronRight,
+  Volume2
 } from 'lucide-react';
 
 const Settings = () => {
@@ -30,6 +35,17 @@ const Settings = () => {
   // Host Program Modal state
   const [showHostModal, setShowHostModal] = useState(false);
   const [hostModalTab, setHostModalTab] = useState('overview');
+
+  const currentUser = useSelector((state) => state.auth.user);
+  const [selectedSound, setSelectedSound] = useState('default');
+  const [playingSound, setPlayingSound] = useState(null);
+  const audioRef = React.useRef(null);
+
+  useEffect(() => {
+    if (currentUser?.notificationSound) {
+      setSelectedSound(currentUser.notificationSound);
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     dispatch(fetchVerificationStatus());
@@ -219,6 +235,71 @@ const Settings = () => {
                 />
               </button>
             </div>
+          ))}
+        </div>
+
+        {/* Notification Sound Selector */}
+        <div className="space-y-3 pt-4 border-t border-slate-100">
+          <div className="text-left">
+            <span className="text-sm font-bold block text-bumble-charcoal">Notification Sound</span>
+            <span className="text-xs text-slate-500 block mt-0.5">Choose your preferred alert tone for incoming notifications.</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {[
+              { key: 'default', label: '🔔 Default' },
+              { key: 'chime', label: '🎵 Chime' },
+              { key: 'bell', label: '🛎️ Bell' },
+              { key: 'pop', label: '💫 Pop' },
+              { key: 'ding', label: '✨ Ding' },
+              { key: 'melody', label: '🎶 Melody' },
+            ].map((sound) => (
+              <button
+                key={sound.key}
+                onClick={async () => {
+                  setSelectedSound(sound.key);
+                  previewSound(sound.key);
+                  try {
+                    await api.put('/users/notification-sound', { sound: sound.key });
+                    toast.success(`Sound set to ${sound.label.split(' ')[1]}`);
+                  } catch (err) {
+                    toast.error('Failed to update sound');
+                  }
+                }}
+                className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer
+                  ${selectedSound === sound.key
+                    ? 'bg-bumble-charcoal text-white border-transparent shadow-md'
+                    : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
+                  }`}
+              >
+                {sound.label}
+                {selectedSound === sound.key && <Check className="w-3.5 h-3.5 shrink-0" />}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Legal & Policies */}
+      <div className={`${getContainerClass()} p-6 rounded-3xl space-y-4`}>
+        <div className="flex items-center gap-2">
+          <FileText className="w-5 h-5 text-indigo-500" />
+          <h3 className="font-extrabold text-sm uppercase tracking-wider text-bumble-charcoal">Legal & Policies</h3>
+        </div>
+        <div className="space-y-1">
+          {[
+            { label: 'Terms & Conditions', slug: 'terms-and-conditions' },
+            { label: 'Privacy Policy', slug: 'privacy-policy' },
+            { label: 'Fund Policy', slug: 'fund-policy' },
+            { label: 'Refund Policy', slug: 'refund-policy' },
+          ].map((item) => (
+            <button
+              key={item.slug}
+              onClick={() => navigate(`/policy/${item.slug}`)}
+              className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl hover:bg-slate-50 transition-colors cursor-pointer group"
+            >
+              <span className="text-sm font-bold text-bumble-charcoal">{item.label}</span>
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-bumble-charcoal transition-colors" />
+            </button>
           ))}
         </div>
       </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Flame } from 'lucide-react';
 import landscapeLogo from '../assets/landscapelogowhite.png';
+import { Link } from 'react-router-dom';
 
 const AuthLayout = ({ children }) => {
   return (
@@ -62,8 +63,8 @@ const AuthLayout = ({ children }) => {
         <div className="text-white/60 text-xs relative z-10 flex justify-between items-center font-medium">
           <span>&copy; {new Date().getFullYear()} Inakkam Inc.</span>
           <div className="flex gap-4">
-            <span className="hover:text-white cursor-pointer transition-colors">Privacy Policy</span>
-            <span className="hover:text-white cursor-pointer transition-colors">Terms of Service</span>
+            <Link to="/policy/privacy-policy" className="hover:text-white cursor-pointer transition-colors">Privacy Policy</Link>
+            <Link to="/policy/terms-and-conditions" className="hover:text-white cursor-pointer transition-colors">Terms of Service</Link>
           </div>
         </div>
 

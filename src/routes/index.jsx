@@ -12,6 +12,7 @@ import Chat from "../pages/Chat";
 import Membership from "../pages/Membership";
 import Profile from "../pages/Profile";
 import BuyCoin from "../pages/BuyCoin";
+import PolicyPage from "../pages/PolicyPage";
 import Wallet from "../pages/Wallet";
 import MainLayout from "../layouts/MainLayout";
 import KYCVerification from "../pages/kyc/KYCVerification";
@@ -145,6 +146,9 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+
+      {/* Policy Pages */}
+      <Route path="/policy/:slug" element={<PolicyPage />} />
 
       {/* Redirects */}
       <Route path="*" element={<Navigate to="/" replace />} />

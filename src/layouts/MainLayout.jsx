@@ -8,6 +8,8 @@ import { setActiveTab } from '../redux/slices/uiSlice';
 import { logout } from '../redux/slices/authSlice';
 import { setTheme } from '../redux/slices/themeSlice';
 import { markAsRead } from '../redux/slices/notificationSlice';
+import api from '../utils/api';
+import { previewSound } from '../utils/notificationSounds';
 import {
   Flame,
   MessageSquare,
@@ -30,7 +32,10 @@ import {
   Home,
   Wallet,
   ShieldCheck,
-  Coins
+  Coins,
+  FileText,
+  ChevronRight,
+  Volume2
 } from 'lucide-react';
 
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'framer-motion';
@@ -83,6 +88,13 @@ const MainLayout = ({ children }) => {
     spotlight: true,
   });
   const [distanceValue, setDistanceValue] = useState(25);
+  const [selectedSound, setSelectedSound] = useState(user?.notificationSound || 'default');
+
+  useEffect(() => {
+    if (user?.notificationSound) {
+      setSelectedSound(user.notificationSound);
+    }
+  }, [user?.notificationSound]);
 
   useEffect(() => {
     const path = location.pathname.slice(1);
@@ -504,6 +516,113 @@ const MainLayout = ({ children }) => {
                             />
                           </button>
                         </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Communication & Notification Sound */}
+                  <div className="space-y-4 pt-2 border-t border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <Bell className="w-5 h-5 text-purple-600" />
+                      <h3 className="font-extrabold text-sm uppercase tracking-wider text-slate-800">Communication Alerts</h3>
+                    </div>
+
+                    <div className="space-y-3">
+                      {[
+                        { key: 'matches', label: 'New Spark Match Alert', desc: 'Receive real-time push alerts when you obtain a new swipe match.' },
+                        { key: 'messages', label: 'Inbound Chat Messages', desc: 'Get notified when a connection sends you a message.' },
+                        { key: 'likes', label: 'Likes Dashboard Count', desc: 'Notify me when someone likes my profile.' },
+                        { key: 'spotlight', label: 'Spotlight Trends', desc: 'Get updates when your profile is trending locally.' },
+                      ].map((toggle) => (
+                        <div key={toggle.key} className="flex justify-between items-center gap-4">
+                          <div className="text-left max-w-md">
+                            <span className="text-sm font-bold block text-slate-800">{toggle.label}</span>
+                            <span className="text-xs text-slate-500 block mt-0.5">{toggle.desc}</span>
+                          </div>
+                          <button
+                            onClick={() => setNotificationToggles(prev => ({ ...prev, [toggle.key]: !prev[toggle.key] }))}
+                            className={`w-11 h-6 rounded-full p-0.5 transition-all duration-300 relative shrink-0 cursor-pointer
+                            ${notificationToggles[toggle.key] ? 'bg-purple-600' : 'bg-slate-300'}`}
+                          >
+                            <div
+                              className={`w-5 h-5 rounded-full bg-white shadow-md transition-all duration-300 transform
+                              ${notificationToggles[toggle.key] ? 'translate-x-5' : 'translate-x-0'}`}
+                            />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Notification Sound Selector */}
+                    <div className="space-y-3 pt-3 border-t border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <div className="text-left">
+                          <span className="text-sm font-bold block text-slate-800">Notification Tone</span>
+                          <span className="text-xs text-slate-500 block mt-0.5">Click any sound to listen and set your alert tone.</span>
+                        </div>
+                        <Volume2 className="w-4 h-4 text-purple-600" />
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+                        {[
+                          { key: 'default', label: '🔔 Default' },
+                          { key: 'chime', label: '🎵 Chime' },
+                          { key: 'bell', label: '🛎️ Bell' },
+                          { key: 'pop', label: '💫 Pop' },
+                          { key: 'ding', label: '✨ Ding' },
+                          { key: 'melody', label: '🎶 Melody' },
+                        ].map((sound) => (
+                          <button
+                            key={sound.key}
+                            type="button"
+                            onClick={async () => {
+                              setSelectedSound(sound.key);
+                              previewSound(sound.key);
+                              try {
+                                await api.put('/users/notification-sound', { sound: sound.key });
+                                toast.success(`Sound set to ${sound.label.split(' ')[1]}`);
+                              } catch (err) {
+                                toast.error('Failed to update sound');
+                              }
+                            }}
+                            className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer
+                              ${selectedSound === sound.key
+                                ? 'bg-purple-600 text-white border-transparent shadow-sm'
+                                : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
+                              }`}
+                          >
+                            <span>{sound.label}</span>
+                            {selectedSound === sound.key && <Check className="w-3.5 h-3.5 shrink-0" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Legal & Policies */}
+                  <div className="space-y-3 pt-2 border-t border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-purple-600" />
+                      <h3 className="font-extrabold text-sm uppercase tracking-wider text-slate-800">Legal & Policies</h3>
+                    </div>
+                    <div className="space-y-1">
+                      {[
+                        { label: 'Terms & Conditions', slug: 'terms-and-conditions' },
+                        { label: 'Privacy Policy', slug: 'privacy-policy' },
+                        { label: 'Fund Policy', slug: 'fund-policy' },
+                        { label: 'Refund Policy', slug: 'refund-policy' },
+                      ].map((item) => (
+                        <button
+                          key={item.slug}
+                          type="button"
+                          onClick={() => {
+                            setShowSettingsModal(false);
+                            navigate(`/policy/${item.slug}`);
+                          }}
+                          className="w-full flex items-center justify-between px-4 py-3 rounded-xl hover:bg-slate-50 border border-slate-100 transition-colors cursor-pointer group text-left"
+                        >
+                          <span className="text-xs sm:text-sm font-bold text-slate-700 group-hover:text-purple-600 transition-colors">{item.label}</span>
+                          <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-purple-600 transition-colors" />
+                        </button>
                       ))}
                     </div>
                   </div>

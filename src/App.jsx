@@ -9,6 +9,7 @@ import { fetchMe } from "./redux/slices/authSlice";
 import { initiateSocketConnection, disconnectSocket } from "./utils/socket";
 import { addMessage, setTyping, removeMessage } from "./redux/slices/chatSlice";
 import { addNotification } from "./redux/slices/notificationSlice";
+import { playNotificationSound } from "./utils/notificationSounds";
 import AppRoutes from "./routes";
 
 import { Toaster } from "react-hot-toast";
@@ -145,6 +146,9 @@ function AppContent() {
 
       socket.on('new_message', (message) => {
         dispatch(addMessage(message));
+        // Play user's preferred notification sound
+        const soundPref = user?.notificationSound || 'default';
+        playNotificationSound(soundPref);
       });
 
       socket.on('message_deleted', ({ conversationId, messageId }) => {
@@ -161,6 +165,8 @@ function AppContent() {
 
       socket.on('new_notification', (notif) => {
         dispatch(addNotification(notif));
+        const soundPref = user?.notificationSound || 'default';
+        playNotificationSound(soundPref);
       });
 
       return () => {
