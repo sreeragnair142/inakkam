@@ -60,6 +60,7 @@ const VideoCall = ({
   const [securityCountdown, setSecurityCountdown] = useState(0);
   const [isRemoteAudioBlocked, setIsRemoteAudioBlocked] = useState(false);
   const [securityBlockReason, setSecurityBlockReason] = useState(null);
+  const [isRemoteRecordingBlocked, setIsRemoteRecordingBlocked] = useState(false);
 
   const speechRecognitionRef = useRef(null);
   const speechDetectorRef = useRef(new SpeechPhoneDetector(12000));
@@ -364,14 +365,71 @@ const VideoCall = ({
       unmuteRemoteAudioElements();
     };
 
+    const handleRemoteScreenRecording = (data) => {
+      console.warn("🛡️ [Security] Remote participant attempted screen recording:", data);
+      setIsRemoteRecordingBlocked(true);
+      toast.error(
+        "🛡️ Privacy Shield: The other participant attempted a screen capture. Video content was obscured.",
+        {
+          id: "remote_recording_detected_toast",
+          duration: 6000,
+        }
+      );
+      setTimeout(() => {
+        setIsRemoteRecordingBlocked(false);
+      }, 5000);
+    };
+
     socket.on("call_audio_security_block", handleRemoteAudioBlocked);
     socket.on("call_audio_security_unblock", handleRemoteAudioUnblocked);
+    socket.on("screen_recording_attempt", handleRemoteScreenRecording);
 
     return () => {
       socket.off("call_audio_security_block", handleRemoteAudioBlocked);
       socket.off("call_audio_security_unblock", handleRemoteAudioUnblocked);
+      socket.off("screen_recording_attempt", handleRemoteScreenRecording);
     };
   }, [muteRemoteAudioElements, unmuteRemoteAudioElements]);
+
+  // ─── Local Screen & Video Recording Violation Handler ───
+  const handleSecurityViolation = useCallback((violationType) => {
+    console.warn("🚨 [Screen Shield] Screen recording or screenshot violation:", violationType);
+
+    // 1. Instantly blank local video track to ensure camera feed cannot be recorded
+    if (localStreamRef.current) {
+      try {
+        const nativeStream =
+          localStreamRef.current.stream ||
+          (typeof localStreamRef.current.getMediaStream === "function"
+            ? localStreamRef.current.getMediaStream()
+            : null);
+        const vTracks = nativeStream?.getVideoTracks?.() || [];
+        vTracks.forEach((t) => {
+          t.enabled = false;
+        });
+        setTimeout(() => {
+          if (videoActive) {
+            vTracks.forEach((t) => {
+              t.enabled = true;
+            });
+          }
+        }, 3000);
+      } catch (e) {
+        console.warn("Local video track blanking error:", e);
+      }
+    }
+
+    // 2. Notify other participant that recording was attempted and blocked
+    const socket = getSocket();
+    if (socket && targetUid) {
+      socket.emit("screen_recording_attempt", {
+        conversationId: roomId,
+        targetUserId: targetUid,
+        roomId: String(roomId || ""),
+        violationType,
+      });
+    }
+  }, [roomId, targetUid, videoActive]);
 
   // ─── Real-Time Continuous Speech Recognition ────────────
   useEffect(() => {
@@ -2173,7 +2231,12 @@ const VideoCall = ({
   }, [isMutedSound]);
 
   return createPortal(
-    <ScreenShield enabled={true} label="INAKKAM SECURE CALL" userIdentifier={currentUser?.name || currentUser?.phone || ''}>
+    <ScreenShield
+      enabled={true}
+      label="INAKKAM SECURE CALL"
+      userIdentifier={currentUser?.name || currentUser?.phone || ''}
+      onSecurityViolation={handleSecurityViolation}
+    >
       <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 z-[99999] flex bg-[#0A0A0A] text-white overflow-hidden font-sans select-none h-[100dvh] w-screen">
         {/* Radial glow backgrounds */}
         <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] rounded-full bg-[#D51659]/10 blur-[120px] pointer-events-none" />
@@ -2517,6 +2580,20 @@ const VideoCall = ({
                 <VolumeX className="w-4 h-4 sm:w-5 sm:h-5 text-white shrink-0 animate-pulse" />
                 <span className="truncate">
                   Opponent audio blocked for contact sharing violation
+                </span>
+              </motion.div>
+            )}
+
+            {isRemoteRecordingBlocked && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="absolute top-20 sm:top-24 left-1/2 -translate-x-1/2 z-35 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white px-4 sm:px-6 py-2 rounded-full backdrop-blur-xl shadow-2xl flex items-center gap-2.5 border border-rose-300/40 text-xs sm:text-sm font-bold pointer-events-auto max-w-[92vw] sm:max-w-md text-center"
+              >
+                <VideoOff className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-300 shrink-0 animate-bounce" />
+                <span className="truncate">
+                  Opponent attempted screen recording. Video obscured for privacy.
                 </span>
               </motion.div>
             )}
