@@ -128,8 +128,9 @@ const Chat = () => {
 
     const handleCallEnded = (data) => {
       console.log('📞 Socket event: call_ended', data);
-      toast('Call ended', { icon: '📞' });
-      setActiveCall(null);
+      if (!activeCall) {
+        toast('Call ended', { id: 'call_ended_single_toast', icon: '📞' });
+      }
       setIncomingCall(null);
     };
 
@@ -274,10 +275,57 @@ const Chat = () => {
     setIncomingCall(null);
   };
 
+  // Format seconds into readable duration (e.g. 45s, 2m 15s)
+  const formatCallDuration = (secs) => {
+    if (!secs || secs <= 0) return '0s';
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    if (m === 0) return `${s}s`;
+    if (s === 0) return `${m}m`;
+    return `${m}m ${s}s`;
+  };
+
+  // Sleek call ended toast with call duration
+  const showCallEndedSummary = ({ duration = 0, callType = 'video', remoteUserName = '' } = {}) => {
+    const partnerName = remoteUserName || activeChat?.userName || 'User';
+    const callLabel = callType === 'audio' ? 'Voice Call Ended' : 'Video Call Ended';
+    const durStr = formatCallDuration(duration);
+
+    toast.custom(
+      (t) => (
+        <div
+          className={`${
+            t.visible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+          } max-w-sm w-full bg-[#181824]/95 backdrop-blur-2xl border border-white/15 shadow-[0_16px_50px_rgba(0,0,0,0.6)] rounded-2xl p-4 flex items-center gap-3.5 pointer-events-auto transition-all duration-300`}
+        >
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#D51659] to-[#EC3F7B] flex items-center justify-center text-white shrink-0 shadow-lg shadow-[#D51659]/30">
+            <PhoneOff className="w-5 h-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="text-xs font-black text-white uppercase tracking-wider">
+                {callLabel}
+              </h4>
+              <span className="text-[11px] font-black text-emerald-400 bg-emerald-500/15 border border-emerald-500/25 px-2.5 py-0.5 rounded-full font-mono shadow-inner">
+                {durStr}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-300 truncate mt-0.5">
+              Call with <span className="text-white font-bold">{partnerName}</span>
+            </p>
+          </div>
+        </div>
+      ),
+      { id: 'call_ended_single_toast', duration: 4500 }
+    );
+  };
+
   // End Call Callback from VideoCall component
-  const handleEndCall = () => {
-    // Note: activeCall might already be null if called from cleanup
+  const handleEndCall = (summary = {}) => {
     const callSnapshot = activeCall;
+    const finalDuration = summary?.duration ?? (callSnapshot?.duration || 0);
+    const finalCallType = summary?.callType || callSnapshot?.callType || 'video';
+    const finalRemoteName = summary?.remoteUserName || callSnapshot?.remoteUserName || activeChat?.userName;
 
     const socket = getSocket();
     if (socket && callSnapshot) {
@@ -285,6 +333,25 @@ const Chat = () => {
         conversationId: activeChat?.id || activeChat?.conversationId || callSnapshot.roomId,
         targetUserId: callSnapshot.targetUserId
       });
+    }
+
+    showCallEndedSummary({
+      duration: finalDuration,
+      callType: finalCallType,
+      remoteUserName: finalRemoteName,
+    });
+
+    const convId = activeChat?.id || activeChat?.conversationId || activeChatId;
+    if (convId && finalDuration > 0) {
+      dispatch(addMessage({
+        conversationId: convId,
+        _id: `call_summary_${Date.now()}`,
+        sender: 'system',
+        text: `📞 ${finalCallType === 'audio' ? 'Voice call' : 'Video call'} ended • Duration: ${formatCallDuration(finalDuration)}`,
+        type: 'call_summary',
+        duration: finalDuration,
+        createdAt: new Date().toISOString(),
+      }));
     }
 
     setActiveCall(null);
@@ -562,6 +629,17 @@ const Chat = () => {
                 const timestamp = msg.createdAt
                   ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                   : msg.timestamp || '';
+
+                if (msg.sender === 'system' || msg.type === 'call_summary') {
+                  return (
+                    <div key={msg._id || msg.id} className="flex justify-center my-3">
+                      <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-black/[0.04] dark:bg-white/10 border border-black/5 dark:border-white/10 shadow-xs text-xs font-semibold text-slate-700 dark:text-slate-200 backdrop-blur-md">
+                        <PhoneOff className="w-3.5 h-3.5 text-[#D51659]" />
+                        <span>{msg.text}</span>
+                      </div>
+                    </div>
+                  );
+                }
 
                 return (
                   <motion.div

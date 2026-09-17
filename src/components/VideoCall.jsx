@@ -45,6 +45,10 @@ const VideoCall = ({
   const dispatch = useDispatch();
   const [callStatus, setCallStatus] = useState("connecting"); // connecting | connected | disconnected
   const [duration, setDuration] = useState(0);
+  const durationRef = useRef(0);
+  useEffect(() => {
+    durationRef.current = duration;
+  }, [duration]);
   const [micActive, setMicActive] = useState(true);
   const [videoActive, setVideoActive] = useState(callType === "video");
   const [showChat, setShowChat] = useState(false);
@@ -225,7 +229,18 @@ const VideoCall = ({
       }
 
       if (onEndCallRef.current) {
-        setTimeout(() => onEndCallRef.current(), 50);
+        const finalDuration = durationRef.current || 0;
+        setTimeout(
+          () =>
+            onEndCallRef.current({
+              duration: finalDuration,
+              callType,
+              remoteUserName,
+              roomId,
+              conversationId,
+            }),
+          50,
+        );
       }
     },
     [roomId, targetUid],
@@ -2134,10 +2149,6 @@ const VideoCall = ({
     const socket = getSocket();
 
     const handleRemoteCallEnded = () => {
-      toast("Call ended by the other person", {
-        icon: "📞",
-      });
-
       if (isMountedRef.current && !isDisconnectedRef.current) {
         finishCall({ notifyRemote: false });
       }
