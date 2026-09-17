@@ -13,6 +13,8 @@ import {
   VolumeX,
   Sparkles,
   User,
+  ShieldAlert,
+  Shield,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDispatch } from "react-redux";
@@ -22,6 +24,11 @@ import { fetchMe } from "../redux/slices/authSlice";
 import { getSocket } from "../utils/socket";
 import ScreenShield from "./ScreenShield";
 import GifPicker from "./GifPicker";
+import {
+  checkPhoneNumber,
+  SpeechPhoneDetector,
+  maskPhoneNumbers,
+} from "../utils/phoneDetector";
 
 const VideoCall = ({
   roomId,
@@ -47,6 +54,17 @@ const VideoCall = ({
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [activeGif, setActiveGif] = useState(null);
   const [remoteGif, setRemoteGif] = useState(null);
+
+  // ─── Contact Sharing & Audio Security Protection ─────────
+  const [isAudioSecurityBlocked, setIsAudioSecurityBlocked] = useState(false);
+  const [securityCountdown, setSecurityCountdown] = useState(0);
+  const [isRemoteAudioBlocked, setIsRemoteAudioBlocked] = useState(false);
+  const [securityBlockReason, setSecurityBlockReason] = useState(null);
+
+  const speechRecognitionRef = useRef(null);
+  const speechDetectorRef = useRef(new SpeechPhoneDetector(12000));
+  const isAudioSecurityBlockedRef = useRef(false);
+  const securityBlockTimerRef = useRef(null);
 
   // Normalize targetUserId
   const targetUid = String(
@@ -129,6 +147,19 @@ const VideoCall = ({
         remoteDisconnectTimerRef.current = null;
       }
 
+      if (securityBlockTimerRef.current) {
+        clearInterval(securityBlockTimerRef.current);
+        securityBlockTimerRef.current = null;
+      }
+
+      if (speechRecognitionRef.current) {
+        try {
+          speechRecognitionRef.current.onend = null;
+          speechRecognitionRef.current.abort();
+        } catch (e) {}
+        speechRecognitionRef.current = null;
+      }
+
       const room = roomRef.current;
       roomRef.current = null;
       if (room) {
@@ -176,6 +207,275 @@ const VideoCall = ({
   const handleDisconnect = useCallback(() => {
     finishCall({ notifyRemote: true });
   }, [finishCall]);
+
+  // ─── Trigger Hard Audio Mute & Security Lockout ─────────
+  const triggerAudioSecurityBlock = useCallback(
+    (reason = "phone_number_detected") => {
+      if (isAudioSecurityBlockedRef.current) return;
+
+      console.warn("🚨 [Audio Security Shield] Muting and blocking audio. Reason:", reason);
+      isAudioSecurityBlockedRef.current = true;
+      setIsAudioSecurityBlocked(true);
+      setSecurityBlockReason(reason);
+      setSecurityCountdown(15);
+      setMicActive(false);
+
+      // 1. Immediately mute EnableX audio stream
+      if (localStreamRef.current) {
+        try {
+          localStreamRef.current.muteAudio();
+        } catch (e) {
+          console.warn("EnableX muteAudio error:", e);
+        }
+
+        // 2. Hardware track cutoff at native MediaStream track level
+        try {
+          const nativeStream =
+            localStreamRef.current.stream ||
+            (typeof localStreamRef.current.getMediaStream === "function"
+              ? localStreamRef.current.getMediaStream()
+              : null);
+          const tracks = nativeStream?.getAudioTracks?.() || [];
+          tracks.forEach((t) => {
+            t.enabled = false;
+          });
+        } catch (e) {
+          console.warn("Hardware audio track cutoff error:", e);
+        }
+      }
+
+      // 3. Clear speech detector buffer so it starts fresh
+      if (speechDetectorRef.current) {
+        speechDetectorRef.current.reset();
+      }
+
+      // 4. Alert user with prominent toast
+      toast.error(
+        "⚠️ AUDIO BLOCKED: Sharing or mentioning phone numbers during calls is prohibited.",
+        {
+          id: "audio_security_block_toast",
+          duration: 6000,
+        }
+      );
+
+      // 5. Notify remote participant through socket
+      const socket = getSocket();
+      if (socket && targetUid) {
+        socket.emit("call_audio_security_block", {
+          conversationId: roomId,
+          targetUserId: targetUid,
+          roomId: String(roomId || ""),
+          reason,
+        });
+      }
+
+      // 6. Start 15s security lockout timer
+      if (securityBlockTimerRef.current) {
+        clearInterval(securityBlockTimerRef.current);
+      }
+      let remaining = 15;
+      securityBlockTimerRef.current = setInterval(() => {
+        remaining -= 1;
+        if (!isMountedRef.current) {
+          if (securityBlockTimerRef.current) {
+            clearInterval(securityBlockTimerRef.current);
+            securityBlockTimerRef.current = null;
+          }
+          return;
+        }
+        setSecurityCountdown(remaining);
+        if (remaining <= 0) {
+          if (securityBlockTimerRef.current) {
+            clearInterval(securityBlockTimerRef.current);
+            securityBlockTimerRef.current = null;
+          }
+          isAudioSecurityBlockedRef.current = false;
+          setIsAudioSecurityBlocked(false);
+          setSecurityBlockReason(null);
+          toast.success(
+            "Microphone security lock expired. You may unmute if you follow guidelines.",
+            { id: "audio_security_unblock_toast", duration: 4000 }
+          );
+          const s = getSocket();
+          if (s && targetUid) {
+            s.emit("call_audio_security_unblock", {
+              conversationId: roomId,
+              targetUserId: targetUid,
+              roomId: String(roomId || ""),
+            });
+          }
+        }
+      }, 1000);
+    },
+    [roomId, targetUid]
+  );
+
+  // ─── Remote Audio Elements Mute / Unmute Helpers ────────
+  const muteRemoteAudioElements = useCallback(() => {
+    const audioContainer = document.getElementById("remote_audio_player");
+    const videoContainer = document.getElementById("remote_video_player");
+    [audioContainer, videoContainer].forEach((c) => {
+      if (c) {
+        c.querySelectorAll("audio, video").forEach((el) => {
+          el.muted = true;
+          el.volume = 0;
+        });
+      }
+    });
+  }, []);
+
+  const unmuteRemoteAudioElements = useCallback(() => {
+    if (isMutedSound) return;
+    const audioContainer = document.getElementById("remote_audio_player");
+    const videoContainer = document.getElementById("remote_video_player");
+    [audioContainer, videoContainer].forEach((c) => {
+      if (c) {
+        c.querySelectorAll("audio, video").forEach((el) => {
+          el.muted = false;
+          el.volume = 1.0;
+          el.play().catch(() => {});
+        });
+      }
+    });
+  }, [isMutedSound]);
+
+  // ─── Listen for Remote Audio Security Events ────────────
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const handleRemoteAudioBlocked = (data) => {
+      console.warn("🛡️ [Security] Remote participant audio blocked:", data);
+      setIsRemoteAudioBlocked(true);
+      muteRemoteAudioElements();
+      toast(
+        "🛡️ Opponent audio blocked: Detected attempt to share contact details. Audio muted for your protection.",
+        {
+          icon: "🔇",
+          duration: 6000,
+          id: "remote_security_blocked_toast",
+        }
+      );
+    };
+
+    const handleRemoteAudioUnblocked = () => {
+      console.log("🛡️ [Security] Remote participant audio unblocked.");
+      setIsRemoteAudioBlocked(false);
+      unmuteRemoteAudioElements();
+    };
+
+    socket.on("call_audio_security_block", handleRemoteAudioBlocked);
+    socket.on("call_audio_security_unblock", handleRemoteAudioUnblocked);
+
+    return () => {
+      socket.off("call_audio_security_block", handleRemoteAudioBlocked);
+      socket.off("call_audio_security_unblock", handleRemoteAudioUnblocked);
+    };
+  }, [muteRemoteAudioElements, unmuteRemoteAudioElements]);
+
+  // ─── Real-Time Continuous Speech Recognition ────────────
+  useEffect(() => {
+    if (callStatus !== "connected") {
+      if (speechRecognitionRef.current) {
+        try {
+          speechRecognitionRef.current.onend = null;
+          speechRecognitionRef.current.abort();
+        } catch (e) {}
+        speechRecognitionRef.current = null;
+      }
+      return;
+    }
+
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      console.warn("[Security] Web Speech API not supported on this browser.");
+      return;
+    }
+
+    let isStoppedManually = false;
+    let recognition = null;
+
+    try {
+      recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
+      recognition.lang = "en-IN"; // Catches English and Indian accented digits
+
+      recognition.onresult = (event) => {
+        if (!isMountedRef.current || isDisconnectedRef.current) return;
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const transcript = event.results[i][0]?.transcript || "";
+          if (transcript) {
+            const detection = speechDetectorRef.current.feedTranscript(transcript);
+            if (detection.detected) {
+              console.warn(
+                "🚨 [Security Shield] Phone number mention detected in spoken audio:",
+                detection
+              );
+              triggerAudioSecurityBlock("phone_number_spoken");
+              break;
+            }
+          }
+        }
+      };
+
+      recognition.onerror = (event) => {
+        if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+          console.warn("[SpeechRecognition] Permission not allowed:", event.error);
+          return;
+        }
+        console.log("[SpeechRecognition] Notice:", event.error);
+      };
+
+      recognition.onend = () => {
+        if (
+          !isStoppedManually &&
+          isMountedRef.current &&
+          !isDisconnectedRef.current &&
+          callStatus === "connected"
+        ) {
+          // Restart continuously
+          try {
+            recognition.start();
+          } catch (e) {
+            setTimeout(() => {
+              if (
+                !isStoppedManually &&
+                isMountedRef.current &&
+                !isDisconnectedRef.current
+              ) {
+                try {
+                  recognition.start();
+                } catch (err) {}
+              }
+            }, 500);
+          }
+        }
+      };
+
+      recognition.start();
+      speechRecognitionRef.current = recognition;
+      console.log("[Security Shield] Real-time speech monitoring active.");
+    } catch (e) {
+      console.warn("[SpeechRecognition] Init exception:", e);
+    }
+
+    return () => {
+      isStoppedManually = true;
+      if (recognition) {
+        try {
+          recognition.onend = null;
+          recognition.abort();
+        } catch (e) {}
+      }
+      if (speechRecognitionRef.current === recognition) {
+        speechRecognitionRef.current = null;
+      }
+    };
+  }, [callStatus, triggerAudioSecurityBlock]);
 
   // ─── 10-Second No-Opponent-Video / Face Auto-Disconnect (Video Calls Only) ─
   const noRemoteVideoDurationRef = useRef(0);
@@ -1645,14 +1945,39 @@ const VideoCall = ({
 
   // ─── Toggle Mic ──────────────────────────────────────────
   const toggleMic = () => {
+    if (isAudioSecurityBlockedRef.current) {
+      toast.error(
+        `Microphone locked (${securityCountdown}s) due to phone number policy violation.`,
+        { id: "mic_security_locked_toast" }
+      );
+      return;
+    }
     const next = !micActive;
     setMicActive(next);
     if (localStreamRef.current) {
       try {
         if (next) {
           localStreamRef.current.unmuteAudio();
+          const nativeStream =
+            localStreamRef.current.stream ||
+            (typeof localStreamRef.current.getMediaStream === "function"
+              ? localStreamRef.current.getMediaStream()
+              : null);
+          const tracks = nativeStream?.getAudioTracks?.() || [];
+          tracks.forEach((t) => {
+            t.enabled = true;
+          });
         } else {
           localStreamRef.current.muteAudio();
+          const nativeStream =
+            localStreamRef.current.stream ||
+            (typeof localStreamRef.current.getMediaStream === "function"
+              ? localStreamRef.current.getMediaStream()
+              : null);
+          const tracks = nativeStream?.getAudioTracks?.() || [];
+          tracks.forEach((t) => {
+            t.enabled = false;
+          });
         }
       } catch (e) {
         console.warn("EnableX muteAudio toggle error:", e);
@@ -1681,6 +2006,18 @@ const VideoCall = ({
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
+
+    // Strict Phone Number Check in in-call chat
+    const phoneCheck = checkPhoneNumber(chatInput);
+    if (phoneCheck.detected) {
+      toast.error("Sharing phone numbers is strictly prohibited! Audio blocked.", {
+        id: "phone_chat_blocked_toast",
+        duration: 5000,
+      });
+      triggerAudioSecurityBlock("phone_number_in_chat");
+      setChatInput("");
+      return;
+    }
 
     const isStaff = currentUser?.isStaff || currentUser?.isEliteAgent || currentUser?.role === 'staff' || currentUser?.role === 'admin';
     const isCustomer = !isStaff;
@@ -1788,13 +2125,18 @@ const VideoCall = ({
       }
 
       if (message) {
+        // Mask any phone numbers in incoming messages and mute remote audio if present
+        const masked = maskPhoneNumbers(message);
+        if (masked !== message) {
+          muteRemoteAudioElements();
+        }
         setChatMessages((prev) => [
           ...prev,
           {
             id: `remote_msg_${Date.now()}`,
             sender: "remote",
             senderName: senderName || remoteUserName || "Opponent",
-            text: message,
+            text: masked,
             time: new Date().toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
@@ -1806,7 +2148,7 @@ const VideoCall = ({
 
     socket.on("webrtc_chat", handleChatMsg);
     return () => socket.off("webrtc_chat", handleChatMsg);
-  }, [roomId, remoteUserName, currentUser]);
+  }, [roomId, remoteUserName, currentUser, muteRemoteAudioElements]);
   const handleUnlockAudio = useCallback(() => {
     const audioContainer = document.getElementById("remote_audio_player");
     if (audioContainer) {
@@ -1907,14 +2249,24 @@ const VideoCall = ({
             {/* Mic toggle */}
             <button
               onClick={toggleMic}
-              className={`p-3.5 sm:p-4 rounded-full transition-all duration-300 backdrop-blur-md ${
-                micActive
+              className={`p-3.5 sm:p-4 rounded-full transition-all duration-300 backdrop-blur-md relative ${
+                isAudioSecurityBlocked
+                  ? "bg-rose-600/60 text-white border-2 border-rose-400 animate-pulse shadow-[0_0_20px_rgba(225,29,72,0.6)] cursor-not-allowed"
+                  : micActive
                   ? "bg-black/60 text-white border border-white/15 hover:bg-black/80"
                   : "bg-[#D51659]/40 text-[#D51659] border border-[#D51659] hover:bg-[#D51659]/50"
               }`}
-              title={micActive ? "Mute Microphone" : "Unmute Microphone"}
+              title={
+                isAudioSecurityBlocked
+                  ? `Microphone Locked (${securityCountdown}s) - Phone number policy violation`
+                  : micActive
+                  ? "Mute Microphone"
+                  : "Unmute Microphone"
+              }
             >
-              {micActive ? (
+              {isAudioSecurityBlocked ? (
+                <ShieldAlert className="w-5 h-5 text-yellow-300" />
+              ) : micActive ? (
                 <Mic className="w-5 h-5" />
               ) : (
                 <MicOff className="w-5 h-5" />
@@ -2006,11 +2358,15 @@ const VideoCall = ({
                     (h, i) => (
                       <span
                         key={i}
-                        className="w-1.5 sm:w-2 bg-gradient-to-t from-[#D51659] via-[#EC3F7B] to-[#B44DDC] rounded-full transition-all duration-300 shadow-sm"
+                        className={`w-1.5 sm:w-2 rounded-full transition-all duration-300 shadow-sm ${
+                          isAudioSecurityBlocked
+                            ? "bg-rose-500"
+                            : "bg-gradient-to-t from-[#D51659] via-[#EC3F7B] to-[#B44DDC]"
+                        }`}
                         style={{
-                          height: micActive ? `${h}%` : "15%",
-                          opacity: micActive ? 0.95 : 0.25,
-                          animation: micActive
+                          height: isAudioSecurityBlocked ? "12%" : micActive ? `${h}%` : "15%",
+                          opacity: isAudioSecurityBlocked ? 0.35 : micActive ? 0.95 : 0.25,
+                          animation: !isAudioSecurityBlocked && micActive
                             ? `pulse 1.2s ease-in-out infinite`
                             : "none",
                           animationDelay: `${(i * 80) % 600}ms`,
@@ -2019,6 +2375,13 @@ const VideoCall = ({
                     ),
                   )}
                 </div>
+
+                {isAudioSecurityBlocked && (
+                  <div className="mt-3 text-[11px] font-bold text-rose-300 flex items-center gap-1.5 bg-rose-500/20 px-3 py-1 rounded-full border border-rose-500/30 animate-pulse shadow-sm">
+                    <ShieldAlert className="w-3.5 h-3.5 text-yellow-300" />
+                    <span>Microphone Blocked ({securityCountdown}s) - Contact Sharing Prohibited</span>
+                  </div>
+                )}
 
                 {/* Enable / Boost Sound Button */}
                 <button
@@ -2128,22 +2491,68 @@ const VideoCall = ({
             </div>
           </div>
 
+          {/* ── Floating Security Alert Banners ────────── */}
+          <AnimatePresence>
+            {isAudioSecurityBlocked && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="absolute top-20 sm:top-24 left-1/2 -translate-x-1/2 z-35 bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 text-white px-4 sm:px-6 py-2 rounded-full backdrop-blur-xl shadow-[0_8px_30px_rgba(225,29,72,0.6)] flex items-center gap-2.5 border border-rose-300/40 text-xs sm:text-sm font-bold pointer-events-auto max-w-[92vw] sm:max-w-md text-center"
+              >
+                <ShieldAlert className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-300 shrink-0 animate-bounce" />
+                <span className="truncate">
+                  Audio Blocked: Phone numbers not allowed ({securityCountdown}s)
+                </span>
+              </motion.div>
+            )}
+
+            {!isAudioSecurityBlocked && isRemoteAudioBlocked && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="absolute top-20 sm:top-24 left-1/2 -translate-x-1/2 z-35 bg-gradient-to-r from-amber-600 to-orange-600 text-white px-4 sm:px-6 py-2 rounded-full backdrop-blur-xl shadow-2xl flex items-center gap-2.5 border border-amber-300/40 text-xs sm:text-sm font-bold pointer-events-auto max-w-[92vw] sm:max-w-md text-center"
+              >
+                <VolumeX className="w-4 h-4 sm:w-5 sm:h-5 text-white shrink-0 animate-pulse" />
+                <span className="truncate">
+                  Opponent audio blocked for contact sharing violation
+                </span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* ── Bottom controls HUD ──────────────────────── */}
           <div className="absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 px-4 sm:px-6 py-3 sm:py-3.5 bg-black/60 border border-white/15 backdrop-blur-2xl rounded-full flex items-center gap-3.5 sm:gap-6 md:gap-8 z-25 shadow-[0_16px_50px_rgba(0,0,0,0.6)] max-w-[calc(100vw-2rem)]">
-            {/* Mic toggle */}
+            {/* Mic toggle with Security Lock state */}
             <button
               onClick={toggleMic}
-              className={`p-3 sm:p-3.5 rounded-full transition-all duration-300 backdrop-blur-md ${
-                micActive
+              className={`p-3 sm:p-3.5 rounded-full transition-all duration-300 backdrop-blur-md relative ${
+                isAudioSecurityBlocked
+                  ? "bg-rose-600/60 text-white border-2 border-rose-400 animate-pulse shadow-[0_0_25px_rgba(225,29,72,0.6)] cursor-not-allowed"
+                  : micActive
                   ? "bg-white/10 text-white hover:bg-white/20 border border-white/10"
                   : "bg-[#D51659]/30 text-[#D51659] border border-[#D51659]/60 hover:bg-[#D51659]/40"
               }`}
-              title={micActive ? "Mute Microphone" : "Unmute Microphone"}
+              title={
+                isAudioSecurityBlocked
+                  ? `Microphone Locked (${securityCountdown}s) - Phone number policy violation`
+                  : micActive
+                  ? "Mute Microphone"
+                  : "Unmute Microphone"
+              }
             >
-              {micActive ? (
+              {isAudioSecurityBlocked ? (
+                <ShieldAlert className="w-5 h-5 text-yellow-300" />
+              ) : micActive ? (
                 <Mic className="w-5 h-5" />
               ) : (
                 <MicOff className="w-5 h-5" />
+              )}
+              {isAudioSecurityBlocked && (
+                <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center border border-white/40 shadow-sm">
+                  {securityCountdown}
+                </span>
               )}
             </button>
 
