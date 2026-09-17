@@ -25,6 +25,7 @@ import { fetchMe } from "../redux/slices/authSlice";
 import { getSocket } from "../utils/socket";
 import ScreenShield from "./ScreenShield";
 import GifPicker from "./GifPicker";
+import { resolveGifMediaUrl, EVERGREEN_FALLBACK_GIF } from "../utils/gifHelper";
 import {
   checkPhoneNumber,
   SpeechPhoneDetector,
@@ -58,12 +59,7 @@ const VideoCall = ({
   const [remoteStreamActive, setRemoteStreamActive] = useState(false);
   const [noRemoteVideoCountdown, setNoRemoteVideoCountdown] = useState(null);
   const [showGifPicker, setShowGifPicker] = useState(false);
-  const [activeGif, setActiveGif] = useState(null);
-  const [remoteGif, setRemoteGif] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
-
-  const remoteGifTimerRef = useRef(null);
-  const activeGifTimerRef = useRef(null);
   const processedChatMsgIdsRef = useRef(new Set());
   const chatMessagesEndRef = useRef(null);
   const chatScrollContainerRef = useRef(null);
@@ -2368,29 +2364,23 @@ const VideoCall = ({
 
   const handleSendGif = (gifUrl) => {
     if (!gifUrl) return;
+    const cleanGifUrl = resolveGifMediaUrl(gifUrl);
     const socket = getSocket();
     const msgId = `gif_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
     processedChatMsgIdsRef.current.add(msgId);
 
-    console.log('🎁 [VideoCall] Sending GIF:', { gifUrl, targetUid, roomId, conversationId });
+    console.log('🎁 [VideoCall] Sending GIF:', { gifUrl: cleanGifUrl, targetUid, roomId, conversationId });
 
-    // Show GIF locally as animated popup
-    setActiveGif(gifUrl);
-    if (activeGifTimerRef.current) clearTimeout(activeGifTimerRef.current);
-    activeGifTimerRef.current = setTimeout(() => {
-      if (isMountedRef.current) setActiveGif(null);
-    }, 7000);
-
-    // Also add to in-call chat drawer locally
+    // Add to in-call chat drawer locally (only in session chat, not as video overlay)
     setChatMessages((prev) => [
       ...prev,
       {
         id: msgId,
         sender: "me",
         senderName: currentUserNameRef.current || currentUser?.name || "Me",
-        gifUrl: gifUrl,
+        gifUrl: cleanGifUrl,
         type: "gif",
-        text: gifUrl,
+        text: cleanGifUrl,
         time: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
@@ -2405,8 +2395,8 @@ const VideoCall = ({
         roomId: String(roomId || ''),
         conversationId: String(conversationId || ''),
         type: 'gif',
-        gifUrl: gifUrl,
-        message: gifUrl,
+        gifUrl: cleanGifUrl,
+        message: cleanGifUrl,
         senderName: currentUserNameRef.current || currentUser?.name || 'Inakkam User',
         senderId: String(currentUser?._id || currentUser?.id || ''),
       });
@@ -2414,7 +2404,7 @@ const VideoCall = ({
       if (conversationId) {
         socket.emit("send_message", {
           conversationId: String(conversationId),
-          text: gifUrl,
+          text: cleanGifUrl,
           tempId: msgId,
           targetUserId: targetUid,
         });
@@ -2477,24 +2467,11 @@ const VideoCall = ({
           ((s.startsWith('http://') || s.startsWith('https://')) && (s.includes('/media') || s.includes('image')));
       };
 
-      let resolvedGifUrl = gifUrl || (type === 'gif' ? message : null) || (isMediaGifStr(message) ? message : null);
-      if (resolvedGifUrl && typeof resolvedGifUrl === 'string' && resolvedGifUrl.startsWith('https://media') && resolvedGifUrl.endsWith('giphy')) {
-        resolvedGifUrl = "https://media.giphy.com/media/26BRv0ThflsDTjq4E/giphy.gif";
-      }
+      let rawGifUrl = gifUrl || (type === 'gif' ? message : null) || (isMediaGifStr(message) ? message : null);
+      let resolvedGifUrl = rawGifUrl ? resolveGifMediaUrl(rawGifUrl) : null;
       const isGif = Boolean(type === 'gif' || resolvedGifUrl);
 
       if (isGif && resolvedGifUrl) {
-        setRemoteGif({
-          url: resolvedGifUrl,
-          senderName: senderDisplayName,
-          timestamp: Date.now(),
-        });
-
-        if (remoteGifTimerRef.current) clearTimeout(remoteGifTimerRef.current);
-        remoteGifTimerRef.current = setTimeout(() => {
-          if (isMountedRef.current) setRemoteGif(null);
-        }, 7000);
-
         toast(`🎉 ${senderDisplayName} sent a GIF!`, {
           id: `toast_${msgId || Date.now()}`,
           icon: '✨',
@@ -2575,28 +2552,14 @@ const VideoCall = ({
 
       const senderDisplayName = msgData.sender?.name || remoteUserNameRef.current || "Call Partner";
       const rawText = msgData.text || '';
-      let resolvedGif = (msgData.type === 'gif' || msgData.mediaType === 'gif')
+      let rawGif = (msgData.type === 'gif' || msgData.mediaType === 'gif')
         ? (msgData.mediaUrl || msgData.gifUrl || rawText)
         : null;
 
-      if (!resolvedGif && isMediaGifStr(rawText)) {
-        resolvedGif = rawText;
+      if (!rawGif && isMediaGifStr(rawText)) {
+        rawGif = rawText;
       }
-      if (resolvedGif && typeof resolvedGif === 'string' && resolvedGif.startsWith('https://media') && resolvedGif.endsWith('giphy')) {
-        resolvedGif = "https://media.giphy.com/media/26BRv0ThflsDTjq4E/giphy.gif";
-      }
-
-      if (resolvedGif) {
-        setRemoteGif({
-          url: resolvedGif,
-          senderName: senderDisplayName,
-          timestamp: Date.now(),
-        });
-        if (remoteGifTimerRef.current) clearTimeout(remoteGifTimerRef.current);
-        remoteGifTimerRef.current = setTimeout(() => {
-          if (isMountedRef.current) setRemoteGif(null);
-        }, 7000);
-      }
+      const resolvedGif = rawGif ? resolveGifMediaUrl(rawGif) : null;
 
       const masked = maskPhoneNumbers(rawText);
       if (masked !== rawText) {
@@ -3206,10 +3169,8 @@ const VideoCall = ({
                           ((msg.text.startsWith('http://') || msg.text.startsWith('https://')) && (msg.text.includes('/media') || msg.text.includes('image')))
                         ))
                       );
-                      let displayGifUrl = msg.gifUrl || (msg.type === 'gif' ? msg.text : null) || (hasGif && typeof msg.text === 'string' ? msg.text : null);
-                      if (displayGifUrl && typeof displayGifUrl === 'string' && displayGifUrl.startsWith('https://media') && displayGifUrl.endsWith('giphy')) {
-                        displayGifUrl = "https://media.giphy.com/media/26BRv0ThflsDTjq4E/giphy.gif";
-                      }
+                      let rawDisplayUrl = msg.gifUrl || (msg.type === 'gif' ? msg.text : null) || (hasGif && typeof msg.text === 'string' ? msg.text : null);
+                      let displayGifUrl = rawDisplayUrl ? resolveGifMediaUrl(rawDisplayUrl) : null;
 
                       return (
                         <div
@@ -3227,7 +3188,7 @@ const VideoCall = ({
                                 : "bg-white/10 text-white/90 rounded-bl-sm border border-white/10"
                             }`}
                           >
-                            {hasGif ? (
+                            {hasGif && displayGifUrl ? (
                               <div className="relative rounded-xl overflow-hidden bg-black/50 min-w-[140px] min-h-[140px] max-w-[200px] max-h-[200px] flex items-center justify-center">
                                 <img
                                   src={displayGifUrl}
@@ -3238,7 +3199,7 @@ const VideoCall = ({
                                   onError={(e) => {
                                     if (!e.currentTarget.dataset.fallback) {
                                       e.currentTarget.dataset.fallback = 'true';
-                                      e.currentTarget.src = 'https://media.giphy.com/media/26BRv0ThflsDTjq4E/giphy.gif';
+                                      e.currentTarget.src = EVERGREEN_FALLBACK_GIF;
                                     }
                                   }}
                                 />
@@ -3333,77 +3294,7 @@ const VideoCall = ({
         onSelect={handleSendGif}
       />
 
-      {/* Active GIF Overlay (sent by me) */}
-      <AnimatePresence>
-        {activeGif && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.6, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.6, y: 10 }}
-            transition={{ type: "spring", damping: 20, stiffness: 300 }}
-            className="fixed bottom-28 sm:bottom-32 right-4 sm:right-8 z-[120] pointer-events-auto"
-          >
-            <div className="rounded-2xl overflow-hidden shadow-[0_12px_45px_rgba(0,0,0,0.85)] border-2 border-[#D51659] bg-black/90 backdrop-blur-xl relative max-w-[200px] sm:max-w-[240px]">
-              <button
-                type="button"
-                onClick={() => setActiveGif(null)}
-                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/70 hover:bg-black text-white/80 hover:text-white flex items-center justify-center transition-all z-10 cursor-pointer"
-                title="Dismiss"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-              <img
-                src={activeGif}
-                alt="Sent GIF"
-                referrerPolicy="no-referrer"
-                loading="eager"
-                className="w-40 h-40 sm:w-48 sm:h-48 object-cover"
-              />
-              <div className="text-center py-1.5 bg-gradient-to-r from-[#D51659] to-[#EC3F7B]">
-                <span className="text-[11px] font-extrabold text-white tracking-wider flex items-center justify-center gap-1">
-                  ✨ You sent a GIF
-                </span>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      {/* Remote GIF Overlay (received from call partner) */}
-      <AnimatePresence>
-        {remoteGif && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.6, y: -20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.6, y: -20 }}
-            transition={{ type: "spring", damping: 20, stiffness: 300 }}
-            className="fixed top-20 sm:top-24 left-1/2 -translate-x-1/2 z-[130] pointer-events-auto"
-          >
-            <div className="rounded-2xl overflow-hidden shadow-[0_16px_50px_rgba(0,0,0,0.9)] border-2 border-yellow-400 bg-black/90 backdrop-blur-xl relative max-w-[240px] sm:max-w-[280px]">
-              <button
-                type="button"
-                onClick={() => setRemoteGif(null)}
-                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/70 hover:bg-black text-white/80 hover:text-white flex items-center justify-center transition-all z-10 cursor-pointer"
-                title="Dismiss"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-              <img
-                src={typeof remoteGif === 'string' ? remoteGif : remoteGif.url}
-                alt="Received GIF"
-                referrerPolicy="no-referrer"
-                loading="eager"
-                className="w-48 h-48 sm:w-56 sm:h-56 object-cover"
-              />
-              <div className="text-center py-1.5 bg-gradient-to-r from-yellow-500 to-amber-400">
-                <span className="text-[11px] font-extrabold text-black tracking-wider flex items-center justify-center gap-1">
-                  🎉 {typeof remoteGif === 'object' ? remoteGif.senderName : (remoteUserName || 'Partner')} sent a GIF
-                </span>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       </div>
     </ScreenShield>,

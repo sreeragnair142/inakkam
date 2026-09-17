@@ -33,6 +33,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../utils/api';
 import { getSocket, joinConversation, emitMessage } from '../utils/socket';
+import { resolveGifMediaUrl, EVERGREEN_FALLBACK_GIF } from '../utils/gifHelper';
 import VideoCall from '../components/VideoCall';
 import RechargeModal from '../components/RechargeModal';
 import { fetchMe } from '../redux/slices/authSlice';
@@ -683,7 +684,7 @@ const Chat = () => {
                         {Boolean(typeof msg.text === 'string' && (msg.text.includes('giphy') || msg.text.includes('tenor') || msg.text.includes('.gif') || msg.text.includes('.webp') || ((msg.text.startsWith('http://') || msg.text.startsWith('https://')) && (msg.text.includes('/media') || msg.text.includes('image'))))) ? (
                           <div className="rounded-xl overflow-hidden my-1 max-w-[220px] max-h-[220px] flex items-center justify-center bg-black/5">
                             <img
-                              src={(typeof msg.text === 'string' && msg.text.startsWith('https://media') && msg.text.endsWith('giphy')) ? 'https://media.giphy.com/media/26BRv0ThflsDTjq4E/giphy.gif' : msg.text}
+                              src={resolveGifMediaUrl(msg.text)}
                               alt="GIF"
                               className="rounded-xl w-full h-full object-cover"
                               loading="lazy"
@@ -691,7 +692,7 @@ const Chat = () => {
                               onError={(e) => {
                                 if (!e.currentTarget.dataset.failed) {
                                   e.currentTarget.dataset.failed = 'true';
-                                  e.currentTarget.src = 'https://media.giphy.com/media/26BRv0ThflsDTjq4E/giphy.gif';
+                                  e.currentTarget.src = EVERGREEN_FALLBACK_GIF;
                                 }
                               }}
                             />

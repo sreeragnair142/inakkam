@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, X, Loader2, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { resolveGifMediaUrl, EVERGREEN_FALLBACK_GIF } from '../utils/gifHelper';
 
 // GIPHY verified public key for instant live searching across millions of GIFs
 const GIPHY_API_KEY = 'sXpGFDGZs0Dv1mmNFvYaGUvYwKX0PWIh';
@@ -19,10 +20,10 @@ const CATEGORIES = [
   { label: '👋 Hi', q: 'hello wave' },
 ];
 
-// Curated fallback reaction GIFs (offline/failover safe)
+// Curated fallback reaction GIFs (offline/failover safe, 100% verified live)
 const FALLBACK_GIFS = [
-  { id: 'fb_1', url: 'https://media.giphy.com/media/26BRv0ThflsDTjq4E/giphy.gif', desc: 'Heart Love' },
-  { id: 'fb_2', url: 'https://media.giphy.com/media/l41lT4n6ylgW2hh04/giphy.gif', desc: 'Kiss Love' },
+  { id: 'fb_1', url: 'https://media.giphy.com/media/paXjnIZYvglz2/giphy.gif', desc: 'Heart Love' },
+  { id: 'fb_2', url: 'https://media.giphy.com/media/CjzllG1RAnY3K/giphy.gif', desc: 'Kiss Love' },
   { id: 'fb_3', url: 'https://media.giphy.com/media/BPJmthQ3YRwD6QqcVD/giphy.gif', desc: 'Cheers' },
   { id: 'fb_4', url: 'https://media.giphy.com/media/10JhviFuU2gWD6/giphy.gif', desc: 'Haha Laugh' },
   { id: 'fb_5', url: 'https://media.giphy.com/media/blSTtZehjAZ8I/giphy.gif', desc: 'Happy Dance' },
@@ -91,13 +92,17 @@ const GifPicker = ({ isOpen, onClose, onSelect }) => {
   };
 
   const getGifUrl = (gif) => {
-    return (
+    if (gif?.id && !String(gif.id).startsWith('fb_')) {
+      return `https://media.giphy.com/media/${gif.id}/giphy.gif`;
+    }
+    const raw = (
       gif?.images?.fixed_height?.url ||
       gif?.images?.fixed_height_small?.url ||
       gif?.images?.original?.url ||
       gif?.url ||
       ''
     );
+    return resolveGifMediaUrl(raw);
   };
 
   if (!isOpen) return null;
@@ -210,6 +215,12 @@ const GifPicker = ({ isOpen, onClose, onSelect }) => {
                       className="w-full h-full object-cover group-hover:brightness-110 transition-all"
                       loading="lazy"
                       referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        if (!e.currentTarget.dataset.fallback) {
+                          e.currentTarget.dataset.fallback = 'true';
+                          e.currentTarget.src = EVERGREEN_FALLBACK_GIF;
+                        }
+                      }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
                       <span className="text-[10px] text-white font-medium truncate drop-shadow-md">
