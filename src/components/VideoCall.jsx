@@ -2364,13 +2364,15 @@ const VideoCall = ({
 
     const isStaff = currentUser?.isStaff || currentUser?.isEliteAgent || currentUser?.role === 'staff' || currentUser?.role === 'admin';
     const isCustomer = !isStaff;
+    const isGifMessage = isMediaGifStr(rawInput);
 
-    if (isCustomer && rawInput.length > 20) {
+    if (isCustomer && rawInput.length > 20 && !isGifMessage) {
       toast.error('Messages are limited to 20 characters or less.');
       return;
     }
 
-    const messageText = isCustomer && rawInput.length > 20 ? rawInput.slice(0, 20) : rawInput;
+    const messageText = (isCustomer && rawInput.length > 20 && !isGifMessage) ? rawInput.slice(0, 20) : rawInput;
+    const cleanGif = isGifMessage ? resolveGifMediaUrl(messageText) : null;
     const timeStr = new Date().toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
@@ -2385,7 +2387,9 @@ const VideoCall = ({
         id: msgId,
         sender: "me",
         senderName: currentUser?.name || "Me",
-        text: messageText,
+        text: cleanGif || messageText,
+        gifUrl: cleanGif || null,
+        type: isGifMessage ? 'gif' : 'text',
         time: timeStr,
       },
     ]);
@@ -2398,8 +2402,9 @@ const VideoCall = ({
         targetUserId: targetUid,
         roomId: String(roomId || ''),
         conversationId: String(conversationId || ''),
-        message: messageText,
-        type: 'text',
+        message: cleanGif || messageText,
+        type: isGifMessage ? 'gif' : 'text',
+        gifUrl: cleanGif || null,
         senderName: currentUserNameRef.current || currentUser?.name || 'Inakkam User',
         senderId: String(currentUser?._id || currentUser?.id || ''),
       });
@@ -2407,7 +2412,7 @@ const VideoCall = ({
       if (conversationId) {
         socket.emit("send_message", {
           conversationId: String(conversationId),
-          text: messageText,
+          text: cleanGif || messageText,
           tempId: msgId,
           targetUserId: targetUid,
         });
@@ -3262,6 +3267,9 @@ const VideoCall = ({
                                     if (retryIdx < altUrls.length) {
                                       target.dataset.retryIdx = String(retryIdx + 1);
                                       target.src = altUrls[retryIdx];
+                                    } else if (!target.dataset.fallbackTried) {
+                                      target.dataset.fallbackTried = '1';
+                                      target.src = 'https://i.giphy.com/BPJmthQ3YRwD6QqcVD.gif';
                                     } else {
                                       target.style.display = 'none';
                                       if (target.nextElementSibling) {
@@ -3272,9 +3280,19 @@ const VideoCall = ({
                                 />
                                 <div
                                   style={{ display: 'none' }}
-                                  className="flex flex-col items-center justify-center p-3 text-center text-white/50 text-[10px]"
+                                  className="flex flex-col items-center justify-center p-3 text-center text-white/50 text-[10px] cursor-pointer hover:text-white"
+                                  onClick={(e) => {
+                                    const container = e.currentTarget.parentElement;
+                                    const img = container?.querySelector('img');
+                                    if (img) {
+                                      img.style.display = 'block';
+                                      img.dataset.retryIdx = '0';
+                                      img.src = 'https://i.giphy.com/BPJmthQ3YRwD6QqcVD.gif';
+                                      e.currentTarget.style.display = 'none';
+                                    }
+                                  }}
                                 >
-                                  <span>🎬 GIF unavailable</span>
+                                  <span>🎬 GIF unavailable • Tap to reload</span>
                                 </div>
                               </div>
                             ) : (
