@@ -164,6 +164,27 @@ const Chat = () => {
       setIncomingCall(null);
     };
 
+    const handleCallForwarding = (data) => {
+      console.log('🔀 Socket event: call_forwarding', data);
+      toast(data?.message || 'Host unavailable. Routing your call to next available verified host...', {
+        icon: '🔀',
+        duration: 5000,
+        style: {
+          borderRadius: '12px',
+          background: '#1a102f',
+          color: '#fff',
+          border: '1px solid rgba(255, 111, 146, 0.4)'
+        }
+      });
+      if (data?.nextAgentName) {
+        setActiveCall(prev => prev ? {
+          ...prev,
+          remoteUserName: data.nextAgentName,
+          remoteUserPhoto: data.nextAgentPhoto || prev.remoteUserPhoto
+        } : prev);
+      }
+    };
+
     const handleCallError = (data) => {
       toast.error(data.message || 'Call error occurred');
       setActiveCall(null);
@@ -178,6 +199,7 @@ const Chat = () => {
     socket.on('call_rejected', handleCallRejected);
     socket.on('call_ended', handleCallEnded);
     socket.on('call_error', handleCallError);
+    socket.on('call_forwarding', handleCallForwarding);
     socket.on('message_error', handleMessageError);
 
     return () => {
@@ -186,6 +208,7 @@ const Chat = () => {
       socket.off('call_rejected', handleCallRejected);
       socket.off('call_ended', handleCallEnded);
       socket.off('call_error', handleCallError);
+      socket.off('call_forwarding', handleCallForwarding);
       socket.off('message_error', handleMessageError);
     };
   }, [activeChat, currentUser]);
