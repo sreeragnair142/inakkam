@@ -225,6 +225,32 @@ const chatSlice = createSlice({
           chat.lastMessage = null;
         }
       }
+    },
+    purgeExpiredChatMessages: (state) => {
+      const now = Date.now();
+      const isExpired = (createdAt, _id, timestamp) => {
+        let msgTime = 0;
+        if (createdAt) {
+          const t = new Date(createdAt).getTime();
+          if (!isNaN(t) && t > 0) msgTime = t;
+        } else if (timestamp && !isNaN(new Date(timestamp).getTime())) {
+          msgTime = new Date(timestamp).getTime();
+        } else if (_id && typeof _id === 'string' && _id.length === 24) {
+          try {
+            const t = parseInt(_id.substring(0, 8), 16) * 1000;
+            if (!isNaN(t) && t > 0) msgTime = t;
+          } catch (e) {}
+        }
+        return msgTime > 0 && (now - msgTime >= 24 * 60 * 60 * 1000);
+      };
+
+      state.activeChatMessages = state.activeChatMessages.filter(m => !isExpired(m.createdAt, m._id, m.timestamp));
+      // Also clear stale lastMessages in chats list
+      state.chats.forEach(c => {
+        if (c.lastMessage && isExpired(c.lastMessage.createdAt, c.lastMessage._id || c.lastMessage.id)) {
+          c.lastMessage = null;
+        }
+      });
     }
   },
   extraReducers: (builder) => {
@@ -284,8 +310,23 @@ const chatSlice = createSlice({
 
       .addCase(fetchMessages.fulfilled, (state, action) => {
         const convId = action.payload.conversationId;
+        const now = Date.now();
+        const isExpired = (createdAt, _id) => {
+          let msgTime = 0;
+          if (createdAt) {
+            const t = new Date(createdAt).getTime();
+            if (!isNaN(t) && t > 0) msgTime = t;
+          } else if (_id && typeof _id === 'string' && _id.length === 24) {
+            try {
+              const t = parseInt(_id.substring(0, 8), 16) * 1000;
+              if (!isNaN(t) && t > 0) msgTime = t;
+            } catch (e) {}
+          }
+          return msgTime > 0 && (now - msgTime >= 24 * 60 * 60 * 1000);
+        };
+        const validMessages = (action.payload.messages || []).filter(m => !isExpired(m.createdAt, m._id));
         if (state.activeChatId === convId || state.activeChatId?.replace('chat_', '') === convId?.toString()) {
-          state.activeChatMessages = action.payload.messages;
+          state.activeChatMessages = validMessages;
         }
       })
       .addCase(sendMessage.fulfilled, (state, action) => {
@@ -325,5 +366,5 @@ const chatSlice = createSlice({
   },
 });
 
-export const { setActiveChat, addMessage, setTyping, createNewChat, receiveMessage, addReaction, removeMessage } = chatSlice.actions;
+export const { setActiveChat, addMessage, setTyping, createNewChat, receiveMessage, addReaction, removeMessage, purgeExpiredChatMessages } = chatSlice.actions;
 export default chatSlice.reducer;

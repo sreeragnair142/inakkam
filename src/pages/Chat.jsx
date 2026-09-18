@@ -10,7 +10,8 @@ import {
   addMessage,
   fetchConversations,
   fetchMessages,
-  deleteMessage
+  deleteMessage,
+  purgeExpiredChatMessages
 } from '../redux/slices/chatSlice';
 import {
   Send,
@@ -28,7 +29,8 @@ import {
   Plus,
   Mic,
   MessageSquare,
-  Trash2
+  Trash2,
+  Clock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../utils/api';
@@ -60,8 +62,35 @@ const Chat = () => {
   const activeChat = activeChatId
     ? chats.find(c => String(c.id || c.conversationId) === String(activeChatId) || String(c.conversationId) === String(activeChatId))
     : null;
-  const activeChatMessages = useSelector((state) => state.chat.activeChatMessages);
+  const rawActiveChatMessages = useSelector((state) => state.chat.activeChatMessages);
+  const activeChatMessages = (rawActiveChatMessages || []).filter((msg) => {
+    let msgTime = 0;
+    if (msg.createdAt) {
+      const t = new Date(msg.createdAt).getTime();
+      if (!isNaN(t) && t > 0) msgTime = t;
+    } else if (msg.timestamp && !isNaN(new Date(msg.timestamp).getTime())) {
+      msgTime = new Date(msg.timestamp).getTime();
+    } else if (msg._id && typeof msg._id === 'string' && msg._id.length === 24) {
+      try {
+        const t = parseInt(msg._id.substring(0, 8), 16) * 1000;
+        if (!isNaN(t) && t > 0) msgTime = t;
+      } catch (e) {}
+    }
+    if (msgTime > 0) {
+      return Date.now() - msgTime < 24 * 60 * 60 * 1000;
+    }
+    return true;
+  });
   const messagesEndRef = useRef(null);
+
+  // Periodically purge messages older than 24 hours on client side
+  useEffect(() => {
+    dispatch(purgeExpiredChatMessages());
+    const interval = setInterval(() => {
+      dispatch(purgeExpiredChatMessages());
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [dispatch]);
 
   // Load conversations on mount
   useEffect(() => {
@@ -618,10 +647,11 @@ const Chat = () => {
                 backgroundImage: 'radial-gradient(circle at 0% 0%, rgba(213,22,89,0.06) 0%, transparent 45%), radial-gradient(circle at 100% 100%, rgba(180,77,220,0.06) 0%, transparent 45%), #F4F3ED'
               }}
             >
-              <div className="text-center py-2 px-4">
-                <span className="text-[10px] font-semibold text-white/30 bg-white/5 px-3 py-1 rounded-full">
-                  💬 Messages auto-clear after 24 hours
-                </span>
+              <div className="flex justify-center my-2">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/5 dark:bg-white/10 border border-black/5 dark:border-white/10 text-slate-500 dark:text-slate-300 text-xs font-medium shadow-xs backdrop-blur-xs">
+                  <Clock className="w-3.5 h-3.5 text-[#D51659]" />
+                  <span>Messages automatically clear after 24 hours</span>
+                </div>
               </div>
               {activeChatMessages.map((msg) => {
                 const senderId = typeof msg.sender === 'object' ? (msg.sender?._id || msg.sender?.id) : msg.sender;
