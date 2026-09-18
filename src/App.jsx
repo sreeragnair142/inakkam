@@ -16,6 +16,7 @@ import { Toaster } from "react-hot-toast";
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import PWAUpdatePrompt from "./components/PWAUpdatePrompt";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
+import GiftBoxClaimModal from "./components/GiftBoxClaimModal";
 
 function SplashScreen({ onComplete }) {
   const [progress, setProgress] = useState(0);
@@ -178,6 +179,7 @@ function AppContent() {
   return (
     <>
       <AppRoutes />
+      <GiftBoxClaimModal />
       <Toaster position="top-center" />
       <PWAInstallPrompt />
       {needRefresh && (
