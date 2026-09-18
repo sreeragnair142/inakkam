@@ -101,6 +101,12 @@ const VideoCall = ({
   const reconnectingRef = useRef(false);
   const remoteDisconnectTimerRef = useRef(null);
   const currentUserNameRef = useRef(currentUser?.name || "Inakkam User");
+  const currentUserRef = useRef(currentUser);
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+  const nativeLocalMediaStreamRef = useRef(null);
+
   // MutationObserver to catch EnableX-injected <video>/<audio> elements
   // and force playsinline + play() — critical for iOS Safari and mobile PWA.
   const mediaObserverRef = useRef(null);
@@ -269,7 +275,10 @@ const VideoCall = ({
         // 2. Hardware track cutoff at native MediaStream track level
         try {
           const nativeStream =
+            nativeLocalMediaStreamRef.current ||
+            localStreamRef.current.mediaStream ||
             localStreamRef.current.stream ||
+            document.querySelector("#local_pip_video video, #connecting_local_video video")?.srcObject ||
             (typeof localStreamRef.current.getMediaStream === "function"
               ? localStreamRef.current.getMediaStream()
               : null);
@@ -334,6 +343,23 @@ const VideoCall = ({
             "Microphone security lock expired. You may unmute if you follow guidelines.",
             { id: "audio_security_unblock_toast", duration: 4000 }
           );
+
+          // Restore native audio tracks
+          try {
+            const nativeStream =
+              nativeLocalMediaStreamRef.current ||
+              localStreamRef.current?.mediaStream ||
+              localStreamRef.current?.stream ||
+              document.querySelector("#local_pip_video video, #connecting_local_video video")?.srcObject ||
+              (typeof localStreamRef.current?.getMediaStream === "function"
+                ? localStreamRef.current.getMediaStream()
+                : null);
+            const tracks = nativeStream?.getAudioTracks?.() || [];
+            tracks.forEach((t) => {
+              t.enabled = true;
+            });
+          } catch (e) {}
+
           const s = getSocket();
           if (s && targetUid) {
             s.emit("call_audio_security_unblock", {
@@ -383,17 +409,26 @@ const VideoCall = ({
     if (!socket) return;
 
     const handleRemoteAudioBlocked = (data) => {
-      console.warn("🛡️ [Security] Remote participant audio blocked:", data);
-      setIsRemoteAudioBlocked(true);
-      muteRemoteAudioElements();
-      toast(
-        "🛡️ Opponent audio blocked: Detected attempt to share contact details. Audio muted for your protection.",
-        {
-          icon: "🔇",
-          duration: 6000,
-          id: "remote_security_blocked_toast",
-        }
-      );
+      console.warn("🛡️ [Security] Call audio security event received:", data);
+      const myId = String(currentUserRef.current?._id || currentUserRef.current?.id || "");
+      const isMeBlocked = Boolean(data?.blockedUserId && myId && String(data.blockedUserId) === myId);
+
+      if (isMeBlocked) {
+        // I spoke or shared a phone number -> trigger local mic mute and lockout
+        triggerAudioSecurityBlock(data?.reason || "phone_number_spoken");
+      } else {
+        // The other participant spoke or shared a phone number -> mute remote audio playback
+        setIsRemoteAudioBlocked(true);
+        muteRemoteAudioElements();
+        toast(
+          "🛡️ Opponent audio blocked: Detected attempt to share contact details. Audio muted for your protection.",
+          {
+            icon: "🔇",
+            duration: 6000,
+            id: "remote_security_blocked_toast",
+          }
+        );
+      }
     };
 
     const handleRemoteAudioUnblocked = () => {
@@ -426,7 +461,7 @@ const VideoCall = ({
       socket.off("call_audio_security_unblock", handleRemoteAudioUnblocked);
       socket.off("screen_recording_attempt", handleRemoteScreenRecording);
     };
-  }, [muteRemoteAudioElements, unmuteRemoteAudioElements]);
+  }, [muteRemoteAudioElements, unmuteRemoteAudioElements, triggerAudioSecurityBlock]);
 
   // ─── Local Screen & Video Recording Violation Handler ───
   const handleSecurityViolation = useCallback((violationType) => {
@@ -591,25 +626,48 @@ const VideoCall = ({
     let pcmChunkBuffer = [];
     let isStreamActive = true;
     let chunkIntervalTimer = null;
+    let retryTimer = null;
 
-    const startAudioStreamProcessor = () => {
+    const startAudioStreamProcessor = (attempt = 0) => {
+      if (!isStreamActive || isAudioSecurityBlockedRef.current) return;
+
       try {
         const localEnxStream = localStreamRef.current;
-        if (!localEnxStream) return;
-
         const nativeStream =
-          localEnxStream.stream ||
-          (typeof localEnxStream.getMediaStream === "function"
+          nativeLocalMediaStreamRef.current ||
+          localEnxStream?.mediaStream ||
+          localEnxStream?.stream ||
+          document.querySelector("#local_pip_video video, #connecting_local_video video")?.srcObject ||
+          (typeof localEnxStream?.getMediaStream === "function"
             ? localEnxStream.getMediaStream()
             : null);
 
         const audioTracks = nativeStream?.getAudioTracks?.() || [];
-        if (audioTracks.length === 0) return;
+        if (audioTracks.length === 0) {
+          if (attempt < 8) {
+            console.log(`[AudioSecurity] Waiting for audio track to attach (attempt ${attempt + 1})...`);
+            retryTimer = setTimeout(() => startAudioStreamProcessor(attempt + 1), 600);
+          }
+          return;
+        }
 
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         if (!AudioCtx) return;
 
         audioContext = new AudioCtx({ sampleRate: 16000 });
+        if (audioContext.state === "suspended") {
+          audioContext.resume().catch(() => {});
+        }
+
+        // Add user-gesture listeners to ensure audioContext is un-suspended on mobile
+        const resumeAudio = () => {
+          if (audioContext && audioContext.state === "suspended") {
+            audioContext.resume().catch(() => {});
+          }
+        };
+        window.addEventListener("click", resumeAudio, { once: true });
+        window.addEventListener("touchstart", resumeAudio, { once: true });
+
         const mediaStreamSource = audioContext.createMediaStreamSource(
           new MediaStream([audioTracks[0]])
         );
@@ -639,7 +697,9 @@ const VideoCall = ({
         processorNode.connect(muteGain);
         muteGain.connect(audioContext.destination);
 
-        // Every 3 seconds, package and send accumulated PCM audio to backend Whisper pipeline
+        console.log("[AudioSecurity] Web Audio processor attached to local mic track successfully.");
+
+        // Every 2 seconds, package and send accumulated PCM audio to backend Whisper pipeline
         chunkIntervalTimer = setInterval(() => {
           if (!isStreamActive || pcmChunkBuffer.length === 0) return;
           if (isAudioSecurityBlockedRef.current) {
@@ -671,17 +731,18 @@ const VideoCall = ({
               targetUserId: targetUid,
             });
           }
-        }, 3000);
+        }, 2000);
       } catch (e) {
         console.warn("[AudioSecurity] Web Audio stream processing notice:", e);
       }
     };
 
-    const initTimer = setTimeout(startAudioStreamProcessor, 1200);
+    const initTimer = setTimeout(() => startAudioStreamProcessor(0), 1000);
 
     return () => {
       isStreamActive = false;
       clearTimeout(initTimer);
+      if (retryTimer) clearTimeout(retryTimer);
       if (chunkIntervalTimer) clearInterval(chunkIntervalTimer);
       if (processorNode) {
         try {
@@ -1382,6 +1443,15 @@ const VideoCall = ({
         // Media permission granted
         activeLocalStream.addEventListener("media-access-allowed", (event) => {
           console.log("[EnableX] ✅ Camera/microphone access granted", event);
+
+          const nativeStream =
+            event?.stream?.mediaStream ||
+            activeLocalStream?.mediaStream ||
+            event?.stream?.stream ||
+            activeLocalStream?.stream;
+          if (nativeStream) {
+            nativeLocalMediaStreamRef.current = nativeStream;
+          }
 
           if (cancelled || isDisconnectedRef.current) return;
 
@@ -2417,11 +2487,6 @@ const VideoCall = ({
   useEffect(() => {
     showChatRef.current = showChat;
   }, [showChat]);
-
-  const currentUserRef = useRef(currentUser);
-  useEffect(() => {
-    currentUserRef.current = currentUser;
-  }, [currentUser]);
 
   const remoteUserNameRef = useRef(remoteUserName);
   useEffect(() => {
