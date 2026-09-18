@@ -184,48 +184,26 @@ export const checkPhoneNumber = (rawInput = '') => {
 
   // 3. Extract digit sequences from normalized string
   const digitSequences = extractDigitSequences(normalized);
+  const lowerNorm = normalized.toLowerCase();
+  const hasIntent = INTENT_KEYWORDS.some((kw) => lowerNorm.includes(kw));
+
   for (const seq of digitSequences) {
-    // A. 10 or more digits
-    if (seq.length >= 10) {
-      // If starts with 91 and is 12 digits, or starts with 0 and is 11 digits, or 10 digits
-      if (seq.length === 12 && seq.startsWith('91')) {
-        return { detected: true, reason: 'country_code_phone', match: seq };
-      }
-      if (seq.length === 11 && seq.startsWith('0')) {
-        return { detected: true, reason: 'landline_phone', match: seq };
-      }
-      if (seq.length >= 10 && /^[6-9]/.test(seq)) {
-        return { detected: true, reason: 'standard_10_digit_mobile', match: seq };
-      }
-      // Any sequence of 10+ digits in calls is a privacy violation
-      return { detected: true, reason: 'consecutive_digits_10_plus', match: seq };
+    // A. 5 or more consecutive digits -> Instant cutoff before whole number can be spoken!
+    if (seq.length >= 5) {
+      return {
+        detected: true,
+        reason: hasIntent ? 'intent_with_digits' : 'consecutive_digits_5_plus',
+        match: seq,
+      };
     }
 
-    // B. 7 to 9 digits: In spoken calls, speaking 7+ digits continuously is almost always phone number sharing
-    if (seq.length >= 7) {
-      // Check if preceded or followed by intent keyword
-      const lowerNorm = normalized.toLowerCase();
-      const hasIntent = INTENT_KEYWORDS.some((kw) => lowerNorm.includes(kw));
-      if (hasIntent || seq.length >= 8) {
-        return {
-          detected: true,
-          reason: hasIntent ? 'intent_with_digits' : 'consecutive_digits_7_plus',
-          match: seq,
-        };
-      }
-    }
-
-    // C. 6 digits preceded by intent keywords (e.g. "call me 984765")
-    if (seq.length >= 6) {
-      const lowerNorm = normalized.toLowerCase();
-      const hasIntent = INTENT_KEYWORDS.some((kw) => lowerNorm.includes(kw));
-      if (hasIntent) {
-        return {
-          detected: true,
-          reason: 'intent_with_partial_phone',
-          match: seq,
-        };
-      }
+    // B. 3 or 4 digits preceded or followed by intent keyword (e.g. "call me 984", "my number 9847") -> Instant cutoff!
+    if (seq.length >= 3 && hasIntent) {
+      return {
+        detected: true,
+        reason: 'intent_with_partial_phone',
+        match: seq,
+      };
     }
   }
 

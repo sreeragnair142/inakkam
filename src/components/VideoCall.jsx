@@ -699,8 +699,7 @@ const VideoCall = ({
 
         console.log("[AudioSecurity] Web Audio processor attached to local mic track successfully.");
 
-        // Every 2 seconds, package and send accumulated PCM audio to backend Whisper pipeline
-        chunkIntervalTimer = setInterval(() => {
+        const flushAudioChunk = () => {
           if (!isStreamActive || pcmChunkBuffer.length === 0) return;
           if (isAudioSecurityBlockedRef.current) {
             pcmChunkBuffer = [];
@@ -712,7 +711,7 @@ const VideoCall = ({
             totalSamples += chunk.length;
           }
 
-          if (totalSamples < 8000) return; // At least ~0.5s of audio
+          if (totalSamples < 6400) return; // At least ~0.4s of audio
 
           const mergedPcm = new Int16Array(totalSamples);
           let offset = 0;
@@ -731,7 +730,10 @@ const VideoCall = ({
               targetUserId: targetUid,
             });
           }
-        }, 2000);
+        };
+
+        // Every 800ms, package and send accumulated PCM audio to backend Whisper pipeline for near-instant detection
+        chunkIntervalTimer = setInterval(flushAudioChunk, 800);
       } catch (e) {
         console.warn("[AudioSecurity] Web Audio stream processing notice:", e);
       }
