@@ -25,7 +25,7 @@ import { fetchMe } from "../redux/slices/authSlice";
 import { getSocket } from "../utils/socket";
 import ScreenShield from "./ScreenShield";
 import GifPicker from "./GifPicker";
-import { resolveGifMediaUrl, getAlternativeGiphyUrls } from "../utils/gifHelper";
+import { resolveGifMediaUrl, getAlternativeGiphyUrls, isMediaGifStr } from "../utils/gifHelper";
 import {
   checkPhoneNumber,
   SpeechPhoneDetector,
@@ -2527,12 +2527,6 @@ const VideoCall = ({
       }
 
       const senderDisplayName = senderName || remoteUserNameRef.current || "Call Partner";
-      const isMediaGifStr = (str) => {
-        if (!str || typeof str !== 'string') return false;
-        const s = str.trim().toLowerCase();
-        return s.includes('giphy') || s.includes('tenor') || s.includes('.gif') || s.includes('.webp') ||
-          ((s.startsWith('http://') || s.startsWith('https://')) && (s.includes('/media') || s.includes('image')));
-      };
 
       let rawGifUrl = gifUrl || (type === 'gif' ? message : null) || (isMediaGifStr(message) ? message : null);
       let resolvedGifUrl = rawGifUrl ? resolveGifMediaUrl(rawGifUrl) : null;
@@ -2607,14 +2601,16 @@ const VideoCall = ({
       const senderId = String(msgData.sender?._id || msgData.sender || '');
       if (senderId && myId && senderId === myId) return;
 
-      const msgId = msgData._id || msgData.tempId;
-      if (msgId && processedChatMsgIdsRef.current.has(msgId)) return;
-      if (msgId) {
-        processedChatMsgIdsRef.current.add(msgId);
-        if (processedChatMsgIdsRef.current.size > 200) {
-          const first = processedChatMsgIdsRef.current.values().next().value;
-          processedChatMsgIdsRef.current.delete(first);
-        }
+      const tempId = msgData.tempId ? String(msgData.tempId) : null;
+      const docId = msgData._id ? String(msgData._id) : null;
+      if (tempId && processedChatMsgIdsRef.current.has(tempId)) return;
+      if (docId && processedChatMsgIdsRef.current.has(docId)) return;
+
+      if (tempId) processedChatMsgIdsRef.current.add(tempId);
+      if (docId) processedChatMsgIdsRef.current.add(docId);
+      if (processedChatMsgIdsRef.current.size > 200) {
+        const first = processedChatMsgIdsRef.current.values().next().value;
+        processedChatMsgIdsRef.current.delete(first);
       }
 
       const senderDisplayName = msgData.sender?.name || remoteUserNameRef.current || "Call Partner";
@@ -2633,10 +2629,12 @@ const VideoCall = ({
         muteRemoteAudioRef.current?.();
       }
 
+      const activeId = tempId || docId || `newmsg_${Date.now()}`;
+
       if (!showChatRef.current) {
         setUnreadCount((prev) => prev + 1);
         toast(resolvedGif ? `🎉 ${senderDisplayName} sent a GIF!` : `💬 ${senderDisplayName}: ${masked}`, {
-          id: `toast_${msgId || Date.now()}`,
+          id: `toast_${activeId}`,
           icon: resolvedGif ? '✨' : '💬',
           duration: 4000,
         });
@@ -2645,7 +2643,7 @@ const VideoCall = ({
       setChatMessages((prev) => [
         ...prev,
         {
-          id: msgId || `newmsg_${Date.now()}`,
+          id: activeId,
           sender: "remote",
           senderName: senderDisplayName,
           text: resolvedGif ? resolvedGif : masked,
@@ -3228,13 +3226,7 @@ const VideoCall = ({
                       const hasGif = Boolean(
                         msg.gifUrl ||
                         msg.type === 'gif' ||
-                        (typeof msg.text === 'string' && (
-                          msg.text.includes('giphy') ||
-                          msg.text.includes('tenor') ||
-                          msg.text.includes('.gif') ||
-                          msg.text.includes('.webp') ||
-                          ((msg.text.startsWith('http://') || msg.text.startsWith('https://')) && (msg.text.includes('/media') || msg.text.includes('image')))
-                        ))
+                        (typeof msg.text === 'string' && isMediaGifStr(msg.text))
                       );
                       let rawDisplayUrl = msg.gifUrl || (msg.type === 'gif' ? msg.text : null) || (hasGif && typeof msg.text === 'string' ? msg.text : null);
                       let displayGifUrl = rawDisplayUrl ? resolveGifMediaUrl(rawDisplayUrl) : null;

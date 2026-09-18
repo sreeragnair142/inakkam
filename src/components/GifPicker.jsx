@@ -206,7 +206,10 @@ const GifPicker = ({ isOpen, onClose, onSelect }) => {
                     key={gif.id || gifUrl}
                     type="button"
                     onClick={() => {
-                      onSelect(gifUrl);
+                      const urlToSend = (gif?.id && !String(gif.id).startsWith('fb_'))
+                        ? `https://i.giphy.com/${gif.id}.gif`
+                        : (gifUrl ? resolveGifMediaUrl(gifUrl) : '');
+                      onSelect(urlToSend);
                       onClose();
                     }}
                     className="relative rounded-2xl overflow-hidden bg-white/5 border border-white/10 hover:border-[#D51659] hover:scale-[1.02] transition-all cursor-pointer group h-28"
