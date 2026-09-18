@@ -413,7 +413,7 @@ const MainLayout = ({ children }) => {
               e.stopPropagation();
               e.preventDefault();
               toast("Sign up to unlock all features! ✨", { icon: "🔒" });
-              navigate('/auth', { state: { skipSplash: true } });
+              navigate('/auth', { state: { skipSplash: true, isSignUp: true } });
             }
           }}
         >

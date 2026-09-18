@@ -41,15 +41,23 @@ const Auth = () => {
     return 'splash';
   });
   const [introStep, setIntroStep] = useState(0);
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(() => {
+    return !!location.state?.isSignUp;
+  });
   const [showPw, setShowPw] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    name: '',
+    username: '',
     confirmPassword: ''
   });
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (location.state?.isSignUp !== undefined) {
+      setIsSignUp(location.state.isSignUp);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     if (phase === "splash") {
@@ -69,34 +77,57 @@ const Auth = () => {
   };
 
   const handleLogin = async () => {
-    if (!formData.email || !formData.password) {
-      setError("Please fill in all fields");
-      return;
-    }
-    if (isSignUp && formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
-      return;
+    if (isSignUp) {
+      if (!formData.username.trim()) {
+        setError("Please enter a username");
+        return;
+      }
+      if (!formData.email.trim()) {
+        setError("Please enter your email address");
+        return;
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email.trim())) {
+        setError("Please enter a valid email address");
+        return;
+      }
+      if (!formData.password) {
+        setError("Please enter a password");
+        return;
+      }
+      if (formData.password.length < 6) {
+        setError("Password must be at least 6 characters long");
+        return;
+      }
+      if (formData.password !== formData.confirmPassword) {
+        setError("Passwords do not match");
+        return;
+      }
+    } else {
+      if (!formData.email || !formData.password) {
+        setError("Please fill in all fields");
+        return;
+      }
     }
     setError(null);
 
     // Clear any stale session token before attempting a new login.
-    // Without this, a failed login would still restore the previous account
-    // because App.jsx dispatches fetchMe() if a token exists in localStorage.
     localStorage.removeItem('inakkam_token');
 
     const isPhone = !formData.email.includes('@');
     const authPayload = { password: formData.password };
     if (isPhone) {
-      authPayload.phone = formData.email;
+      authPayload.phone = formData.email.trim();
     } else {
-      authPayload.email = formData.email;
+      authPayload.email = formData.email.trim().toLowerCase();
     }
 
     try {
       if (isSignUp) {
         await dispatch(registerUser({
-          ...authPayload,
-          name: formData.name || formData.email.split('@')[0] || 'User',
+          name: formData.username.trim(),
+          email: formData.email.trim().toLowerCase(),
+          password: formData.password,
         })).unwrap();
         navigate("/onboarding");
       } else {
@@ -532,24 +563,24 @@ const Auth = () => {
               {isSignUp && (
                 <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
                   <label className="text-[11px] font-black text-[#2D2D2D]/70 uppercase tracking-wider block mb-1.5 ml-1">
-                    Your Name
+                    Username
                   </label>
                   <input
                     type="text"
-                    placeholder="Full Name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Choose a username"
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                     className="w-full px-4 py-3 rounded-xl bg-white border-2 border-slate-200 text-sm font-bold text-[#2D2D2D] placeholder-slate-400 focus:border-[#D51659] focus:bg-white focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
                   />
                 </motion.div>
               )}
               <div>
                 <label className="text-[11px] font-black text-[#2D2D2D]/70 uppercase tracking-wider block mb-1.5 ml-1">
-                  Email or Phone Number
+                  {isSignUp ? "Email Address" : "Email or Phone Number"}
                 </label>
                 <input
-                  type="text"
-                  placeholder="you@example.com"
+                  type={isSignUp ? "email" : "text"}
+                  placeholder={isSignUp ? "you@example.com" : "Email or phone"}
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className={`w-full ${isSignUp ? 'px-4 py-3 rounded-xl' : 'px-4 py-3 sm:py-4 rounded-xl sm:rounded-2xl'} bg-white border-2 border-slate-200 text-sm font-bold text-[#2D2D2D] placeholder-slate-400 focus:border-[#D51659] focus:bg-white focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all`}
@@ -567,6 +598,7 @@ const Auth = () => {
                   className={`w-full ${isSignUp ? 'px-4 py-3 rounded-xl' : 'px-4 py-3 sm:py-4 rounded-xl sm:rounded-2xl'} bg-white border-2 border-slate-200 text-sm font-bold text-[#2D2D2D] placeholder-slate-400 focus:border-[#D51659] focus:bg-white focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all pr-12`}
                 />
                 <button
+                  type="button"
                   onClick={() => setShowPw(!showPw)}
                   className={`absolute right-4 ${isSignUp ? 'top-[34px]' : 'top-[34px] sm:top-[38px]'} text-slate-400 hover:text-[#2D2D2D] transition-colors cursor-pointer`}
                 >
