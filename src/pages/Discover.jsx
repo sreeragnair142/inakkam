@@ -13,7 +13,6 @@ import {
   MessageSquare,
   Sparkles,
   Flame,
-  Gift,
   CheckCircle2
 } from 'lucide-react';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
@@ -268,9 +267,6 @@ const Discover = () => {
                     <button onClick={(e) => handleAction(e, 'message', profile)} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
                       <MessageSquare className="w-5 h-5 text-purple-500 fill-current" />
                     </button>
-                    <button onClick={(e) => handleAction(e, 'gift', profile)} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
-                      <Gift className="w-5 h-5 text-yellow-400 fill-current" />
-                    </button>
                   </div>
                 </motion.div>
               ))}
@@ -315,9 +311,6 @@ const Discover = () => {
                 </button>
                 <button onClick={() => handleMobileSwipe('message')} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
                   <MessageSquare className="w-5 h-5 text-purple-500 fill-current" />
-                </button>
-                <button onClick={() => handleMobileSwipe('gift')} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
-                  <Gift className="w-5 h-5 text-yellow-400 fill-current" />
                 </button>
               </div>
             )}
@@ -369,9 +362,6 @@ const Discover = () => {
                   </button>
                   <button onClick={(e) => { handleAction(e, 'message', selectedProfile); setSelectedProfile(null); }} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-lg border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
                     <MessageSquare className="w-5 h-5 text-purple-500 fill-current" />
-                  </button>
-                  <button onClick={(e) => { handleAction(e, 'gift', selectedProfile); setSelectedProfile(null); }} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-lg border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
-                    <Gift className="w-5 h-5 text-yellow-400 fill-current" />
                   </button>
                 </div>
               </div>
