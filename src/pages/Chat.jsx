@@ -92,9 +92,13 @@ const Chat = () => {
     return () => clearInterval(interval);
   }, [dispatch]);
 
-  // Load conversations on mount
+  // Load conversations on mount & periodically sync list
   useEffect(() => {
     dispatch(fetchConversations());
+    const interval = setInterval(() => {
+      dispatch(fetchConversations());
+    }, 10000);
+    return () => clearInterval(interval);
   }, [dispatch]);
 
   // Auto-select first active thread on desktop initial load if none selected
@@ -107,11 +111,20 @@ const Chat = () => {
     }
   }, [chats, activeChatId, dispatch]);
 
-  // Load messages and join room when active chat changes
+  // Load messages, join room, and poll in background when active chat changes
   useEffect(() => {
     if (activeChatId && !activeChatId.startsWith('temp_') && !activeChatId.startsWith('demo_')) {
       dispatch(fetchMessages(activeChatId));
       joinConversation(activeChatId);
+
+      // Gentle 3.5s background polling fallback so messages appear live even if socket drops
+      const pollInterval = setInterval(() => {
+        dispatch(fetchMessages(activeChatId));
+      }, 3500);
+
+      return () => {
+        clearInterval(pollInterval);
+      };
     }
   }, [dispatch, activeChatId]);
 
@@ -194,6 +207,11 @@ const Chat = () => {
       toast.error(data.message || 'Messaging error');
     };
 
+    const handleNewMessage = (data) => {
+      dispatch(addMessage(data));
+    };
+
+    socket.on('new_message', handleNewMessage);
     socket.on('incoming_call', handleIncomingCall);
     socket.on('call_accepted', handleCallAccepted);
     socket.on('call_rejected', handleCallRejected);
@@ -203,6 +221,7 @@ const Chat = () => {
     socket.on('message_error', handleMessageError);
 
     return () => {
+      socket.off('new_message', handleNewMessage);
       socket.off('incoming_call', handleIncomingCall);
       socket.off('call_accepted', handleCallAccepted);
       socket.off('call_rejected', handleCallRejected);
@@ -211,7 +230,7 @@ const Chat = () => {
       socket.off('call_forwarding', handleCallForwarding);
       socket.off('message_error', handleMessageError);
     };
-  }, [activeChat, currentUser]);
+  }, [activeChat, currentUser, dispatch]);
 
   // Start a Call
   const handleStartCall = async (type) => {

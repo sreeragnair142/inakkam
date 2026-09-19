@@ -7,7 +7,7 @@ import { BrowserRouter, useNavigate, useLocation } from "react-router-dom";
 import { store } from "./redux/store";
 import { fetchMe } from "./redux/slices/authSlice";
 import { initiateSocketConnection, disconnectSocket } from "./utils/socket";
-import { addMessage, setTyping, removeMessage } from "./redux/slices/chatSlice";
+import { addMessage, setTyping, removeMessage, fetchConversations } from "./redux/slices/chatSlice";
 import { addNotification } from "./redux/slices/notificationSlice";
 import { playNotificationSound } from "./utils/notificationSounds";
 import AppRoutes from "./routes";
@@ -140,17 +140,21 @@ function AppContent() {
   }, [dispatch, token, isAuthenticated]);
 
   // ─── Socket Integration ──────────────────────────────
+  const currentUserId = user?._id || user?.id;
   useEffect(() => {
-    const currentUserId = user?._id || user?.id;
     if (isAuthenticated && currentUserId && token && !isGuest) {
       const socket = initiateSocketConnection(currentUserId, token);
 
-      socket.on('new_message', (message) => {
+      const handleNewMessage = (message) => {
         dispatch(addMessage(message));
-        // Play user's preferred notification sound (localStorage fallback if backend pending)
+        // Keep conversation list / previews in sync
+        dispatch(fetchConversations());
+        // Play user's preferred notification sound
         const soundPref = localStorage.getItem('inakkam_notification_sound') || user?.notificationSound || 'default';
         playNotificationSound(soundPref);
-      });
+      };
+
+      socket.on('new_message', handleNewMessage);
 
       socket.on('message_deleted', ({ conversationId, messageId }) => {
         dispatch(removeMessage({ chatId: conversationId, messageId }));
@@ -171,10 +175,11 @@ function AppContent() {
       });
 
       return () => {
+        socket.off('new_message', handleNewMessage);
         disconnectSocket();
       };
     }
-  }, [isAuthenticated, user, token, isGuest, dispatch]);
+  }, [isAuthenticated, currentUserId, token, isGuest, dispatch]);
 
   return (
     <>

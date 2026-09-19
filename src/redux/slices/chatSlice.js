@@ -25,7 +25,11 @@ export const fetchConversations = createAsyncThunk('chat/fetchConversations', as
 export const fetchMessages = createAsyncThunk('chat/fetchMessages', async (conversationId, { rejectWithValue }) => {
   try {
     const res = await api.get(`/conversations/${conversationId}/messages`);
-    return { conversationId, messages: res.data.messages };
+    return {
+      conversationId,
+      actualConversationId: res.data.conversationId,
+      messages: res.data.messages || []
+    };
   } catch (err) {
     return rejectWithValue(err);
   }
@@ -83,6 +87,27 @@ const chatSlice = createSlice({
       const msgId = msg._id || msg.id;
       const tempId = msg.tempId;
       const senderId = String(msg.sender?._id || msg.sender?.id || msg.sender || '');
+      const activeIdStr = String(state.activeChatId || '');
+
+      const activeChat = state.chats.find(c => {
+        const cConvId = String(c.conversationId || c.id || '');
+        const cUserId = String(c.userId || c.user?._id || c.user?.id || '');
+        return cConvId === activeIdStr || cUserId === activeIdStr || activeIdStr.includes(cConvId);
+      });
+      const activeConvId = activeChat ? String(activeChat.conversationId || activeChat.id || '') : '';
+      const activeOtherUserId = activeChat ? String(activeChat.user?._id || activeChat.userId || activeChat.user?.id || '') : activeIdStr.replace('chat_', '');
+
+      // Check if message belongs to the current active chat window
+      const isForActiveChat = Boolean(
+        activeIdStr && (
+          activeIdStr === targetId ||
+          (activeConvId && activeConvId === targetId) ||
+          (activeOtherUserId && (senderId === activeOtherUserId || String(msg.recipientId || '') === activeOtherUserId)) ||
+          activeIdStr.replace('chat_', '') === senderId ||
+          (targetId && activeIdStr.replace('chat_', '') && targetId.endsWith(activeIdStr.replace('chat_', ''))) ||
+          (targetId && activeIdStr && activeIdStr.endsWith(targetId))
+        )
+      );
 
       // Search for existing message to prevent duplicates (by _id, tempId, or identical text+sender within 3 sec)
       const existingIdx = state.activeChatMessages.findIndex(m => {
@@ -101,42 +126,38 @@ const chatSlice = createSlice({
       });
 
       if (existingIdx !== -1) {
-        // Replace existing message (e.g. update temp message with real backend message)
+        // Update temporary message with real saved message
         state.activeChatMessages[existingIdx] = {
           ...state.activeChatMessages[existingIdx],
           ...msg
         };
-      } else {
-        const activeIdStr = String(state.activeChatId || '');
-        const activeChat = state.chats.find(c => {
-          const cConvId = String(c.conversationId || c.id || '');
-          const cUserId = String(c.userId || c.user?._id || '');
-          return cConvId === activeIdStr || cUserId === activeIdStr || activeIdStr.includes(cConvId);
-        });
-        const activeOtherUserId = activeChat ? String(activeChat.user?._id || activeChat.userId || '') : activeIdStr.replace('chat_', '');
-
-        const isForActiveChat =
-          !state.activeChatId ||
-          activeIdStr === targetId ||
-          activeIdStr.endsWith(targetId) ||
-          targetId.endsWith(activeIdStr.replace('chat_', '')) ||
-          (activeOtherUserId && (senderId === activeOtherUserId || (msg.recipientId && String(msg.recipientId) === activeOtherUserId)));
-
-        if (isForActiveChat) {
-          state.activeChatMessages.push(msg);
-        }
+      } else if (isForActiveChat) {
+        state.activeChatMessages.push(msg);
       }
 
-      const chat = state.chats.find(c => {
+      // Find matching chat in sidebar list
+      let chat = state.chats.find(c => {
         const cConvId = String(c.conversationId || c.id || '');
-        const cUserId = String(c.userId || c.user?._id || '');
-        return cConvId === targetId || cUserId === targetId || cConvId.endsWith(targetId) || targetId.endsWith(cConvId.replace('chat_', ''));
+        const cUserId = String(c.userId || c.user?._id || c.user?.id || '');
+        return (targetId && (cConvId === targetId || cConvId.endsWith(targetId))) ||
+               (senderId && cUserId === senderId) ||
+               (activeOtherUserId && (cUserId === activeOtherUserId || cConvId === targetId));
       });
 
       if (chat) {
         chat.lastMessage = { text: msg.text, createdAt: msg.createdAt, sender: msg.sender };
-        if (state.activeChatId && state.activeChatId !== targetId) {
+        if (targetId && targetId !== chat.conversationId && targetId.match(/^[0-9a-fA-F]{24}$/)) {
+          chat.conversationId = targetId;
+          chat.id = targetId;
+        }
+        if (state.activeChatId && state.activeChatId !== targetId && state.activeChatId !== chat.id) {
           chat.unreadCount = (chat.unreadCount || 0) + 1;
+        }
+        // Move chat to top of list
+        const chatIdx = state.chats.indexOf(chat);
+        if (chatIdx > 0) {
+          state.chats.splice(chatIdx, 1);
+          state.chats.unshift(chat);
         }
       }
     },
@@ -309,7 +330,8 @@ const chatSlice = createSlice({
       .addCase(fetchConversations.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
 
       .addCase(fetchMessages.fulfilled, (state, action) => {
-        const convId = action.payload.conversationId;
+        const convId = String(action.payload.conversationId || '');
+        const actualConvId = String(action.payload.actualConversationId || '');
         const now = Date.now();
         const isExpired = (createdAt, _id) => {
           let msgTime = 0;
@@ -325,18 +347,44 @@ const chatSlice = createSlice({
           return msgTime > 0 && (now - msgTime >= 24 * 60 * 60 * 1000);
         };
         const validMessages = (action.payload.messages || []).filter(m => !isExpired(m.createdAt, m._id));
-        if (state.activeChatId === convId || state.activeChatId?.replace('chat_', '') === convId?.toString()) {
-          state.activeChatMessages = validMessages;
+        const activeIdStr = String(state.activeChatId || '');
+
+        const matchesActive =
+          activeIdStr === convId ||
+          (actualConvId && activeIdStr === actualConvId) ||
+          activeIdStr.replace('chat_', '') === convId ||
+          activeIdStr.endsWith(convId);
+
+        if (matchesActive) {
+          // Preserve any optimistic pending temp messages that haven't saved yet
+          const pendingTempMsgs = state.activeChatMessages.filter(m =>
+            String(m._id || '').startsWith('temp_') && !validMessages.some(vm => vm.text === m.text)
+          );
+          state.activeChatMessages = [...validMessages, ...pendingTempMsgs];
+
+          if (actualConvId && actualConvId !== activeIdStr && !activeIdStr.match(/^[0-9a-fA-F]{24}$/)) {
+            state.activeChatId = actualConvId;
+          }
         }
       })
       .addCase(sendMessage.fulfilled, (state, action) => {
         const message = action.payload;
         if (!message) return;
         const convId = message.conversation;
-        const exists = state.activeChatMessages.some(m => m._id === message._id);
-        if (!exists && (state.activeChatId === convId || state.activeChatId?.endsWith(convId))) {
-          state.activeChatMessages.push(message);
+
+        const tempIdx = state.activeChatMessages.findIndex(m =>
+          (m.tempId && m.tempId === action.meta?.arg?.tempId) ||
+          (String(m._id || '').startsWith('temp_') && m.text === message.text)
+        );
+        if (tempIdx !== -1) {
+          state.activeChatMessages[tempIdx] = message;
+        } else {
+          const exists = state.activeChatMessages.some(m => m._id === message._id);
+          if (!exists && (state.activeChatId === convId || state.activeChatId?.endsWith(convId))) {
+            state.activeChatMessages.push(message);
+          }
         }
+
         const chat = state.chats.find(c =>
           String(c.conversationId || c.id) === String(convId) ||
           String(c.id).endsWith(String(convId))
