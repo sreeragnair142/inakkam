@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import {
@@ -651,7 +652,6 @@ const BuyCoin = () => {
                 <Coins className="w-6 h-6 text-slate-950 fill-current opacity-90" />
               </div>
               <span className="text-base font-extrabold text-slate-900 tracking-tight">{pkg.coins.toLocaleString()} coins</span>
-              <span className="text-[12px] font-black text-[#D51659] mt-1">&#8377;{pkg.price.toLocaleString()}</span>
               <span className="text-[10px] text-slate-400 font-medium mt-1 group-hover:text-[#D51659] transition-colors">Tap to recharge</span>
             </motion.button>
           ))}
@@ -682,49 +682,113 @@ const BuyCoin = () => {
       </div>
 
       {/* ================================================================
-          PAYMENT FLOW MODAL
+          PAYMENT FLOW MODAL (Mounted via Portal to escape header stacking context)
       ================================================================ */}
-      <AnimatePresence>
-        {selectedPackage && step && (
-          <div className="fixed inset-0 z-[999] flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={step === "success" ? handleClose : undefined}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
-            <motion.div key={step} initial={{ y: "100%", opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: "100%", opacity: 0 }}
-              transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              className="relative z-10 w-full max-w-md bg-white rounded-t-[2.5rem] sm:rounded-3xl shadow-2xl flex flex-col max-h-[92vh]">
-              <div className="flex justify-center pt-3 pb-1 sm:hidden shrink-0"><div className="w-10 h-1 bg-slate-200 rounded-full" /></div>
-              {step !== "success" && (
-                <div className="flex items-center justify-between px-5 pt-4 pb-4 border-b border-slate-100 shrink-0">
-                  <div className="flex items-center gap-3">
-                    {step !== "method" && (
-                      <button type="button" onClick={() => { if (step === "payment") setStep("method"); else if (step === "upload") setStep("payment"); }}
-                        className="p-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer border-none">
-                        <ArrowLeft className="w-4 h-4" />
-                      </button>
-                    )}
-                    <div>
-                      <p className="text-base font-black text-slate-900 tracking-tight">{stepTitles[step]}</p>
-                      <div className="flex items-center gap-1 mt-0.5">
-                        {[1,2,3,4].map((n) => <div key={n} className={"h-1 rounded-full transition-all " + (n <= currentStepNum ? "bg-[#D51659] w-5" : "bg-slate-200 w-3")} />)}
-                      </div>
-                    </div>
+      {typeof document !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {selectedPackage && step && (
+              <div className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center p-0 sm:p-4 md:p-6 overflow-y-auto">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={step === "success" ? handleClose : undefined}
+                  className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+                />
+                <motion.div
+                  key={step}
+                  initial={{ y: 50, opacity: 0, scale: 0.96 }}
+                  animate={{ y: 0, opacity: 1, scale: 1 }}
+                  exit={{ y: 50, opacity: 0, scale: 0.96 }}
+                  transition={{ type: "spring", damping: 28, stiffness: 300 }}
+                  className="relative z-10 w-full max-w-md bg-white rounded-t-[2.5rem] sm:rounded-3xl shadow-2xl flex flex-col max-h-[88vh] sm:max-h-[85vh] my-auto overflow-hidden"
+                >
+                  <div className="flex justify-center pt-3 pb-1 sm:hidden shrink-0">
+                    <div className="w-10 h-1 bg-slate-200 rounded-full" />
                   </div>
-                  <button type="button" onClick={handleClose} className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer border-none">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-              <div className="overflow-y-auto px-5 pt-5 pb-6 flex-1">
-                {step === "method"  && <StepMethod pkg={selectedPackage} onSelect={handleSelectMethod} />}
-                {step === "payment" && selectedMethod && <StepPayment pkg={selectedPackage} method={selectedMethod} onPaid={handlePaid} />}
-                {step === "upload"  && <StepUpload pkg={selectedPackage} method={selectedMethod} currentUser={currentUser} onSubmit={handleSubmitRequest} onWhatsApp={handleWhatsApp} isSubmitting={isSubmitting} />}
-                {step === "success" && <StepSuccess pkg={selectedPackage} requestId={requestId} viaWhatsApp={viaWhatsApp} onClose={handleClose} />}
+                  {step !== "success" && (
+                    <div className="flex items-center justify-between px-5 pt-4 pb-4 border-b border-slate-100 shrink-0">
+                      <div className="flex items-center gap-3">
+                        {step !== "method" && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (step === "payment") setStep("method");
+                              else if (step === "upload") setStep("payment");
+                            }}
+                            className="p-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer border-none"
+                          >
+                            <ArrowLeft className="w-4 h-4" />
+                          </button>
+                        )}
+                        <div>
+                          <p className="text-base font-black text-slate-900 tracking-tight">
+                            {stepTitles[step]}
+                          </p>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            {[1, 2, 3, 4].map((n) => (
+                              <div
+                                key={n}
+                                className={
+                                  "h-1 rounded-full transition-all " +
+                                  (n <= currentStepNum
+                                    ? "bg-[#D51659] w-5"
+                                    : "bg-slate-200 w-3")
+                                }
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleClose}
+                        className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer border-none"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                  <div className="overflow-y-auto px-5 pt-5 pb-6 flex-1">
+                    {step === "method" && (
+                      <StepMethod
+                        pkg={selectedPackage}
+                        onSelect={handleSelectMethod}
+                      />
+                    )}
+                    {step === "payment" && selectedMethod && (
+                      <StepPayment
+                        pkg={selectedPackage}
+                        method={selectedMethod}
+                        onPaid={handlePaid}
+                      />
+                    )}
+                    {step === "upload" && (
+                      <StepUpload
+                        pkg={selectedPackage}
+                        method={selectedMethod}
+                        currentUser={currentUser}
+                        onSubmit={handleSubmitRequest}
+                        onWhatsApp={handleWhatsApp}
+                        isSubmitting={isSubmitting}
+                      />
+                    )}
+                    {step === "success" && (
+                      <StepSuccess
+                        pkg={selectedPackage}
+                        requestId={requestId}
+                        viaWhatsApp={viaWhatsApp}
+                        onClose={handleClose}
+                      />
+                    )}
+                  </div>
+                </motion.div>
               </div>
-            </motion.div>
-          </div>
+            )}
+          </AnimatePresence>,
+          document.body
         )}
-      </AnimatePresence>
     </div>
   );
 };
