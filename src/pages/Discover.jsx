@@ -193,7 +193,7 @@ const Discover = () => {
   };
 
   return (
-    <div className="w-full h-[100dvh] sm:h-auto sm:flex-1 flex items-start justify-center relative pt-14 pb-[112px] sm:pt-28 sm:pb-16 lg:pt-36 lg:pb-20 px-2 sm:px-4">
+    <div className="w-full min-h-[100dvh] sm:h-auto sm:flex-1 flex items-start justify-center relative pt-14 pb-[112px] sm:pt-28 sm:pb-16 lg:pt-36 lg:pb-20 px-2 sm:px-4 overflow-y-auto">
 
 
 
@@ -273,47 +273,88 @@ const Discover = () => {
             </AnimatePresence>
           </div>
 
-          {/* Mobile Tinder-Style Swiping Stack */}
-          <div className="block sm:hidden w-full h-full max-w-md px-1 mx-auto z-10 relative flex flex-col justify-between select-none">
-            <div className="relative w-full flex-1 min-h-0 rounded-[2rem] overflow-visible mb-3.5">
+          {/* Mobile 2-Column Grid View */}
+          <div className="block sm:hidden w-full px-2 mx-auto z-10 relative overflow-y-auto pb-4">
+            <div className="grid grid-cols-2 gap-3">
               <AnimatePresence>
-                {localUsers[1] && (
-                  <div
-                    key={localUsers[1].id || localUsers[1]._id}
-                    className="absolute inset-0 w-full h-full rounded-[2rem] overflow-hidden border border-slate-200/80 shadow-md bg-[#FCFAF2] scale-95 translate-y-3 opacity-60 origin-bottom transition-all duration-300 pointer-events-none"
+                {localUsers.map((profile) => (
+                  <motion.div
+                    key={profile.id || profile._id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                    transition={{ duration: 0.3 }}
+                    className="relative w-full rounded-2xl overflow-hidden bg-[#1a1a2e] shadow-lg border border-white/10"
                   >
-                    <img src={localUsers[1].images?.[0] || 'https://via.placeholder.com/400x500'} alt={localUsers[1].name} className="w-full h-full object-cover" />
-                    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
-                  </div>
-                )}
+                    {/* Profile Image */}
+                    <div
+                      onClick={() => setSelectedProfile(profile)}
+                      className="relative w-full aspect-[3/4] overflow-hidden cursor-pointer"
+                    >
+                      <img
+                        src={profile.images?.[0] || 'https://via.placeholder.com/300x400'}
+                        alt={profile.name}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none" />
 
-                {localUsers[0] && (
-                  <MobileCard
-                    key={localUsers[0].id || localUsers[0]._id}
-                    profile={localUsers[0]}
-                    active={true}
-                    swipeDirection={swipeDirection}
-                    onSwipe={handleMobileSwipe}
-                    onClick={() => setSelectedProfile(localUsers[0])}
-                  />
-                )}
+                      {/* Online/Offline Status Badge */}
+                      <div className={`absolute top-2.5 left-2.5 flex items-center gap-1 backdrop-blur-sm px-2 py-0.5 rounded-full ${profile.isOnline ? 'bg-green-500/90' : 'bg-gray-500/80'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${profile.isOnline ? 'bg-white animate-pulse' : 'bg-white/60'}`} />
+                        <span className="text-[9px] font-bold text-white uppercase tracking-wider">{profile.isOnline ? 'Online' : 'Offline'}</span>
+                      </div>
+
+                      {/* Verified Badge */}
+                      {(profile.verified || profile.verificationStatus === 'VERIFIED') && (
+                        <div className="absolute top-2.5 right-2.5 bg-gradient-to-r from-[#D51659] to-[#b44ddc] p-1 rounded-full text-white shadow-lg">
+                          <Sparkles className="w-3 h-3" />
+                        </div>
+                      )}
+
+                      {/* Name, Age & Info Overlay */}
+                      <div className="absolute bottom-2.5 left-2.5 right-2.5 text-white">
+                        <div className="flex items-center gap-1">
+                          <h3 className="font-extrabold text-sm truncate">{profile.name}</h3>
+                          <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 fill-current shrink-0" />
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[10px] text-white/70 font-semibold">Age: {profile.age}</span>
+                          {profile.distance && (
+                            <>
+                              <span className="text-white/40">•</span>
+                              <span className="text-[10px] text-white/70 font-semibold">{profile.distance}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons Row */}
+                    <div className="flex items-center gap-1.5 p-2 bg-[#1a1a2e]">
+                      <button
+                        onClick={(e) => handleAction(e, 'pass', profile)}
+                        className="flex-1 py-2 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+                      >
+                        <X className="w-4 h-4 text-yellow-500" strokeWidth={2.5} />
+                      </button>
+                      <button
+                        onClick={(e) => handleAction(e, 'like', profile)}
+                        className="flex-1 py-2 rounded-xl bg-[#D51659] flex items-center justify-center active:scale-95 transition-all cursor-pointer shadow-md"
+                      >
+                        <Heart className="w-4 h-4 text-white fill-current" />
+                      </button>
+                      <button
+                        onClick={(e) => handleAction(e, 'message', profile)}
+                        className="flex-1 py-2 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+                      >
+                        <MessageSquare className="w-4 h-4 text-purple-400" />
+                      </button>
+                    </div>
+                  </motion.div>
+                ))}
               </AnimatePresence>
             </div>
-
-            {/* Control action buttons - keep EXACT icons and colors */}
-            {localUsers[0] && (
-              <div className="flex items-center justify-center gap-3.5 pt-1 pb-1 z-20 shrink-0">
-                <button onClick={() => handleMobileSwipe('pass')} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
-                  <X className="w-5 h-5 text-yellow-500" strokeWidth={2.5} />
-                </button>
-                <button onClick={() => handleMobileSwipe('like')} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
-                  <Heart className="w-5 h-5 text-rose-500 fill-current" />
-                </button>
-                <button onClick={() => handleMobileSwipe('message')} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
-                  <MessageSquare className="w-5 h-5 text-purple-500 fill-current" />
-                </button>
-              </div>
-            )}
           </div>
         </>
       ) : (
