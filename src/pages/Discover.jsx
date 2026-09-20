@@ -299,11 +299,6 @@ const Discover = () => {
                       />
                       <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none" />
 
-                      {/* Online/Offline Status Badge */}
-                      <div className={`absolute top-2.5 left-2.5 flex items-center gap-1 backdrop-blur-sm px-2 py-0.5 rounded-full ${profile.isOnline ? 'bg-green-500/90' : 'bg-gray-500/80'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${profile.isOnline ? 'bg-white animate-pulse' : 'bg-white/60'}`} />
-                        <span className="text-[9px] font-bold text-white uppercase tracking-wider">{profile.isOnline ? 'Online' : 'Offline'}</span>
-                      </div>
 
                       {/* Verified Badge */}
                       {(profile.verified || profile.verificationStatus === 'VERIFIED') && (
