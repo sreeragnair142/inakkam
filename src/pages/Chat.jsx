@@ -158,9 +158,8 @@ const Chat = () => {
 
     const handleCallAccepted = (data) => {
       console.log('📞 Socket event: call_accepted', data);
-      // The callee accepted — caller is already in VideoCall component, no state change needed
-      // Just notify user call was accepted
       toast.success('Call accepted! Connecting...');
+      setActiveCall(prev => prev ? { ...prev, callAccepted: true } : prev);
     };
 
     const handleCallRejected = (data) => {
@@ -193,7 +192,8 @@ const Chat = () => {
         setActiveCall(prev => prev ? {
           ...prev,
           remoteUserName: data.nextAgentName,
-          remoteUserPhoto: data.nextAgentPhoto || prev.remoteUserPhoto
+          remoteUserPhoto: data.nextAgentPhoto || prev.remoteUserPhoto,
+          callAccepted: false
         } : prev);
       }
     };
@@ -291,6 +291,7 @@ const Chat = () => {
         targetUserId,
         conversationId: activeChat.id || activeChat.conversationId,
         isCaller: true,  // We initiated the call
+        callAccepted: false, // Coins will only debit when accepted & connected
       });
 
     } catch (err) {
@@ -324,6 +325,7 @@ const Chat = () => {
         targetUserId: incomingCall.callerId,
         conversationId: incomingCall.conversationId,
         isCaller: false,  // We received the call
+        callAccepted: true,
       });
 
       // Clear incoming call dialog
@@ -401,6 +403,7 @@ const Chat = () => {
     const finalDuration = summary?.duration ?? (callSnapshot?.duration || 0);
     const finalCallType = summary?.callType || callSnapshot?.callType || 'video';
     const finalRemoteName = summary?.remoteUserName || callSnapshot?.remoteUserName || activeChat?.userName;
+    const wasAccepted = summary?.wasAccepted ?? callSnapshot?.callAccepted;
 
     const socket = getSocket();
     if (socket && callSnapshot) {
@@ -410,14 +413,18 @@ const Chat = () => {
       });
     }
 
-    showCallEndedSummary({
-      duration: finalDuration,
-      callType: finalCallType,
-      remoteUserName: finalRemoteName,
-    });
+    if (finalDuration > 0 && wasAccepted) {
+      showCallEndedSummary({
+        duration: finalDuration,
+        callType: finalCallType,
+        remoteUserName: finalRemoteName,
+      });
+    } else {
+      toast('Call ended • No coins deducted', { id: 'call_ended_single_toast', icon: '📞' });
+    }
 
     const convId = activeChat?.id || activeChat?.conversationId || activeChatId;
-    if (convId && finalDuration > 0) {
+    if (convId && finalDuration > 0 && wasAccepted) {
       dispatch(addMessage({
         conversationId: convId,
         _id: `call_summary_${Date.now()}`,
@@ -1076,6 +1083,8 @@ const Chat = () => {
           currentUser={currentUser}
           targetUserId={activeCall.targetUserId || activeChat?.user?._id || activeChat?.userId}
           isCaller={activeCall.isCaller ?? true}
+          callAccepted={activeCall.callAccepted}
+          onCallAccepted={() => setActiveCall(prev => prev ? { ...prev, callAccepted: true } : prev)}
         />
       )}
 

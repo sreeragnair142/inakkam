@@ -42,9 +42,25 @@ const VideoCall = ({
   currentUser,
   targetUserId,
   isCaller = true,
+  callAccepted: propCallAccepted = false,
+  onCallAccepted,
 }) => {
   const dispatch = useDispatch();
-  const [callStatus, setCallStatus] = useState("connecting"); // connecting | connected | disconnected
+  const [callAccepted, setCallAccepted] = useState(!isCaller ? true : Boolean(propCallAccepted));
+  const callAcceptedRef = useRef(!isCaller ? true : Boolean(propCallAccepted));
+  useEffect(() => {
+    callAcceptedRef.current = callAccepted;
+  }, [callAccepted]);
+
+  useEffect(() => {
+    if (propCallAccepted && !callAccepted) {
+      setCallAccepted(true);
+    }
+  }, [propCallAccepted, callAccepted]);
+
+  const [callStatus, setCallStatus] = useState(
+    !isCaller ? "connecting" : (propCallAccepted ? "connecting" : "ringing")
+  ); // ringing | connecting | connected | disconnected
   const [duration, setDuration] = useState(0);
   const durationRef = useRef(0);
   useEffect(() => {
@@ -134,12 +150,12 @@ const VideoCall = ({
 
   // ─── Call timer ─────────────────────────────────────────
   useEffect(() => {
-    if (callStatus !== "connected") return;
+    if (callStatus !== "connected" || !callAccepted || !remoteStreamActive) return;
     const timer = setInterval(() => {
       if (isMountedRef.current) setDuration((prev) => prev + 1);
     }, 1000);
     return () => clearInterval(timer);
-  }, [callStatus]);
+  }, [callStatus, callAccepted, remoteStreamActive]);
 
   // Auto scroll in-call session chat to latest message (container-only, prevents page scroll)
   useEffect(() => {
@@ -243,6 +259,7 @@ const VideoCall = ({
               remoteUserName,
               roomId,
               conversationId,
+              wasAccepted: Boolean(callAcceptedRef.current),
             }),
           50,
         );
@@ -254,6 +271,57 @@ const VideoCall = ({
   const handleDisconnect = useCallback(() => {
     finishCall({ notifyRemote: true });
   }, [finishCall]);
+
+  // ─── Immediate Top-Level Socket Listeners (Caller Only) ────────
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket || !isCaller) return;
+
+    const handleSocketAccepted = (data) => {
+      console.log("📞 [VideoCall] Socket call_accepted event received:", data);
+      setCallAccepted(true);
+      if (onCallAccepted) onCallAccepted();
+    };
+
+    const handleSocketRejected = (data) => {
+      console.log("📞 [VideoCall] Socket call_rejected event received:", data);
+      toast.error("Call declined by user.");
+      handleDisconnect();
+    };
+
+    const handleSocketForwarding = (data) => {
+      console.log("🔀 [VideoCall] Socket call_forwarding event received:", data);
+      setCallAccepted(false);
+      setCallStatus("ringing");
+    };
+
+    socket.on("call_accepted", handleSocketAccepted);
+    socket.on("call_rejected", handleSocketRejected);
+    socket.on("call_forwarding", handleSocketForwarding);
+
+    return () => {
+      socket.off("call_accepted", handleSocketAccepted);
+      socket.off("call_rejected", handleSocketRejected);
+      socket.off("call_forwarding", handleSocketForwarding);
+    };
+  }, [isCaller, handleDisconnect, onCallAccepted]);
+
+  // Watcher: if callAccepted becomes true while ringing, connect room if room is initialized
+  useEffect(() => {
+    if (callAccepted && roomRef.current && callStatus === "ringing") {
+      console.log("[EnableX] callAccepted became true, triggering room connect...");
+      setCallStatus("connecting");
+      try {
+        roomRef.current.connect({
+          allow_reconnect: true,
+          number_of_attempts: 3,
+          timeout_interval: 5000,
+        });
+      } catch (err) {
+        console.warn("[EnableX] Room connect watcher error:", err);
+      }
+    }
+  }, [callAccepted, callStatus]);
 
   // ─── Trigger Hard Audio Mute & Security Lockout ─────────
   const triggerAudioSecurityBlock = useCallback(
@@ -864,13 +932,29 @@ const VideoCall = ({
 
   // ─── Periodic Coin Deduction (every 20s while connected - CALLER ONLY) ─
   useEffect(() => {
-    if (callStatus !== "connected" || !isCaller) return;
+    // CRITICAL: Only debit coins if:
+    // 1. Current user is the caller
+    // 2. Call status is strictly 'connected'
+    // 3. The other party has accepted (callAccepted === true)
+    // 4. Remote stream is actively streaming (remoteStreamActive === true)
+    // 5. Call has progressed (duration > 0)
+    if (
+      !isCaller ||
+      callStatus !== "connected" ||
+      !callAccepted ||
+      !remoteStreamActive ||
+      duration === 0
+    ) {
+      return;
+    }
     const coinDeductInterval = setInterval(async () => {
+      if (!isMountedRef.current || isDisconnectedRef.current) return;
       try {
         const res = await api.post("/coins/deduct-call", {
           targetUserId: targetUid,
           callType,
           seconds: 20,
+          roomId,
         });
         if (!res.data.success && res.data.insufficientCoins) {
           toast.error("Insufficient coin balance to continue call");
@@ -883,7 +967,7 @@ const VideoCall = ({
       }
     }, 20000);
     return () => clearInterval(coinDeductInterval);
-  }, [callStatus, callType, targetUid, dispatch, handleDisconnect, isCaller]);
+  }, [callStatus, callAccepted, remoteStreamActive, duration, callType, targetUid, roomId, dispatch, handleDisconnect, isCaller]);
 
   // ─── MutationObserver: auto-fix EnableX-injected media elements ────────
   // EnableX injects <video>/<audio> elements asynchronously into its
@@ -1598,12 +1682,7 @@ const VideoCall = ({
 
           roomConnected = true;
 
-          // Only transition to connected if the other participant's stream is already present in room.
-          // Otherwise wait for 'stream-subscribed' when the other participant publishes their stream.
-          if (event?.streams && event.streams.length > 0) {
-            if (isMountedRef.current) setCallStatus("connected");
-          }
-
+          // Note: Transition to connected only happens in stream-subscribed when remote stream is ready!
           tryPublish();
 
           // Subscribe to all pre-existing remote streams in the room
@@ -2201,68 +2280,89 @@ const VideoCall = ({
         // --------------------------------------------------
         // 13. CONNECT TO ENABLEX
         // --------------------------------------------------
-        if (!isCaller) {
-          // Receiver: connect immediately (they already accepted)
-          console.log("[EnableX] 🚀 Connecting to room (receiver)...");
+        let acceptTimeout = null;
+        let hasConnected = false;
+
+        const doConnectRoom = () => {
+          if (hasConnected || cancelled || isDisconnectedRef.current || !activeRoom) return;
+          hasConnected = true;
+          if (acceptTimeout) {
+            clearTimeout(acceptTimeout);
+            acceptTimeout = null;
+          }
+          console.log("[EnableX] 🚀 Connecting to EnableX room...");
+          if (isMountedRef.current) {
+            setCallStatus("connecting");
+          }
           activeRoom.connect({
             allow_reconnect: true,
             number_of_attempts: 3,
             timeout_interval: 5000,
           });
+        };
+
+        if (!isCaller || callAcceptedRef.current) {
+          // Receiver: connect immediately (already accepted)
+          // Or Caller: call was already accepted
+          doConnectRoom();
         } else {
-          // Caller: wait for call_accepted before connecting
+          // Caller: wait for callee to accept before connecting
           console.log("[EnableX] 📞 Waiting for callee to accept before connecting...");
           if (isMountedRef.current) {
             setCallStatus("ringing");
           }
 
           const callerSocket = getSocket();
-          let acceptTimeout = null;
-          let hasAccepted = false;
 
           const handleCallAccepted = () => {
-            if (hasAccepted || cancelled || isDisconnectedRef.current) return;
-            hasAccepted = true;
-            if (acceptTimeout) clearTimeout(acceptTimeout);
+            if (hasConnected || cancelled || isDisconnectedRef.current) return;
             console.log("[EnableX] ✅ Call accepted! Connecting to room...");
-            if (isMountedRef.current) {
-              setCallStatus("connecting");
-            }
-            activeRoom.connect({
-              allow_reconnect: true,
-              number_of_attempts: 3,
-              timeout_interval: 5000,
-            });
+            setCallAccepted(true);
+            if (onCallAccepted) onCallAccepted();
+            doConnectRoom();
           };
 
           const handleCallRejected = () => {
-            if (hasAccepted) return;
+            if (hasConnected) return;
             if (acceptTimeout) clearTimeout(acceptTimeout);
             console.log("[EnableX] ❌ Call rejected by callee.");
             toast.error("Call declined by user.");
             handleDisconnect();
           };
 
+          const handleCallForwarding = (data) => {
+            console.log("[EnableX] 🔀 Call forwarding to next host, resetting 30s timeout:", data);
+            if (acceptTimeout) clearTimeout(acceptTimeout);
+            if (isMountedRef.current) {
+              setCallStatus("ringing");
+            }
+            acceptTimeout = setTimeout(onCallTimeout, 30000);
+          };
+
+          const onCallTimeout = () => {
+            if (!hasConnected && !cancelled && !isDisconnectedRef.current && !callAcceptedRef.current) {
+              console.log("[EnableX] ⏰ No answer within 30s. Ending call.");
+              toast.error("No answer. Call ended.", { icon: "📞" });
+              handleDisconnect();
+            }
+          };
+
           if (callerSocket) {
             callerSocket.on("call_accepted", handleCallAccepted);
             callerSocket.on("call_rejected", handleCallRejected);
+            callerSocket.on("call_forwarding", handleCallForwarding);
 
             // Store cleanup refs for the return function
             activeRoom._callerCleanup = () => {
               callerSocket.off("call_accepted", handleCallAccepted);
               callerSocket.off("call_rejected", handleCallRejected);
+              callerSocket.off("call_forwarding", handleCallForwarding);
               if (acceptTimeout) clearTimeout(acceptTimeout);
             };
           }
 
-          // 30s timeout — if no one accepts, disconnect
-          acceptTimeout = setTimeout(() => {
-            if (!hasAccepted && !cancelled && !isDisconnectedRef.current) {
-              console.log("[EnableX] ⏰ No answer within 30s. Ending call.");
-              toast.error("No answer. Call ended.");
-              handleDisconnect();
-            }
-          }, 30000);
+          // Initial 30s timeout
+          acceptTimeout = setTimeout(onCallTimeout, 30000);
         }
       } catch (err) {
         console.error("[EnableX] ❌ Call Setup Exception:", err);
@@ -2825,13 +2925,20 @@ const VideoCall = ({
                 {remoteUserName}
               </h3>
 
-              <div className="flex items-center gap-2 mt-3 text-slate-300 text-xs font-medium bg-white/5 px-3.5 py-1.5 rounded-full border border-white/10 backdrop-blur-md">
-                <div className="w-3 h-3 border-2 border-[#D51659] border-t-transparent rounded-full animate-spin" />
-                <span>
-                  {isCaller
-                    ? (callStatus === "ringing" ? "Ringing (Waiting for answer)..." : "Connecting call...")
-                    : "Connecting to session..."}
-                </span>
+              <div className="flex flex-col items-center gap-1.5 mt-3">
+                <div className="flex items-center gap-2 text-slate-300 text-xs font-medium bg-white/5 px-3.5 py-1.5 rounded-full border border-white/10 backdrop-blur-md">
+                  <div className="w-3 h-3 border-2 border-[#D51659] border-t-transparent rounded-full animate-spin" />
+                  <span>
+                    {isCaller
+                      ? (callStatus === "ringing" ? "Ringing (Waiting for answer)..." : "Connecting call...")
+                      : "Connecting to session..."}
+                  </span>
+                </div>
+                {isCaller && (
+                  <span className="text-[11px] text-emerald-400/90 font-medium tracking-wide">
+                    🛡️ Coins deduct only after call is answered
+                  </span>
+                )}
               </div>
             </div>
           </div>
