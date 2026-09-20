@@ -197,6 +197,9 @@ const VideoCall = ({
       roomRef.current = null;
       if (room) {
         try {
+          if (room._callerCleanup) {
+            room._callerCleanup();
+          }
           room.disconnect();
         } catch (e) {
           console.warn("Error disconnecting EnableX room:", e);
@@ -965,7 +968,7 @@ const VideoCall = ({
 
   // Start observer when call begins; stop on unmount
   useEffect(() => {
-    if (callStatus === "connecting" || callStatus === "connected") {
+    if (callStatus === "connecting" || callStatus === "ringing" || callStatus === "connected") {
       // Small delay to ensure containers are in the DOM
       const t = setTimeout(startMediaObserver, 100);
       return () => clearTimeout(t);
@@ -1223,7 +1226,7 @@ const VideoCall = ({
   }, [callType, isParticipantVideoStream, playRemoteAudio]);
 
   useEffect(() => {
-    if (callStatus === "connecting" || callStatus === "connected") {
+    if (callStatus === "connecting" || callStatus === "ringing" || callStatus === "connected") {
       const id = setTimeout(playLocalPreview, 50);
       return () => clearTimeout(id);
     }
@@ -1594,7 +1597,12 @@ const VideoCall = ({
           if (cancelled || isDisconnectedRef.current) return;
 
           roomConnected = true;
-          if (isMountedRef.current) setCallStatus("connected");
+
+          // Only transition to connected if the other participant's stream is already present in room.
+          // Otherwise wait for 'stream-subscribed' when the other participant publishes their stream.
+          if (event?.streams && event.streams.length > 0) {
+            if (isMountedRef.current) setCallStatus("connected");
+          }
 
           tryPublish();
 
@@ -2193,13 +2201,69 @@ const VideoCall = ({
         // --------------------------------------------------
         // 13. CONNECT TO ENABLEX
         // --------------------------------------------------
-        console.log("[EnableX] 🚀 Connecting to room...");
+        if (!isCaller) {
+          // Receiver: connect immediately (they already accepted)
+          console.log("[EnableX] 🚀 Connecting to room (receiver)...");
+          activeRoom.connect({
+            allow_reconnect: true,
+            number_of_attempts: 3,
+            timeout_interval: 5000,
+          });
+        } else {
+          // Caller: wait for call_accepted before connecting
+          console.log("[EnableX] 📞 Waiting for callee to accept before connecting...");
+          if (isMountedRef.current) {
+            setCallStatus("ringing");
+          }
 
-        activeRoom.connect({
-          allow_reconnect: true,
-          number_of_attempts: 3,
-          timeout_interval: 5000,
-        });
+          const callerSocket = getSocket();
+          let acceptTimeout = null;
+          let hasAccepted = false;
+
+          const handleCallAccepted = () => {
+            if (hasAccepted || cancelled || isDisconnectedRef.current) return;
+            hasAccepted = true;
+            if (acceptTimeout) clearTimeout(acceptTimeout);
+            console.log("[EnableX] ✅ Call accepted! Connecting to room...");
+            if (isMountedRef.current) {
+              setCallStatus("connecting");
+            }
+            activeRoom.connect({
+              allow_reconnect: true,
+              number_of_attempts: 3,
+              timeout_interval: 5000,
+            });
+          };
+
+          const handleCallRejected = () => {
+            if (hasAccepted) return;
+            if (acceptTimeout) clearTimeout(acceptTimeout);
+            console.log("[EnableX] ❌ Call rejected by callee.");
+            toast.error("Call declined by user.");
+            handleDisconnect();
+          };
+
+          if (callerSocket) {
+            callerSocket.on("call_accepted", handleCallAccepted);
+            callerSocket.on("call_rejected", handleCallRejected);
+
+            // Store cleanup refs for the return function
+            activeRoom._callerCleanup = () => {
+              callerSocket.off("call_accepted", handleCallAccepted);
+              callerSocket.off("call_rejected", handleCallRejected);
+              if (acceptTimeout) clearTimeout(acceptTimeout);
+            };
+          }
+
+          // 30s timeout — if no one accepts, disconnect
+          acceptTimeout = setTimeout(() => {
+            if (!hasAccepted && !cancelled && !isDisconnectedRef.current) {
+              console.log("[EnableX] ⏰ No answer within 30s. Ending call.");
+              toast.error("No answer. Call ended.");
+              handleDisconnect();
+            }
+          }, 30000);
+        }
       } catch (err) {
         console.error("[EnableX] ❌ Call Setup Exception:", err);
 
@@ -2242,6 +2306,9 @@ const VideoCall = ({
 
       if (cleanupRoom) {
         try {
+          if (cleanupRoom._callerCleanup) {
+            cleanupRoom._callerCleanup();
+          }
           cleanupRoom.disconnect();
         } catch (e) {
           console.warn("[EnableX] Room cleanup error:", e);
@@ -2704,8 +2771,8 @@ const VideoCall = ({
         <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] rounded-full bg-[#D51659]/10 blur-[120px] pointer-events-none" />
         <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] rounded-full bg-[#B44DDC]/10 blur-[120px] pointer-events-none" />
 
-      {/* ─── Connecting screen ─────────────────────────────── */}
-      {callStatus === "connecting" && (
+      {/* ─── Connecting / Ringing screen ─────────────────────────────── */}
+      {(callStatus === "connecting" || callStatus === "ringing") && (
         <div className="flex-1 h-full w-full relative flex flex-col justify-between overflow-hidden">
           {/* If video call, show live camera preview fullscreen */}
           {callType === "video" ? (
@@ -2727,7 +2794,7 @@ const VideoCall = ({
             <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md px-3 sm:px-3.5 py-1.5 rounded-full border border-white/10 shadow-sm">
               <span className="w-2 h-2 rounded-full bg-[#D51659] animate-ping" />
               <span className="text-xs font-bold text-white tracking-wide">
-                {isCaller ? "Calling..." : "Connecting..."}
+                {isCaller ? (callStatus === "ringing" ? "Ringing..." : "Calling...") : "Connecting..."}
               </span>
             </div>
             <span className="text-xs font-semibold text-slate-300 bg-black/40 backdrop-blur-md px-3 sm:px-3.5 py-1.5 rounded-full border border-white/10 shadow-sm">
@@ -2762,7 +2829,7 @@ const VideoCall = ({
                 <div className="w-3 h-3 border-2 border-[#D51659] border-t-transparent rounded-full animate-spin" />
                 <span>
                   {isCaller
-                    ? "Waiting for answer..."
+                    ? (callStatus === "ringing" ? "Ringing (Waiting for answer)..." : "Connecting call...")
                     : "Connecting to session..."}
                 </span>
               </div>
