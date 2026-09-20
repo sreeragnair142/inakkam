@@ -529,9 +529,9 @@ const BuyCoin = () => {
   };
 
   const tabs = [
-    { id: "recharge", label: "Coin Recharge", icon: Banknote },
-    { id: "audio",    label: "Audio Bundles", icon: Headphones },
-    { id: "video",    label: "Video Bundles", icon: Video },
+    { id: "recharge", label: "Coin Recharge", mobileLabel: "Coins", icon: Banknote },
+    { id: "audio",    label: "Audio Bundles", mobileLabel: "Audio", icon: Headphones },
+    { id: "video",    label: "Video Bundles", mobileLabel: "Video", icon: Video },
   ];
 
   const handleSelectPack = (pkg) => { setSelectedPackage(pkg); setSelectedMethod(null); setStep("method"); setRequestId(null); setViaWhatsApp(false); };
@@ -624,32 +624,58 @@ const BuyCoin = () => {
           </div>
         </div>
 
-        {/* TABS */}
-        <div className="flex items-center gap-2 mb-9 overflow-x-auto no-scrollbar">
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.id;
-            const Icon = tab.icon;
-            return (
-              <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}
-                className={"relative flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap transition-colors duration-200 cursor-pointer border-none " + (isActive ? "text-white" : "text-slate-500 hover:text-slate-800")}>
-                {isActive && <motion.div layoutId="tab-pill" className="absolute inset-0 rounded-full bg-gradient-to-r from-fuchsia-600 to-rose-500" transition={{ type: "spring", stiffness: 400, damping: 32 }} />}
-                <Icon className="w-4 h-4 relative z-10" />
-                <span className="relative z-10">{tab.label}</span>
-              </button>
-            );
-          })}
+        {/* TABS — Responsive segmented bar, 100% visible on all mobile screens */}
+        <div className="w-full bg-white/90 backdrop-blur-md p-1 sm:p-1.5 rounded-2xl border border-slate-200/90 shadow-sm mb-6 sm:mb-9">
+          <div className="grid grid-cols-3 gap-1">
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`relative flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 sm:py-2.5 px-1.5 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer border-none ${
+                    isActive ? "text-white shadow-md shadow-[#D51659]/25" : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="tab-pill"
+                      className="absolute inset-0 rounded-xl bg-gradient-to-r from-fuchsia-600 to-rose-500"
+                      transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                    />
+                  )}
+                  <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 relative z-10" />
+                  <span className="relative z-10 whitespace-nowrap">
+                    <span className="inline sm:hidden">{tab.mobileLabel}</span>
+                    <span className="hidden sm:inline">{tab.label}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* PACKAGE GRID */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5 md:gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5">
           {getPackages().map((pkg) => (
-            <motion.button key={pkg.id} type="button" onClick={() => handleSelectPack(pkg)}
-              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-              className={"group relative flex flex-col items-center justify-center text-center rounded-2xl p-5 min-h-[148px] overflow-hidden border transition-all duration-200 shadow-sm cursor-pointer border-none " + (pkg.badge ? "bg-white border-slate-200 shadow-md" : "bg-white border-slate-100 hover:border-slate-200 hover:shadow-md")}>
-              {pkg.badge && <span className={"absolute top-0 right-0 px-2.5 py-1 rounded-bl-xl rounded-tr-2xl text-[10px] font-bold tracking-wide " + badgeStyles[pkg.badge]}>{pkg.badge}</span>}
-              {activeTab !== "recharge" && pkg.minutes && <span className="mb-2 px-2.5 py-0.5 rounded-full bg-purple-50 border border-purple-200 text-[11px] font-semibold text-purple-600">{pkg.minutes} min</span>}
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-amber-500 flex items-center justify-center mb-2.5 shadow-md group-hover:scale-110 transition-transform">
-                <Coins className="w-6 h-6 text-slate-950 fill-current opacity-90" />
+            <motion.button
+              key={pkg.id}
+              type="button"
+              onClick={() => handleSelectPack(pkg)}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              className={"group relative flex flex-col items-center justify-center text-center rounded-2xl p-4 sm:p-5 min-h-[148px] overflow-hidden border transition-all duration-200 shadow-sm cursor-pointer border-none " + (pkg.badge ? "bg-white border-slate-200 shadow-md" : "bg-white border-slate-100 hover:border-slate-200 hover:shadow-md")}
+            >
+              {pkg.badge && <span className={"absolute top-0 right-0 px-2 py-0.5 rounded-bl-xl rounded-tr-2xl text-[9px] sm:text-[10px] font-black tracking-wide " + badgeStyles[pkg.badge]}>{pkg.badge}</span>}
+              {activeTab !== "recharge" && pkg.minutes && (
+                <span className="mb-2 px-2.5 py-0.5 rounded-full bg-purple-50 border border-purple-200 text-[10px] sm:text-[11px] font-bold text-purple-700">
+                  {pkg.minutes} min {activeTab === "video" ? "Video" : "Voice"}
+                </span>
+              )}
+              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-amber-500 flex items-center justify-center mb-2 shadow-md group-hover:scale-110 transition-transform">
+                <Coins className="w-5 h-5 sm:w-6 sm:h-6 text-slate-950 fill-current opacity-90" />
               </div>
               <span className="text-base font-extrabold text-slate-900 tracking-tight">{pkg.coins.toLocaleString()} coins</span>
               <span className="text-[10px] text-slate-400 font-medium mt-1 group-hover:text-[#D51659] transition-colors">Tap to recharge</span>
