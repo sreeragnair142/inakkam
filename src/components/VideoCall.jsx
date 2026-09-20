@@ -3391,22 +3391,16 @@ const VideoCall = ({
                   </button>
                   <input
                     value={chatInput}
-                    maxLength={
-                      (chatInput.startsWith('http://') || chatInput.startsWith('https://') || chatInput.includes('giphy') || chatInput.includes('tenor'))
-                        ? 2000
-                        : (!currentUser?.isStaff && !currentUser?.isEliteAgent && currentUser?.role !== 'staff' && currentUser?.role !== 'admin')
-                          ? 20
-                          : 2000
-                    }
                     onChange={(e) => {
                       const val = e.target.value;
                       const isCustomer = !currentUser?.isStaff && !currentUser?.isEliteAgent && currentUser?.role !== 'staff' && currentUser?.role !== 'admin';
                       const isUrl = val.startsWith('http://') || val.startsWith('https://') || val.includes('giphy') || val.includes('tenor') || val.includes('.gif');
-                      if (isCustomer && !isUrl && val.length > 20) {
-                        setChatInput(val.slice(0, 20));
-                      } else {
-                        setChatInput(val);
+                      const words = val.trim().split(/\s+/).filter(Boolean);
+                      if (isCustomer && !isUrl && words.length > 20) {
+                        toast.error('Maximum 20 words allowed.', { id: 'vcall_word_limit' });
+                        return;
                       }
+                      setChatInput(val);
                     }}
                     onPaste={(e) => {
                       const pasted = e.clipboardData?.getData('text') || '';
@@ -3415,22 +3409,24 @@ const VideoCall = ({
                         setChatInput(pasted.trim());
                       }
                     }}
-                    placeholder={(!currentUser?.isStaff && !currentUser?.isEliteAgent && currentUser?.role !== 'staff' && currentUser?.role !== 'admin') ? "Type a message... (max 20 chars)" : "Type a message..."}
+                    placeholder={(!currentUser?.isStaff && !currentUser?.isEliteAgent && currentUser?.role !== 'staff' && currentUser?.role !== 'admin') ? "Type a message... (max 20 words)" : "Type a message..."}
                     className="flex-1 bg-white/10 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-400 outline-none focus:border-[#D51659] transition-colors"
                   />
-                  {(!currentUser?.isStaff && !currentUser?.isEliteAgent && currentUser?.role !== 'staff' && currentUser?.role !== 'admin') && (
-                    <span className={`text-[10px] font-semibold px-1 py-1 rounded select-none shrink-0 ${
-                      (chatInput.startsWith('http://') || chatInput.startsWith('https://') || chatInput.includes('giphy'))
-                        ? 'text-yellow-400 font-bold'
-                        : chatInput.length >= 20
-                          ? 'text-rose-400 font-bold'
-                          : 'text-slate-400'
-                    }`}>
-                      {(chatInput.startsWith('http://') || chatInput.startsWith('https://') || chatInput.includes('giphy'))
-                        ? 'GIF'
-                        : `${chatInput.length}/20`}
-                    </span>
-                  )}
+                  {(!currentUser?.isStaff && !currentUser?.isEliteAgent && currentUser?.role !== 'staff' && currentUser?.role !== 'admin') && (() => {
+                    const words = chatInput.trim() ? chatInput.trim().split(/\s+/).filter(Boolean).length : 0;
+                    const isGif = chatInput.startsWith('http://') || chatInput.startsWith('https://') || chatInput.includes('giphy');
+                    return (
+                      <span className={`text-[10px] font-semibold px-1 py-1 rounded select-none shrink-0 ${
+                        isGif
+                          ? 'text-yellow-400 font-bold'
+                          : words >= 20
+                            ? 'text-rose-400 font-bold'
+                            : 'text-slate-400'
+                      }`}>
+                        {isGif ? 'GIF' : `${words}/20`}
+                      </span>
+                    );
+                  })()}
                   <button
                     type="submit"
                     disabled={!chatInput.trim()}

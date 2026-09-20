@@ -233,13 +233,15 @@ const chatSlice = createSlice({
     },
     removeMessage: (state, action) => {
       const { chatId, messageId } = action.payload;
-      state.activeChatMessages = state.activeChatMessages.filter(m => (m._id || m.id) !== messageId);
+      state.activeChatMessages = state.activeChatMessages.filter(
+        m => (m._id || m.id) !== messageId && m.tempId !== messageId
+      );
 
       const chat = state.chats.find(c =>
         String(c.conversationId || c.id) === String(chatId) ||
         String(c.id).endsWith(String(chatId))
       );
-      if (chat && chat.lastMessage && (chat.lastMessage._id === messageId || chat.lastMessage.id === messageId)) {
+      if (chat && chat.lastMessage && (chat.lastMessage._id === messageId || chat.lastMessage.id === messageId || chat.lastMessage.tempId === messageId)) {
         if (state.activeChatMessages.length > 0) {
           chat.lastMessage = state.activeChatMessages[state.activeChatMessages.length - 1];
         } else {
@@ -397,13 +399,15 @@ const chatSlice = createSlice({
       })
       .addCase(deleteMessage.fulfilled, (state, action) => {
         const { chatId, messageId } = action.payload;
-        state.activeChatMessages = state.activeChatMessages.filter(m => (m._id || m.id) !== messageId);
+        state.activeChatMessages = state.activeChatMessages.filter(
+          m => (m._id || m.id) !== messageId && m.tempId !== messageId
+        );
 
         const chat = state.chats.find(c =>
           String(c.conversationId || c.id) === String(chatId) ||
           String(c.id).endsWith(String(chatId))
         );
-        if (chat && chat.lastMessage && (chat.lastMessage._id === messageId || chat.lastMessage.id === messageId)) {
+        if (chat && chat.lastMessage && (chat.lastMessage._id === messageId || chat.lastMessage.id === messageId || chat.lastMessage.tempId === messageId)) {
           if (state.activeChatMessages.length > 0) {
             chat.lastMessage = state.activeChatMessages[state.activeChatMessages.length - 1];
           } else {

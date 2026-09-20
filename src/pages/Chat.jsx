@@ -204,7 +204,10 @@ const Chat = () => {
     };
 
     const handleMessageError = (data) => {
-      toast.error(data.message || 'Messaging error');
+      toast.error(data?.message || 'Messaging error');
+      if (data?.tempId) {
+        dispatch(removeMessage({ chatId: activeChat?.conversationId || activeChat?.id, messageId: data.tempId }));
+      }
     };
 
     const handleNewMessage = (data) => {
@@ -521,13 +524,28 @@ const Chat = () => {
     if (!activeChat) return;
     const chatId = activeChat.conversationId || activeChat.id;
     if (window.confirm('Are you sure you want to delete this message?')) {
+      if (!messageId || String(messageId).startsWith('temp_')) {
+        dispatch(removeMessage({ chatId, messageId }));
+        toast.success('Message deleted');
+        setSelectedMsgForReaction(null);
+        return;
+      }
+
+      // Also emit via socket if available
+      const socket = getSocket();
+      if (socket && socket.connected) {
+        socket.emit('delete_message', { conversationId: chatId, messageId });
+      }
+
       dispatch(deleteMessage({ chatId, messageId }))
         .unwrap()
         .then(() => {
           toast.success('Message deleted');
         })
-        .catch((err) => {
-          toast.error(err || 'Failed to delete message');
+        .catch(() => {
+          // Even if network or sync fails, clean up locally
+          dispatch(removeMessage({ chatId, messageId }));
+          toast.success('Message deleted');
         });
     }
     setSelectedMsgForReaction(null);
@@ -742,7 +760,7 @@ const Chat = () => {
                           e.stopPropagation();
                           handleDeleteMessage(msg._id || msg.id);
                         }}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-slate-100 transition-all cursor-pointer self-center shrink-0"
+                        className="opacity-70 sm:opacity-0 sm:group-hover:opacity-100 hover:opacity-100 p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-slate-100 transition-all cursor-pointer self-center shrink-0"
                         title="Delete Message"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -831,7 +849,7 @@ const Chat = () => {
                               e.stopPropagation();
                               handleDeleteMessage(msg._id || msg.id);
                             }}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:text-red-500 font-bold uppercase tracking-wider ml-2"
+                            className="opacity-70 sm:opacity-0 sm:group-hover:opacity-100 hover:opacity-100 transition-opacity cursor-pointer text-red-400 hover:text-red-600 font-bold uppercase tracking-wider ml-2"
                           >
                             Delete
                           </span>
