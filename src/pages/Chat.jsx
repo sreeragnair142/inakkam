@@ -447,8 +447,15 @@ const Chat = () => {
     const isStaff = currentUser?.isStaff || currentUser?.isEliteAgent || currentUser?.role === 'staff' || currentUser?.role === 'admin';
     const isCustomer = !isStaff;
 
-    if (isCustomer && inputMessage.trim().length > 20) {
-      toast.error('Messages are limited to 20 characters or less.');
+    if (isCustomer && inputMessage.trim().split(/\s+/).length > 20) {
+      toast.error('Messages are limited to 20 words or less.');
+      return;
+    }
+
+    // Block phone numbers / numeric sequences in messages
+    const phoneRegex = /(\+?\d[\d\s\-().]{6,}|\b\d{10,}\b|\b\d{3,4}[\s\-.]?\d{3,4}[\s\-.]?\d{3,4}\b)/;
+    if (phoneRegex.test(inputMessage)) {
+      toast.error('Sharing phone numbers is not allowed.');
       return;
     }
 
@@ -916,12 +923,23 @@ const Chat = () => {
                   maxLength={
                     (inputMessage.startsWith('http://') || inputMessage.startsWith('https://') || inputMessage.includes('giphy') || inputMessage.includes('tenor'))
                       ? 2000
-                      : (isCustomer ? 20 : 2000)
+                      : (isCustomer ? 500 : 2000)
                   }
                   onChange={(e) => {
-                    const val = e.target.value;
+                    let val = e.target.value;
                     const isUrl = val.startsWith('http://') || val.startsWith('https://') || val.includes('giphy') || val.includes('tenor') || val.includes('.gif');
-                    setInputMessage(isCustomer && !isUrl && val.length > 20 ? val.slice(0, 20) : val);
+                    // Block phone numbers in real-time
+                    const phoneRegex = /(\+?\d[\d\s\-().]{6,}|\b\d{10,}\b|\b\d{3,4}[\s\-.]?\d{3,4}[\s\-.]?\d{3,4}\b)/;
+                    if (!isUrl && phoneRegex.test(val)) {
+                      toast.error('Phone numbers are not allowed.', { id: 'phone_block' });
+                      return;
+                    }
+                    // Block if more than 20 words for customers
+                    if (isCustomer && !isUrl && val.trim().split(/\s+/).filter(Boolean).length > 20) {
+                      toast.error('Maximum 20 words allowed.', { id: 'word_limit' });
+                      return;
+                    }
+                    setInputMessage(val);
                   }}
                   onPaste={(e) => {
                     const pasted = e.clipboardData?.getData('text') || '';
@@ -929,23 +947,31 @@ const Chat = () => {
                       e.preventDefault();
                       setInputMessage(pasted.trim());
                     }
+                    // Block pasting phone numbers
+                    const phoneRegex = /(\+?\d[\d\s\-().]{6,}|\b\d{10,}\b|\b\d{3,4}[\s\-.]?\d{3,4}[\s\-.]?\d{3,4}\b)/;
+                    if (phoneRegex.test(pasted)) {
+                      e.preventDefault();
+                      toast.error('Phone numbers are not allowed.', { id: 'phone_block' });
+                    }
                   }}
-                  placeholder={isCustomer ? `Message (max 20 chars)...` : `Message ${activeChat.userName}...`}
+                  placeholder={isCustomer ? `Message (max 20 words)...` : `Message ${activeChat.userName}...`}
                   className="flex-1 min-w-0 py-2 sm:py-2.5 text-xs sm:text-sm bg-transparent text-slate-800 placeholder-slate-400 outline-none"
                 />
-                {isCustomer && (
-                  <span className={`text-[9px] sm:text-[10px] font-semibold px-1.5 py-0.5 rounded mr-1 select-none shrink-0 transition-colors ${
-                    (inputMessage.startsWith('http') || inputMessage.includes('giphy') || inputMessage.includes('tenor'))
-                      ? 'text-yellow-600 font-bold'
-                      : inputMessage.length >= 20
-                        ? 'text-rose-600 bg-rose-50 font-bold border border-rose-200'
-                        : 'text-slate-400'
-                  }`}>
-                    {(inputMessage.startsWith('http') || inputMessage.includes('giphy') || inputMessage.includes('tenor'))
-                      ? 'GIF'
-                      : `${inputMessage.length}/20`}
-                  </span>
-                )}
+                {isCustomer && (() => {
+                  const wordCount = inputMessage.trim() ? inputMessage.trim().split(/\s+/).filter(Boolean).length : 0;
+                  const isGifUrl = inputMessage.startsWith('http') || inputMessage.includes('giphy') || inputMessage.includes('tenor');
+                  return (
+                    <span className={`text-[9px] sm:text-[10px] font-semibold px-1.5 py-0.5 rounded mr-1 select-none shrink-0 transition-colors ${
+                      isGifUrl
+                        ? 'text-yellow-600 font-bold'
+                        : wordCount >= 20
+                          ? 'text-rose-600 bg-rose-50 font-bold border border-rose-200'
+                          : 'text-slate-400'
+                    }`}>
+                      {isGifUrl ? 'GIF' : `${wordCount}/20`}
+                    </span>
+                  );
+                })()}
                 <button
                   type="button"
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
