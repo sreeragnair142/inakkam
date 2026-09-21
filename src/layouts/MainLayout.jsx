@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import { setActiveTab } from '../redux/slices/uiSlice';
 import { logout } from '../redux/slices/authSlice';
 import { setTheme } from '../redux/slices/themeSlice';
-import { markAsRead } from '../redux/slices/notificationSlice';
+import NotificationBell from '../components/NotificationBell';
 import api from '../utils/api';
 import { previewSound, getAvailableSounds } from '../utils/notificationSounds';
 import {
@@ -35,7 +35,10 @@ import {
   Coins,
   FileText,
   ChevronRight,
-  Volume2
+  Volume2,
+  Phone,
+  PhoneOff,
+  Video
 } from 'lucide-react';
 
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'framer-motion';
@@ -49,15 +52,36 @@ const MainLayout = ({ children }) => {
   const activeTab = useSelector((state) => state.ui.activeTab);
   const user = useSelector((state) => state.auth.user);
   const isGuest = useSelector((state) => state.auth.isGuest);
-  const notifications = useSelector((state) => state.notification.items);
-  const unreadNotifCount = useSelector((state) => state.notification.unreadCount);
   const receivedLikes = useSelector((state) => state.user.receivedLikes);
   const receivedLikesCount = receivedLikes ? receivedLikes.length : 0;
 
-  const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const profileMenuRef = useRef(null);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
+
+  // Close profile menu on outside click or Escape
+  useEffect(() => {
+    if (!showProfileMenu) return;
+    const handleClickOutside = (event) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+        setShowProfileMenu(false);
+      }
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setShowProfileMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside, true);
+    document.addEventListener('touchstart', handleClickOutside, true);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside, true);
+      document.removeEventListener('touchstart', handleClickOutside, true);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showProfileMenu]);
 
   // Scroll visibility state
   const scrollRef = useRef(null);
@@ -183,8 +207,11 @@ const MainLayout = ({ children }) => {
                 </span>
               </div>
 
+              {/* Notification Bell Button & Dropdown */}
+              <NotificationBell align="right" />
+
               {/* Responsive Profile Menu Trigger (Desktop & Mobile) */}
-              <div className="relative">
+              <div className="relative" ref={profileMenuRef}>
                 <div
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
                   className="flex items-center gap-2 p-1 pr-1.5 md:pr-3 rounded-full border border-white/20 bg-gradient-to-r from-[#D51659] to-[#b44ddc] hover:brightness-110 cursor-pointer shadow-lg transition-all"

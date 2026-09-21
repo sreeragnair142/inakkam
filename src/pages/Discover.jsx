@@ -6,6 +6,12 @@ import { setMatchedModal } from '../redux/slices/uiSlice';
 import { fetchDiscoverUsers, apiSwipe } from '../redux/slices/userSlice';
 import { createNewChat } from '../redux/slices/chatSlice';
 import { addNotification } from '../redux/slices/notificationSlice';
+import { fetchMe } from '../redux/slices/authSlice';
+import api from '../utils/api';
+import { getSocket } from '../utils/socket';
+import toast from 'react-hot-toast';
+import VideoCall from '../components/VideoCall';
+import RechargeModal from '../components/RechargeModal';
 import {
   X,
   Heart,
@@ -13,7 +19,9 @@ import {
   MessageSquare,
   Sparkles,
   Flame,
-  CheckCircle2
+  CheckCircle2,
+  Phone,
+  Video
 } from 'lucide-react';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import confetti from 'canvas-confetti';
@@ -184,6 +192,82 @@ const Discover = () => {
   const matchedUser = useSelector((state) => state.ui.lastMatchedUser);
   const currentUser = useSelector((state) => state.auth.user);
   const [selectedProfile, setSelectedProfile] = useState(null);
+  const [activeCall, setActiveCall] = useState(null);
+  const [showRechargeModal, setShowRechargeModal] = useState(false);
+
+  const handleStartCall = async (profile, type) => {
+    if (!profile) return;
+    const targetUserId = profile._id || profile.id;
+    if (!targetUserId) {
+      toast.error('Cannot call this user');
+      return;
+    }
+
+    const isStaff = currentUser?.isStaff || currentUser?.isEliteAgent || currentUser?.role === 'staff' || currentUser?.role === 'admin';
+    if (!isStaff) {
+      const userBalance = currentUser?.wallet?.balance || 0;
+      if (userBalance < 18) {
+        setShowRechargeModal(true);
+        return;
+      }
+    }
+
+    try {
+      toast.loading(`Starting ${type === 'audio' ? 'voice' : 'video'} call...`, { id: 'call_init' });
+
+      let roomId = '';
+      const roomRes = await api.post('/enablex/create-room', {
+        name: `Call with ${profile.name || 'User'}`
+      });
+
+      const extractedRoomId =
+        roomRes.data?.roomId ||
+        roomRes.data?.room?.room_id ||
+        roomRes.data?.room?.roomId ||
+        roomRes.data?.room?._id ||
+        roomRes.data?.id;
+
+      if (roomRes.data?.success && extractedRoomId) {
+        roomId = extractedRoomId;
+      } else {
+        throw new Error(roomRes.data?.message || 'Failed to create call session');
+      }
+
+      const socket = getSocket();
+      if (socket) {
+        socket.emit('call_user', {
+          conversationId: `call_${targetUserId}`,
+          targetUserId,
+          roomId,
+          callerName: currentUser?.name || 'Inakkam User',
+          callerPhoto: currentUser?.photos?.[0]?.url || currentUser?.images?.[0] || '',
+          callType: type
+        });
+      }
+
+      toast.dismiss('call_init');
+
+      setActiveCall({
+        roomId,
+        remoteUserName: profile.name,
+        remoteUserPhoto: profile.images?.[0] || profile.photos?.[0]?.url || '',
+        callType: type,
+        targetUserId,
+        conversationId: `call_${targetUserId}`,
+        isCaller: true,
+      });
+    } catch (err) {
+      toast.dismiss('call_init');
+      const errMsg = typeof err === 'string' ? err : (err.response?.data?.message || err.message || 'Failed to start call');
+      toast.error(errMsg);
+      console.error('[Start Call Error]', err);
+    }
+  };
+
+  const handleEndCall = () => {
+    setActiveCall(null);
+    dispatch(fetchMe());
+  };
 
   const getImageUrl = (u) => {
     if (!u) return null;
@@ -257,15 +341,21 @@ const Discover = () => {
                   </div>
 
                   {/* Overlapping Action Buttons */}
-                  <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2.5 z-20">
-                    <button onClick={(e) => handleAction(e, 'pass', profile)} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                  <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20">
+                    <button onClick={(e) => handleAction(e, 'pass', profile)} className="w-11 h-11 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer" title="Pass">
                       <X className="w-5 h-5 text-yellow-500" strokeWidth={2.5} />
                     </button>
-                    <button onClick={(e) => handleAction(e, 'like', profile)} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                    <button onClick={(e) => handleAction(e, 'like', profile)} className="w-11 h-11 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer" title="Like">
                       <Heart className="w-5 h-5 text-rose-500 fill-current" />
                     </button>
-                    <button onClick={(e) => handleAction(e, 'message', profile)} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                    <button onClick={(e) => handleAction(e, 'message', profile)} className="w-11 h-11 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer" title="Chat">
                       <MessageSquare className="w-5 h-5 text-purple-500 fill-current" />
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); handleStartCall(profile, 'audio'); }} className="w-11 h-11 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-emerald-500/50 hover:scale-110 active:scale-95 transition-all cursor-pointer" title="Voice Call">
+                      <Phone className="w-4.5 h-4.5 text-emerald-400" />
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); handleStartCall(profile, 'video'); }} className="w-11 h-11 rounded-full bg-black flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10 hover:border-pink-500/50 hover:scale-110 active:scale-95 transition-all cursor-pointer" title="Video Call">
+                      <Video className="w-4.5 h-4.5 text-[#D51659]" />
                     </button>
                   </div>
                 </motion.div>
@@ -326,24 +416,41 @@ const Discover = () => {
                     </div>
 
                     {/* Action Buttons Row */}
-                    <div className="flex items-center gap-1.5 p-2 bg-[#1a1a2e]">
+                    <div className="flex items-center gap-1 p-2 bg-[#1a1a2e]">
                       <button
                         onClick={(e) => handleAction(e, 'pass', profile)}
                         className="flex-1 py-2 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+                        title="Pass"
                       >
-                        <X className="w-4 h-4 text-yellow-500" strokeWidth={2.5} />
+                        <X className="w-3.5 h-3.5 text-yellow-500" strokeWidth={2.5} />
                       </button>
                       <button
                         onClick={(e) => handleAction(e, 'like', profile)}
                         className="flex-1 py-2 rounded-xl bg-[#D51659] flex items-center justify-center active:scale-95 transition-all cursor-pointer shadow-md"
+                        title="Like"
                       >
-                        <Heart className="w-4 h-4 text-white fill-current" />
+                        <Heart className="w-3.5 h-3.5 text-white fill-current" />
                       </button>
                       <button
                         onClick={(e) => handleAction(e, 'message', profile)}
                         className="flex-1 py-2 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+                        title="Chat"
                       >
-                        <MessageSquare className="w-4 h-4 text-purple-400" />
+                        <MessageSquare className="w-3.5 h-3.5 text-purple-400" />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleStartCall(profile, 'audio'); }}
+                        className="flex-1 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+                        title="Voice Call"
+                      >
+                        <Phone className="w-3.5 h-3.5 text-emerald-400" />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleStartCall(profile, 'video'); }}
+                        className="flex-1 py-2 rounded-xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+                        title="Video Call"
+                      >
+                        <Video className="w-3.5 h-3.5 text-rose-400" />
                       </button>
                     </div>
                   </motion.div>
@@ -389,15 +496,21 @@ const Discover = () => {
                 <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none" />
 
                 {/* Action buttons at the bottom of the image */}
-                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 z-20">
-                  <button onClick={(e) => { handleAction(e, 'pass', selectedProfile); setSelectedProfile(null); }} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-lg border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2.5 z-20">
+                  <button onClick={(e) => { handleAction(e, 'pass', selectedProfile); setSelectedProfile(null); }} className="w-11 h-11 rounded-full bg-black flex items-center justify-center shadow-lg border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer" title="Pass">
                     <X className="w-5 h-5 text-yellow-500" strokeWidth={2.5} />
                   </button>
-                  <button onClick={(e) => { handleAction(e, 'like', selectedProfile); setSelectedProfile(null); }} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-lg border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                  <button onClick={(e) => { handleAction(e, 'like', selectedProfile); setSelectedProfile(null); }} className="w-11 h-11 rounded-full bg-black flex items-center justify-center shadow-lg border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer" title="Like">
                     <Heart className="w-5 h-5 text-rose-500 fill-current" />
                   </button>
-                  <button onClick={(e) => { handleAction(e, 'message', selectedProfile); setSelectedProfile(null); }} className="w-12 h-12 rounded-full bg-black flex items-center justify-center shadow-lg border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                  <button onClick={(e) => { handleAction(e, 'message', selectedProfile); setSelectedProfile(null); }} className="w-11 h-11 rounded-full bg-black flex items-center justify-center shadow-lg border border-white/10 hover:border-white/30 hover:scale-110 active:scale-95 transition-all cursor-pointer" title="Chat">
                     <MessageSquare className="w-5 h-5 text-purple-500 fill-current" />
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); handleStartCall(selectedProfile, 'audio'); }} className="w-11 h-11 rounded-full bg-black flex items-center justify-center shadow-lg border border-white/10 hover:border-emerald-500/50 hover:scale-110 active:scale-95 transition-all cursor-pointer" title="Voice Call">
+                    <Phone className="w-4.5 h-4.5 text-emerald-400" />
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); handleStartCall(selectedProfile, 'video'); }} className="w-11 h-11 rounded-full bg-black flex items-center justify-center shadow-lg border border-white/10 hover:border-pink-500/50 hover:scale-110 active:scale-95 transition-all cursor-pointer" title="Video Call">
+                    <Video className="w-4.5 h-4.5 text-[#D51659]" />
                   </button>
                 </div>
               </div>
@@ -506,6 +619,29 @@ const Discover = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Real EnableX Audio / Video Call Session */}
+      {activeCall && (
+        <VideoCall
+          roomId={activeCall.roomId}
+          conversationId={activeCall.conversationId}
+          remoteUserName={activeCall.remoteUserName}
+          remoteUserPhoto={activeCall.remoteUserPhoto}
+          callType={activeCall.callType}
+          onEndCall={handleEndCall}
+          currentUser={currentUser}
+          targetUserId={activeCall.targetUserId}
+          isCaller={activeCall.isCaller ?? true}
+        />
+      )}
+
+      {/* Recharge Modal when coins are insufficient for call */}
+      <RechargeModal
+        isOpen={showRechargeModal}
+        onClose={() => setShowRechargeModal(false)}
+        requiredCoins={18}
+        currentBalance={currentUser?.wallet?.balance || 0}
+      />
     </div>
   );
 };

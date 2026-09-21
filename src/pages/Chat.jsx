@@ -38,6 +38,7 @@ import { getSocket, joinConversation, emitMessage } from '../utils/socket';
 import { resolveGifMediaUrl, getAlternativeGiphyUrls } from '../utils/gifHelper';
 import VideoCall from '../components/VideoCall';
 import RechargeModal from '../components/RechargeModal';
+import NotificationBell from '../components/NotificationBell';
 import { fetchMe } from '../redux/slices/authSlice';
 import toast from 'react-hot-toast';
 
@@ -581,9 +582,12 @@ const Chat = () => {
               </button>
               <h3 className="font-extrabold text-sm uppercase tracking-wider text-slate-600">Messages</h3>
             </div>
-            <span className="text-[10px] bg-[#D51659]/10 text-[#D51659] font-bold px-2 py-0.5 rounded-full border border-[#D51659]/20">
-              {filteredChats.length} active
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] bg-[#D51659]/10 text-[#D51659] font-bold px-2 py-0.5 rounded-full border border-[#D51659]/20">
+                {filteredChats.length} active
+              </span>
+              <NotificationBell align="left" />
+            </div>
           </div>
 
           {/* Clean Search Input */}
@@ -695,7 +699,7 @@ const Chat = () => {
                 </div>
               </div>
 
-              {/* Call actions */}
+              {/* Call actions & notifications */}
               <div className="flex items-center gap-1.5 sm:gap-2 text-slate-400 shrink-0">
                 <button
                   onClick={() => handleStartCall('audio')}
@@ -711,6 +715,7 @@ const Chat = () => {
                 >
                   <Video className="w-4 h-4" />
                 </button>
+                <NotificationBell align="right" />
               </div>
             </div>
 

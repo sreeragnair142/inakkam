@@ -7,7 +7,7 @@ import { BrowserRouter, useNavigate, useLocation } from "react-router-dom";
 import { store } from "./redux/store";
 import { fetchMe } from "./redux/slices/authSlice";
 import { initiateSocketConnection, disconnectSocket } from "./utils/socket";
-import { addMessage, setTyping, removeMessage, fetchConversations } from "./redux/slices/chatSlice";
+import { addMessage, setTyping, removeMessage, fetchConversations, setActiveChat } from "./redux/slices/chatSlice";
 import { addNotification } from "./redux/slices/notificationSlice";
 import { playNotificationSound } from "./utils/notificationSounds";
 import AppRoutes from "./routes";
@@ -139,6 +139,9 @@ function AppContent() {
     }
   }, [dispatch, token, isAuthenticated]);
 
+  const navigate = useNavigate();
+  const location = useLocation();
+
   // ─── Socket Integration ──────────────────────────────
   const currentUserId = user?._id || user?.id;
   useEffect(() => {
@@ -149,22 +152,115 @@ function AppContent() {
         dispatch(addMessage(message));
         // Keep conversation list / previews in sync
         dispatch(fetchConversations());
-        // Play user's preferred notification sound
-        const soundPref = localStorage.getItem('inakkam_notification_sound') || user?.notificationSound || 'default';
+
+        const senderId = message?.sender?._id || message?.sender?.id || message?.sender;
+        const isFromOther = String(senderId) !== String(currentUserId);
+
+        if (isFromOther) {
+          // Play user's preferred notification sound
+          const soundPref = localStorage.getItem('inakkam_notification_sound') || user?.notificationSound || 'default';
+          playNotificationSound(soundPref);
+
+          const senderName = message?.sender?.name || message?.senderName || 'New Message';
+          const senderPhoto = message?.sender?.photos?.[0]?.url || message?.sender?.images?.[0] || '';
+          const previewText = message?.text || (message?.imageUrl ? '📷 Sent a photo' : 'Sent an attachment');
+
+          // Record notification in Redux store
+          dispatch(addNotification({
+            id: `msg_${message._id || Date.now()}`,
+            type: 'message',
+            title: senderName,
+            message: previewText,
+            avatar: senderPhoto,
+            conversationId: message?.conversation || message?.conversationId,
+            senderId,
+            time: 'Just now',
+          }));
+
+          // Show rich toast notification everywhere (including on /chat)
+          const convId = message?.conversation || message?.conversationId;
+          toast.custom(
+            (t) => (
+              <div
+                onClick={() => {
+                  toast.dismiss(t.id);
+                  if (convId) {
+                    dispatch(setActiveChat(convId));
+                  }
+                  navigate('/chat');
+                }}
+                className={`${
+                  t.visible ? 'animate-enter' : 'animate-leave'
+                } max-w-sm w-full bg-white/95 backdrop-blur-xl shadow-2xl rounded-2xl p-3.5 flex items-center gap-3 border border-pink-200/70 cursor-pointer hover:scale-[1.02] active:scale-98 transition-all pointer-events-auto`}
+              >
+                <div className="relative shrink-0">
+                  <img
+                    src={senderPhoto || 'https://via.placeholder.com/40'}
+                    alt={senderName}
+                    className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
+                  />
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="text-xs font-black text-slate-900 truncate">{senderName}</p>
+                  <p className="text-[11px] text-slate-500 truncate mt-0.5">{previewText}</p>
+                </div>
+                <span className="text-[10px] font-black text-[#D51659] bg-[#D51659]/10 px-2.5 py-1 rounded-full shrink-0">
+                  Reply
+                </span>
+              </div>
+            ),
+            { duration: 4500, id: `toast_msg_${senderId}_${Date.now()}` }
+          );
+        }
+      };
+
+      const handleIncomingCall = (callData) => {
+        const callerName = callData?.callerName || 'Someone';
+        const callTypeLabel = callData?.callType === 'audio' ? 'Voice Call' : 'Video Call';
+        const soundPref = localStorage.getItem('inakkam_notification_sound') || user?.notificationSound || 'bell';
         playNotificationSound(soundPref);
+
+        dispatch(addNotification({
+          id: `call_${callData?.roomId || Date.now()}`,
+          type: 'call',
+          title: callerName,
+          message: `Incoming ${callTypeLabel}`,
+          avatar: callData?.callerPhoto || '',
+          roomId: callData?.roomId,
+          callType: callData?.callType || 'video',
+          callerId: callData?.callerId,
+          conversationId: callData?.conversationId,
+          time: 'Just now',
+        }));
+      };
+
+      const handleCallEnded = (data) => {
+        if (data?.missed) {
+          dispatch(addNotification({
+            id: `missed_${Date.now()}`,
+            type: 'missed_call',
+            title: data?.callerName || 'Missed Call',
+            message: `Missed ${data?.callType === 'audio' ? 'voice' : 'video'} call`,
+            avatar: data?.callerPhoto || '',
+            time: 'Just now',
+          }));
+        }
       };
 
       socket.on('new_message', handleNewMessage);
+      socket.on('incoming_call', handleIncomingCall);
+      socket.on('call_ended', handleCallEnded);
 
       socket.on('message_deleted', ({ conversationId, messageId }) => {
         dispatch(removeMessage({ chatId: conversationId, messageId }));
       });
 
-      socket.on('user_typing', ({ userId, conversationId }) => {
+      socket.on('user_typing', () => {
         dispatch(setTyping(true));
       });
 
-      socket.on('user_stop_typing', ({ userId, conversationId }) => {
+      socket.on('user_stop_typing', () => {
         dispatch(setTyping(false));
       });
 
@@ -176,10 +272,12 @@ function AppContent() {
 
       return () => {
         socket.off('new_message', handleNewMessage);
+        socket.off('incoming_call', handleIncomingCall);
+        socket.off('call_ended', handleCallEnded);
         disconnectSocket();
       };
     }
-  }, [isAuthenticated, currentUserId, token, isGuest, dispatch]);
+  }, [isAuthenticated, currentUserId, token, isGuest, dispatch, navigate, location.pathname]);
 
   return (
     <>
