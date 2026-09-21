@@ -5,62 +5,77 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { fetchDiscoverUsers, fetchReceivedLikes } from '../redux/slices/userSlice';
 
+import api from '../utils/api';
+
 const exploreCategories = ['New Match', 'Like Me', 'Favourite', 'Passed'];
 
+// Verified Host/Agent profiles fallback (Customers only ever see Hosts/Agents)
 const dummyProfiles = [
   {
-    id: 1,
-    name: "Manuela Chuthela",
-    age: 31,
-    distance: "0.02 KM Away",
-    match: "27% Match",
-    bio: "FREE SPIRIT SEEKING A KINDRED...",
-    image: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=600",
-  },
-  {
-    id: 2,
-    name: "Ethan",
-    age: 32,
-    distance: "0.02 KM Away",
-    match: "40% Match",
-    bio: "PASSIONATE ABOUT FITNESS...",
+    id: 'agent_anjali_01',
+    name: "Anjali",
+    age: 23,
+    distance: "Online Now",
+    match: "98% Match",
+    bio: "Verified Host • Live for 1-on-1 video calls, lively talks & good vibes! 🌸",
     image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=600",
+    isHost: true,
+    verified: true,
   },
   {
-    id: 3,
-    name: "Sophie Johnson",
-    age: 33,
-    distance: "21.65 KM Away",
-    match: "27% Match",
-    bio: "MOVIE BUFF LOOKING FOR A POP...",
-    image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=600",
+    id: 'agent_gauri_02',
+    name: "Gauri",
+    age: 24,
+    distance: "Active Host",
+    match: "95% Match",
+    bio: "Elite Host • Passionate about cinema, late night chats & audio calls. ✨",
+    image: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=600",
+    isHost: true,
+    verified: true,
   },
   {
-    id: 4,
-    name: "Oliver Smith",
-    age: 35,
-    distance: "30.12 KM Away",
-    match: "55% Match",
-    bio: "NATURE LOVER LONGING FOR A CO...",
-    image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=600",
-  },
-  {
-    id: 5,
-    name: "Sophia Taylor",
-    age: 33,
-    distance: "32.96 KM Away",
-    match: "16% Match",
-    bio: "PARTY ANIMAL LOOKING FOR A DAN...",
+    id: 'agent_rhea_03',
+    name: "Rhea",
+    age: 22,
+    distance: "Online Now",
+    match: "92% Match",
+    bio: "Host Partner • Let's connect over video call! Always positive and cheerful. 💫",
     image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=600",
+    isHost: true,
+    verified: true,
   },
   {
-    id: 6,
-    name: "Svetlana Ivanova",
-    age: 35,
-    distance: "44.26 KM Away",
-    match: "27% Match",
-    bio: "THRILL-SEEKER SEARCHING FOR AN...",
+    id: 'agent_kavya_04',
+    name: "Kavya",
+    age: 25,
+    distance: "Available",
+    match: "96% Match",
+    bio: "Verified Host • Loves music, thoughtful conversations and fun stories. 🎵",
     image: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&q=80&w=600",
+    isHost: true,
+    verified: true,
+  },
+  {
+    id: 'agent_meera_05',
+    name: "Meera",
+    age: 24,
+    distance: "Online Now",
+    match: "94% Match",
+    bio: "Elite Host • Ready for instant video calls and deep engaging chats. 🌟",
+    image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=600",
+    isHost: true,
+    verified: true,
+  },
+  {
+    id: 'agent_divya_06',
+    name: "Divya",
+    age: 23,
+    distance: "Active Host",
+    match: "91% Match",
+    bio: "Host Partner • Love travel, good music and meeting warm souls! 🌺",
+    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=600",
+    isHost: true,
+    verified: true,
   }
 ];
 
@@ -68,24 +83,35 @@ const Explore = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState('New Match');
+  const [fallbackAgents, setFallbackAgents] = useState([]);
   const likedProfiles = useSelector((state) => state.user.likedProfiles || []);
   const discoveredUsers = useSelector((state) => state.user.discoveredUsers || []);
   const receivedLikes = useSelector((state) => state.user.receivedLikes || []);
 
   useEffect(() => {
-    if (activeCategory === 'New Match' && discoveredUsers.length === 0) {
+    if (activeCategory === 'New Match') {
       dispatch(fetchDiscoverUsers(1));
+      // Also fetch live agents to ensure customer only ever sees real hosts
+      api.get('/users/agents').then(res => {
+        if (res.data?.agents?.length > 0) {
+          setFallbackAgents(res.data.agents);
+        }
+      }).catch(() => {});
     } else if (activeCategory === 'Like Me') {
       dispatch(fetchReceivedLikes());
     }
-  }, [activeCategory, discoveredUsers.length, dispatch]);
+  }, [activeCategory, dispatch]);
 
   let sourceList = dummyProfiles;
 
   if (activeCategory === 'Favourite' && likedProfiles.length > 0) {
     sourceList = likedProfiles;
   } else if (activeCategory === 'New Match') {
-    sourceList = discoveredUsers; // Real profiles from backend
+    if (discoveredUsers && discoveredUsers.length > 0) {
+      sourceList = discoveredUsers; // Strictly hosts from /discover
+    } else if (fallbackAgents && fallbackAgents.length > 0) {
+      sourceList = fallbackAgents; // Strictly hosts from /users/agents
+    }
   } else if (activeCategory === 'Like Me' && receivedLikes.length > 0) {
     sourceList = receivedLikes.map(item => item.user);
   }
