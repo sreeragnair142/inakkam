@@ -87,6 +87,10 @@ const Explore = () => {
   const likedProfiles = useSelector((state) => state.user.likedProfiles || []);
   const discoveredUsers = useSelector((state) => state.user.discoveredUsers || []);
   const receivedLikes = useSelector((state) => state.user.receivedLikes || []);
+  const currentUser = useSelector((state) => state.auth.user);
+
+  const isStaffUser = currentUser?.isStaff || currentUser?.isEliteAgent || currentUser?.role === 'staff' || currentUser?.role === 'admin';
+  const isCustomer = !isStaffUser;
 
   useEffect(() => {
     if (activeCategory === 'New Match') {
@@ -102,20 +106,31 @@ const Explore = () => {
     }
   }, [activeCategory, dispatch]);
 
-  let sourceList = dummyProfiles;
+  let rawList = dummyProfiles;
 
   if (activeCategory === 'Favourite' && likedProfiles.length > 0) {
-    sourceList = likedProfiles;
+    rawList = likedProfiles;
   } else if (activeCategory === 'New Match') {
     if (discoveredUsers && discoveredUsers.length > 0) {
-      sourceList = discoveredUsers; // Strictly hosts from /discover
+      rawList = discoveredUsers;
     } else if (fallbackAgents && fallbackAgents.length > 0) {
-      sourceList = fallbackAgents; // Strictly hosts from /users/agents
+      rawList = fallbackAgents;
     }
   } else if (activeCategory === 'Like Me' && receivedLikes.length > 0) {
-    sourceList = receivedLikes.map(item => item.user);
+    rawList = receivedLikes.map(item => item.user || item).filter(Boolean);
   }
 
+  // Strict role filtering: Customers ONLY see verified agents/staff/hosts
+  let sourceList = rawList;
+  if (isCustomer) {
+    sourceList = rawList.filter(u => Boolean(u.isEliteAgent || u.isStaff || u.role === 'staff' || u.isHost));
+    if (sourceList.length === 0) {
+      sourceList = fallbackAgents.length > 0 ? fallbackAgents : dummyProfiles;
+    }
+  } else {
+    // Agents only see regular customers
+    sourceList = rawList.filter(u => !u.isEliteAgent && !u.isStaff && u.role !== 'staff' && u.role !== 'admin');
+  }
 
   const displayProfiles = sourceList.map((p, i) => ({
     id: p.id || p._id || i,
@@ -124,7 +139,7 @@ const Explore = () => {
     distance: p.distance || "Nearby",
     match: (p.matchPercentage || Math.floor(Math.random() * 50) + 50) + "% Match",
     bio: p.bio || "Looking for a connection...",
-    image: p.images?.[0] || p.photos?.[0] || p.image || "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80",
+    image: p.images?.[0] || p.photos?.[0]?.url || p.photos?.[0] || p.image || "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80",
   }));
 
   return (

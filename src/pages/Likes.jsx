@@ -13,14 +13,17 @@ const mockDemoLikes = [
     action: 'superlike',
     likedAt: new Date().toISOString(),
     user: {
-      _id: 'demo_user_1',
-      name: 'Ananya Nair',
-      age: 24,
-      bio: 'Coffee enthusiast, sunset chaser & bookworm 📚✨',
+      _id: 'demo_agent_1',
+      name: 'Anjali Nair',
+      age: 23,
+      bio: 'Verified Elite Host • Live for 1-on-1 video calls, lively talks & good vibes! 🌸',
       city: 'Kochi',
       state: 'Kerala',
-      occupation: 'UI/UX Designer',
+      occupation: 'Verified Host',
       verified: true,
+      isEliteAgent: true,
+      isStaff: true,
+      isHost: true,
       photos: [
         { url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=600' }
       ]
@@ -31,16 +34,19 @@ const mockDemoLikes = [
     action: 'right',
     likedAt: new Date().toISOString(),
     user: {
-      _id: 'demo_user_2',
-      name: 'Rohan Sharma',
-      age: 27,
-      bio: 'Fitness fanatic 💪 & Tech Explorer 🚀 Let’s grab coffee!',
+      _id: 'demo_agent_2',
+      name: 'Gauri Menon',
+      age: 24,
+      bio: 'Elite Host • Passionate about cinema, late night chats & audio calls. ✨',
       city: 'Trivandrum',
       state: 'Kerala',
-      occupation: 'Software Engineer',
+      occupation: 'Elite Host',
       verified: true,
+      isEliteAgent: true,
+      isStaff: true,
+      isHost: true,
       photos: [
-        { url: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=600' }
+        { url: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=600' }
       ]
     }
   },
@@ -49,16 +55,19 @@ const mockDemoLikes = [
     action: 'right',
     likedAt: new Date().toISOString(),
     user: {
-      _id: 'demo_user_3',
-      name: 'Meera Pillai',
-      age: 25,
-      bio: 'Classical dancer & foodie 🍜 Looking for genuine conversations.',
+      _id: 'demo_agent_3',
+      name: 'Rhea Sharma',
+      age: 22,
+      bio: 'Host Partner • Let\'s connect over video call! Always positive and cheerful. 💫',
       city: 'Kozhikode',
       state: 'Kerala',
-      occupation: 'Architect',
-      verified: false,
+      occupation: 'Host Partner',
+      verified: true,
+      isEliteAgent: true,
+      isStaff: true,
+      isHost: true,
       photos: [
-        { url: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=600' }
+        { url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=600' }
       ]
     }
   }
@@ -71,14 +80,23 @@ const Likes = () => {
   const receivedLikesFromStore = useSelector((state) => state.user.receivedLikes);
   const [matchModalData, setMatchModalData] = useState(null);
 
+  const isStaffUser = currentUser?.isStaff || currentUser?.isEliteAgent || currentUser?.role === 'staff' || currentUser?.role === 'admin';
+  const isCustomer = !isStaffUser;
+
   useEffect(() => {
     dispatch(fetchReceivedLikes());
   }, [dispatch]);
 
-  // Use real received likes if available, fallback to mock demo list for demonstration if array is empty
-  const displayLikes = (receivedLikesFromStore && receivedLikesFromStore.length > 0)
-    ? receivedLikesFromStore
-    : mockDemoLikes;
+  // Strict role filtering: Customers only see verified hosts/agents
+  const filteredLikes = (receivedLikesFromStore || []).filter(item => {
+    const u = item.user || item;
+    if (isCustomer) {
+      return Boolean(u.isEliteAgent || u.isStaff || u.role === 'staff' || u.isHost);
+    }
+    return !u.isEliteAgent && !u.isStaff && u.role !== 'staff' && u.role !== 'admin';
+  });
+
+  const displayLikes = filteredLikes.length > 0 ? filteredLikes : mockDemoLikes;
 
   const handleLikeBack = async (likedItem) => {
     const targetUser = likedItem.user;

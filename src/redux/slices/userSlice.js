@@ -6,28 +6,80 @@ const getToken = () => localStorage.getItem('inakkam_token');
 
 // ─── Async Thunks ────────────────────────────────────
 
-export const fetchDiscoverUsers = createAsyncThunk('user/fetchDiscover', async (page = 1, { rejectWithValue }) => {
+export const fetchDiscoverUsers = createAsyncThunk('user/fetchDiscover', async (page = 1, { getState, rejectWithValue }) => {
   try {
     const res = await api.get(`/discover?page=${page}&limit=20`);
-    return res.data.users;
+    let users = res.data.users || [];
+
+    const state = getState();
+    const currentUser = state.auth?.user;
+    const isCustomer = !currentUser?.isEliteAgent && !currentUser?.isStaff && currentUser?.role !== 'staff' && currentUser?.role !== 'admin';
+
+    if (isCustomer) {
+      // Strictly keep only verified agents/hosts for customer users
+      const agentUsers = users.filter(u => Boolean(u.isEliteAgent || u.isStaff || u.role === 'staff' || u.isHost));
+      if (agentUsers.length > 0) {
+        return agentUsers;
+      }
+      // If discover endpoint returned empty or non-agents, query live agents directly
+      const agentRes = await api.get('/users/agents');
+      if (agentRes.data?.agents && agentRes.data.agents.length > 0) {
+        return agentRes.data.agents;
+      }
+    }
+
+    return users;
   } catch (err) {
+    try {
+      // Fallback query to agents endpoint on error
+      const agentRes = await api.get('/users/agents');
+      if (agentRes.data?.agents && agentRes.data.agents.length > 0) {
+        return agentRes.data.agents;
+      }
+    } catch (_) {}
     return rejectWithValue(err);
   }
 });
 
-export const fetchMatches = createAsyncThunk('user/fetchMatches', async (_, { rejectWithValue }) => {
+export const fetchMatches = createAsyncThunk('user/fetchMatches', async (_, { getState, rejectWithValue }) => {
   try {
     const res = await api.get('/matches');
-    return res.data.matches;
+    let matches = res.data.matches || [];
+
+    const state = getState();
+    const currentUser = state.auth?.user;
+    const isCustomer = !currentUser?.isEliteAgent && !currentUser?.isStaff && currentUser?.role !== 'staff' && currentUser?.role !== 'admin';
+
+    if (isCustomer && Array.isArray(matches)) {
+      matches = matches.filter(m => {
+        const u = m.user || m;
+        return Boolean(u.isEliteAgent || u.isStaff || u.role === 'staff' || u.isHost);
+      });
+    }
+
+    return matches;
   } catch (err) {
     return rejectWithValue(err);
   }
 });
 
-export const fetchReceivedLikes = createAsyncThunk('user/fetchReceivedLikes', async (_, { rejectWithValue }) => {
+export const fetchReceivedLikes = createAsyncThunk('user/fetchReceivedLikes', async (_, { getState, rejectWithValue }) => {
   try {
     const res = await api.get('/swipe/received-likes');
-    return res.data.likes;
+    let likes = res.data.likes || [];
+
+    const state = getState();
+    const currentUser = state.auth?.user;
+    const isCustomer = !currentUser?.isEliteAgent && !currentUser?.isStaff && currentUser?.role !== 'staff' && currentUser?.role !== 'admin';
+
+    if (isCustomer && Array.isArray(likes)) {
+      likes = likes.filter(item => {
+        const u = item.user || item;
+        return Boolean(u.isEliteAgent || u.isStaff || u.role === 'staff' || u.isHost);
+      });
+    }
+
+    return likes;
   } catch (err) {
     return rejectWithValue(err);
   }

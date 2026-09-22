@@ -9,6 +9,7 @@ import { addNotification } from '../redux/slices/notificationSlice';
 import { fetchMe } from '../redux/slices/authSlice';
 import api from '../utils/api';
 import { getSocket } from '../utils/socket';
+import { mapUsers } from '../utils/userMapper';
 import toast from 'react-hot-toast';
 import VideoCall from '../components/VideoCall';
 import RechargeModal from '../components/RechargeModal';
@@ -115,9 +116,24 @@ const Discover = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const reduxDiscoveredUsers = useSelector((state) => state.user.discoveredUsers);
+  const currentUser = useSelector((state) => state.auth.user);
 
   const [localUsers, setLocalUsers] = useState([]);
   const [swipeDirection, setSwipeDirection] = useState(null);
+
+  const isStaffUser = currentUser?.isStaff || currentUser?.isEliteAgent || currentUser?.role === 'staff' || currentUser?.role === 'admin';
+  const isCustomer = !isStaffUser;
+
+  // Helper to filter users strictly according to role
+  const filterByRole = (usersList) => {
+    if (!Array.isArray(usersList)) return [];
+    if (isCustomer) {
+      // Customer ONLY sees verified agents/staff/hosts
+      return usersList.filter(u => Boolean(u.isEliteAgent || u.isStaff || u.role === 'staff' || u.isHost));
+    }
+    // Agent only sees regular customers
+    return usersList.filter(u => !u.isEliteAgent && !u.isStaff && u.role !== 'staff' && u.role !== 'admin');
+  };
 
   // Reset swipe direction when the top card changes
   useEffect(() => {
@@ -127,14 +143,36 @@ const Discover = () => {
   useEffect(() => {
     // Fetch users when the discover page mounts
     dispatch(fetchDiscoverUsers(1));
-  }, [dispatch]);
+
+    // For customers, proactively fetch live agents to ensure UI is immediately populated with verified agents
+    if (isCustomer) {
+      api.get('/users/agents').then(res => {
+        if (res.data?.agents && res.data.agents.length > 0) {
+          const mapped = mapUsers(res.data.agents);
+          setLocalUsers(prev => {
+            const valid = filterByRole(prev);
+            return valid.length > 0 ? valid : mapped;
+          });
+        }
+      }).catch(() => {});
+    }
+  }, [dispatch, isCustomer]);
 
   useEffect(() => {
-    // Only update local state when redux array changes
-    if (reduxDiscoveredUsers) {
-      setLocalUsers(reduxDiscoveredUsers);
+    if (reduxDiscoveredUsers && reduxDiscoveredUsers.length > 0) {
+      const valid = filterByRole(reduxDiscoveredUsers);
+      if (valid.length > 0) {
+        setLocalUsers(valid);
+      } else if (isCustomer) {
+        // Fallback to live agents endpoint
+        api.get('/users/agents').then(res => {
+          if (res.data?.agents && res.data.agents.length > 0) {
+            setLocalUsers(mapUsers(res.data.agents));
+          }
+        }).catch(() => {});
+      }
     }
-  }, [reduxDiscoveredUsers]);
+  }, [reduxDiscoveredUsers, isCustomer]);
 
   const handleAction = (e, actionType, profile) => {
     if (e && e.stopPropagation) e.stopPropagation();
@@ -190,7 +228,6 @@ const Discover = () => {
 
   const isMatchedOpen = useSelector((state) => state.ui.isMatchedModalOpen);
   const matchedUser = useSelector((state) => state.ui.lastMatchedUser);
-  const currentUser = useSelector((state) => state.auth.user);
   const [selectedProfile, setSelectedProfile] = useState(null);
   const [activeCall, setActiveCall] = useState(null);
   const [showRechargeModal, setShowRechargeModal] = useState(false);
