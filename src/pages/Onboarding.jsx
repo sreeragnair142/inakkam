@@ -6,6 +6,7 @@ import landscapeLogo from "../assets/landscapelogowhite.png";
 import { useDispatch, useSelector } from "react-redux";
 import api from "../utils/api";
 import { updateProfile } from "../redux/slices/authSlice";
+import { sendFirebaseOtp, verifyFirebaseOtp } from "../utils/firebase";
 
 export default function Onboarding() {
   const navigate = useNavigate();
@@ -111,6 +112,7 @@ export default function Onboarding() {
   const [otpSent, setOtpSent] = useState(false);
   const [phoneError, setPhoneError] = useState("");
   const [otpNotice, setOtpNotice] = useState("");
+  const [confirmationResult, setConfirmationResult] = useState(null);
 
   const handleVerifyOtp = async (codeToVerify) => {
     const code = codeToVerify || formData.otp;
@@ -124,7 +126,15 @@ export default function Onboarding() {
     const fullPhone = `${countryCode}${formData.phone.replace(/\D/g, '')}`;
 
     try {
-      await api.post('/auth/verify-otp', { phone: fullPhone, otp: code });
+      if (!confirmationResult) {
+        setOtpError("No active OTP session. Please request a new code.");
+        setIsVerifying(false);
+        return;
+      }
+      // Verify with Firebase Phone Auth client
+      const { idToken } = await verifyFirebaseOtp(confirmationResult, code);
+      // Verify token with backend to record verified phone
+      await api.post('/auth/firebase-verify', { idToken, phone: fullPhone });
       
       setOtpSuccess(true);
       
@@ -139,7 +149,18 @@ export default function Onboarding() {
       }, 1200);
 
     } catch (err) {
-      setOtpError(typeof err === 'string' ? err : 'Invalid OTP code');
+      console.error('[handleVerifyOtp] Error:', err);
+      let errMsg = 'Invalid OTP code';
+      if (err?.code === 'auth/invalid-verification-code') {
+        errMsg = 'Invalid verification code. Please check and try again.';
+      } else if (err?.code === 'auth/code-expired') {
+        errMsg = 'Verification code has expired. Please request a new one.';
+      } else if (err?.response?.data?.message) {
+        errMsg = err.response.data.message;
+      } else if (err?.message) {
+        errMsg = err.message;
+      }
+      setOtpError(errMsg);
       setIsVerifying(false);
     }
   };
@@ -154,13 +175,19 @@ export default function Onboarding() {
     
     const fullPhone = `${countryCode}${formData.phone.replace(/\D/g, '')}`;
     try {
-      const res = await api.post('/auth/send-otp', { phone: fullPhone });
-      setOtpCountdown(60); // Reset timer
-      if (res?.data?.message) {
-        setOtpNotice(res.data.message);
-      }
+      const conf = await sendFirebaseOtp(fullPhone, 'recaptcha-container');
+      setConfirmationResult(conf);
+      setOtpCountdown(60);
+      setOtpNotice(`New SMS code sent to ${fullPhone}`);
     } catch (err) {
-      setOtpError(typeof err === 'string' ? err : 'Failed to resend OTP');
+      console.error('[handleResendOtp] Error:', err);
+      let errMsg = typeof err === 'string' ? err : (err?.message || 'Failed to resend OTP');
+      if (errMsg.includes('reCAPTCHA') || errMsg.includes('app-not-authorized')) {
+        errMsg = 'SMS service not authorized for this domain. Please check Firebase Authorized Domains.';
+      } else if (err?.code === 'auth/too-many-requests') {
+        errMsg = 'Too many requests. Please wait a while before trying again.';
+      }
+      setOtpError(errMsg);
     } finally {
       setIsVerifying(false);
     }
@@ -244,14 +271,26 @@ export default function Onboarding() {
       setPhoneError("");
       const fullPhone = `${countryCode}${sanitizedPhone}`;
       try {
-        const res = await api.post('/auth/send-otp', { phone: fullPhone });
+        const conf = await sendFirebaseOtp(fullPhone, 'recaptcha-container');
+        setConfirmationResult(conf);
         setOtpSent(true); 
         setOtpCountdown(60); // 60s countdown
-        if (res?.data?.message) {
-          setOtpNotice(res.data.message);
-        }
+        setOtpNotice(`SMS verification code sent to ${fullPhone}`);
       } catch (err) {
-        setPhoneError(typeof err === 'string' ? err : (err?.message || 'Failed to send OTP'));
+        console.error('[handleFormNext] Firebase OTP Error:', err?.code, err?.message || err);
+        let msg = typeof err === 'string' ? err : (err?.message || 'Failed to send OTP');
+        if (err?.code === 'auth/invalid-phone-number') {
+          msg = 'Invalid phone number format. Please check and try again.';
+        } else if (err?.code === 'auth/too-many-requests') {
+          msg = 'Too many OTP requests. Please wait a few minutes before trying again.';
+        } else if (err?.code === 'auth/quota-exceeded') {
+          msg = 'SMS quota exceeded. Please try again later or contact support.';
+        } else if (err?.code === 'auth/operation-not-allowed') {
+          msg = 'Phone authentication is not enabled in Firebase. Please enable it in Firebase Console > Authentication > Sign-in method.';
+        } else if (msg.includes('reCAPTCHA') || msg.includes('app-not-authorized') || err?.code === 'auth/app-not-authorized') {
+          msg = 'SMS service not authorized for this domain. Please ensure localhost/domain is in Firebase Authorized Domains.';
+        }
+        setPhoneError(msg);
       } finally {
         setIsVerifying(false);
       }
@@ -487,6 +526,9 @@ export default function Onboarding() {
                     ⚠️ {phoneError}
                   </motion.p>
                 )}
+                
+                {/* Invisible Firebase reCAPTCHA Container */}
+                <div id="recaptcha-container"></div>
                 
                 <button
                   onClick={handleFormNext}

@@ -1,11 +1,22 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { loginUser, registerUser, guestLogin } from "../redux/slices/authSlice";
-import { Flame, ArrowRight, Eye, EyeOff, Sparkles, AlertCircle } from "lucide-react";
+import { loginUser, registerUser, guestLogin, firebaseLoginUser } from "../redux/slices/authSlice";
+import { Flame, ArrowRight, Eye, EyeOff, Sparkles, AlertCircle, Smartphone, Loader2, CheckCircle2, RefreshCw, Pencil } from "lucide-react";
 import toast from "react-hot-toast";
 import loaderLogo from "../assets/loaderinakkam.png";
 import { motion, AnimatePresence } from "framer-motion";
+import { sendFirebaseOtp, verifyFirebaseOtp } from "../utils/firebase";
+
+const countryCodes = [
+  { code: "+91", name: "India", flag: "🇮🇳" },
+  { code: "+1", name: "US/Canada", flag: "🇺🇸" },
+  { code: "+44", name: "UK", flag: "🇬🇧" },
+  { code: "+971", name: "UAE", flag: "🇦🇪" },
+  { code: "+61", name: "Australia", flag: "🇦🇺" },
+  { code: "+966", name: "Saudi Arabia", flag: "🇸🇦" },
+  { code: "+65", name: "Singapore", flag: "🇸🇬" },
+];
 
 const introSlides = [
   {
@@ -52,6 +63,92 @@ const Auth = () => {
     confirmPassword: ''
   });
   const [error, setError] = useState(null);
+
+  // Phone OTP states
+  const [authMethod, setAuthMethod] = useState('password'); // 'password' | 'otp'
+  const [otpPhone, setOtpPhone] = useState('');
+  const [otpCountryCode, setOtpCountryCode] = useState('+91');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCountdown, setOtpCountdown] = useState(0);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState(null);
+
+  useEffect(() => {
+    let timer;
+    if (otpCountdown > 0) {
+      timer = setTimeout(() => setOtpCountdown((prev) => prev - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [otpCountdown]);
+
+  const handleSendPhoneOtp = async () => {
+    const sanitized = otpPhone.replace(/\D/g, '');
+    if (!sanitized || sanitized.length < 7) {
+      setError("Please enter a valid mobile number");
+      return;
+    }
+    setError(null);
+    setOtpLoading(true);
+    const fullPhone = `${otpCountryCode}${sanitized}`;
+
+    try {
+      const conf = await sendFirebaseOtp(fullPhone, 'auth-recaptcha-container');
+      setConfirmationResult(conf);
+      setOtpSent(true);
+      setOtpCountdown(60);
+      toast.success(`Verification code sent to ${fullPhone}`);
+    } catch (err) {
+      console.error('[handleSendPhoneOtp] Error:', err);
+      let msg = err?.message || 'Failed to send OTP';
+      if (err?.code === 'auth/invalid-phone-number') {
+        msg = 'Invalid phone number format.';
+      } else if (err?.code === 'auth/too-many-requests') {
+        msg = 'Too many requests. Please try again later.';
+      }
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyPhoneOtp = async () => {
+    if (!otpCode || otpCode.length !== 6) {
+      setError("Please enter the 6-digit verification code");
+      return;
+    }
+    if (!confirmationResult) {
+      setError("Please request an OTP first");
+      return;
+    }
+
+    setError(null);
+    setOtpLoading(true);
+
+    try {
+      const { idToken } = await verifyFirebaseOtp(confirmationResult, otpCode);
+      const res = await dispatch(firebaseLoginUser({ idToken })).unwrap();
+      toast.success("Signed in successfully!");
+      if (res?.user?.isOnboarded) {
+        navigate("/swipe");
+      } else {
+        navigate("/onboarding");
+      }
+    } catch (err) {
+      console.error('[handleVerifyPhoneOtp] Error:', err);
+      let msg = typeof err === 'string' ? err : (err?.message || 'Invalid verification code');
+      if (err?.code === 'auth/invalid-verification-code') {
+        errMsg = 'Invalid verification code. Please check and try again.';
+      } else if (err?.code === 'auth/code-expired') {
+        errMsg = 'Verification code has expired. Please request a new one.';
+      }
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setOtpLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (location.state?.isSignUp !== undefined) {
@@ -549,97 +646,252 @@ const Auth = () => {
               </p>
             </div>
 
-            <div className={isSignUp ? "space-y-3" : "space-y-4"}>
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -8, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-start gap-2.5 shadow-sm text-left"
-                >
-                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                  <span className="leading-snug">{error}</span>
-                </motion.div>
-              )}
-              {isSignUp && (
-                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-                  <label className="text-[11px] font-black text-[#2D2D2D]/70 uppercase tracking-wider block mb-1.5 ml-1">
-                    Username
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Choose a username"
-                    value={formData.username}
-                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-white border-2 border-slate-200 text-sm font-bold text-[#2D2D2D] placeholder-slate-400 focus:border-[#D51659] focus:bg-white focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
-                  />
-                </motion.div>
-              )}
-              <div>
-                <label className="text-[11px] font-black text-[#2D2D2D]/70 uppercase tracking-wider block mb-1.5 ml-1">
-                  {isSignUp ? "Email Address" : "Email or Phone Number"}
-                </label>
-                <input
-                  type={isSignUp ? "email" : "text"}
-                  placeholder={isSignUp ? "you@example.com" : "Email or phone"}
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className={`w-full ${isSignUp ? 'px-4 py-3 rounded-xl' : 'px-4 py-3 sm:py-4 rounded-xl sm:rounded-2xl'} bg-white border-2 border-slate-200 text-sm font-bold text-[#2D2D2D] placeholder-slate-400 focus:border-[#D51659] focus:bg-white focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all`}
-                />
-              </div>
-              <div className="relative">
-                <label className="text-[11px] font-black text-[#2D2D2D]/70 uppercase tracking-wider block mb-1.5 ml-1">
-                  Password
-                </label>
-                <input
-                  type={showPw ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className={`w-full ${isSignUp ? 'px-4 py-3 rounded-xl' : 'px-4 py-3 sm:py-4 rounded-xl sm:rounded-2xl'} bg-white border-2 border-slate-200 text-sm font-bold text-[#2D2D2D] placeholder-slate-400 focus:border-[#D51659] focus:bg-white focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all pr-12`}
-                />
+            {!isSignUp && (
+              <div className="flex rounded-xl bg-slate-200/70 p-1 mb-4">
                 <button
                   type="button"
-                  onClick={() => setShowPw(!showPw)}
-                  className={`absolute right-4 ${isSignUp ? 'top-[34px]' : 'top-[34px] sm:top-[38px]'} text-slate-400 hover:text-[#2D2D2D] transition-colors cursor-pointer`}
+                  onClick={() => { setAuthMethod('password'); setError(null); }}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                    authMethod === 'password'
+                      ? 'bg-white text-slate-800 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
                 >
-                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  Password
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAuthMethod('otp'); setError(null); }}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                    authMethod === 'otp'
+                      ? 'bg-white text-[#D51659] shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <Smartphone className="w-3.5 h-3.5" />
+                  Phone OTP
                 </button>
               </div>
+            )}
 
-              {isSignUp && (
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                className="p-3.5 mb-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-start gap-2.5 shadow-sm text-left"
+              >
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <span className="leading-snug">{error}</span>
+              </motion.div>
+            )}
+
+            {!isSignUp && authMethod === 'otp' ? (
+              <div className="space-y-4">
+                {/* Invisible Firebase reCAPTCHA Container */}
+                <div id="auth-recaptcha-container"></div>
+
+                {!otpSent ? (
+                  <>
+                    <div>
+                      <label className="text-[11px] font-black text-[#2D2D2D]/70 uppercase tracking-wider block mb-1.5 ml-1 text-left">
+                        Mobile Number
+                      </label>
+                      <div className="flex border-2 border-slate-200 rounded-xl sm:rounded-2xl overflow-hidden focus-within:border-[#D51659] focus-within:ring-4 focus-within:ring-[#D51659]/10 bg-white transition-all">
+                        <div className="relative bg-slate-100/80 border-r-2 border-slate-200 flex items-center text-[#2D2D2D] font-bold text-sm min-w-[90px]">
+                          <select
+                            value={otpCountryCode}
+                            onChange={(e) => setOtpCountryCode(e.target.value)}
+                            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
+                          >
+                            {countryCodes.map((c) => (
+                              <option key={c.code} value={c.code}>
+                                {c.flag} {c.code}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="px-3 py-3 w-full flex items-center justify-between select-none">
+                            <span>{countryCodes.find((c) => c.code === otpCountryCode)?.flag} {otpCountryCode}</span>
+                            <span className="text-xs opacity-50">▼</span>
+                          </div>
+                        </div>
+                        <input
+                          type="tel"
+                          placeholder="Enter 10-digit number"
+                          value={otpPhone}
+                          onChange={(e) => {
+                            setError(null);
+                            setOtpPhone(e.target.value.replace(/\D/g, ''));
+                          }}
+                          className="w-full px-4 py-3 sm:py-3.5 text-sm font-bold outline-none text-[#2D2D2D] bg-transparent placeholder-slate-400"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleSendPhoneOtp}
+                      disabled={otpLoading || !otpPhone || otpPhone.length < 7}
+                      className="w-full py-3.5 sm:py-4 rounded-xl sm:rounded-2xl text-base font-black text-white cursor-pointer hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-xl shadow-[#D51659]/20 flex items-center justify-center gap-2"
+                      style={{ background: "linear-gradient(135deg, #D51659 0%, #b51350 100%)" }}
+                    >
+                      {otpLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Sending OTP...
+                        </>
+                      ) : (
+                        <>
+                          <Smartphone className="w-4 h-4" />
+                          Send Verification Code
+                        </>
+                      )}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between text-xs text-slate-600 bg-slate-100/80 p-2.5 rounded-xl border border-slate-200">
+                      <span>Code sent to <strong>{otpCountryCode} {otpPhone}</strong></span>
+                      <button
+                        type="button"
+                        onClick={() => { setOtpSent(false); setOtpCode(''); setError(null); }}
+                        className="text-xs font-black text-[#D51659] hover:underline cursor-pointer flex items-center gap-1"
+                      >
+                        <Pencil className="w-3 h-3" /> Change
+                      </button>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-black text-[#2D2D2D]/70 uppercase tracking-wider block mb-1.5 ml-1 text-left">
+                        Enter 6-Digit OTP
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={6}
+                        placeholder="• • • • • •"
+                        value={otpCode}
+                        onChange={(e) => {
+                          setError(null);
+                          setOtpCode(e.target.value.replace(/\D/g, ''));
+                        }}
+                        className="w-full px-4 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl bg-white border-2 border-slate-200 text-center tracking-[0.4em] font-mono text-lg font-black text-[#2D2D2D] placeholder-slate-400 focus:border-[#D51659] focus:bg-white focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs">
+                      <button
+                        type="button"
+                        disabled={otpCountdown > 0 || otpLoading}
+                        onClick={handleSendPhoneOtp}
+                        className="text-slate-500 font-bold hover:text-[#D51659] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1"
+                      >
+                        <RefreshCw className={`w-3 h-3 ${otpLoading ? 'animate-spin' : ''}`} />
+                        {otpCountdown > 0 ? `Resend in ${otpCountdown}s` : 'Resend Code'}
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleVerifyPhoneOtp}
+                      disabled={otpLoading || otpCode.length !== 6}
+                      className="w-full py-3.5 sm:py-4 rounded-xl sm:rounded-2xl text-base font-black text-white cursor-pointer hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-xl shadow-[#D51659]/20 flex items-center justify-center gap-2"
+                      style={{ background: "linear-gradient(135deg, #D51659 0%, #b51350 100%)" }}
+                    >
+                      {otpLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Verifying...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-4 h-4" />
+                          Verify & Sign In
+                        </>
+                      )}
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className={isSignUp ? "space-y-3" : "space-y-4"}>
+                {isSignUp && (
+                  <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+                    <label className="text-[11px] font-black text-[#2D2D2D]/70 uppercase tracking-wider block mb-1.5 ml-1">
+                      Username
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Choose a username"
+                      value={formData.username}
+                      onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl bg-white border-2 border-slate-200 text-sm font-bold text-[#2D2D2D] placeholder-slate-400 focus:border-[#D51659] focus:bg-white focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
+                    />
+                  </motion.div>
+                )}
                 <div>
                   <label className="text-[11px] font-black text-[#2D2D2D]/70 uppercase tracking-wider block mb-1.5 ml-1">
-                    Confirm Password
+                    {isSignUp ? "Email Address" : "Email or Phone Number"}
                   </label>
                   <input
-                    type="password"
-                    placeholder="••••••••"
-                    value={formData.confirmPassword}
-                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-white border-2 border-slate-200 text-sm font-bold text-[#2D2D2D] placeholder-slate-400 focus:border-[#D51659] focus:bg-white focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
+                    type={isSignUp ? "email" : "text"}
+                    placeholder={isSignUp ? "you@example.com" : "Email or phone"}
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className={`w-full ${isSignUp ? 'px-4 py-3 rounded-xl' : 'px-4 py-3 sm:py-4 rounded-xl sm:rounded-2xl'} bg-white border-2 border-slate-200 text-sm font-bold text-[#2D2D2D] placeholder-slate-400 focus:border-[#D51659] focus:bg-white focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all`}
                   />
                 </div>
-              )}
-
-              {!isSignUp && (
-                <div className="text-right pb-2">
-                  <span className="text-xs text-slate-500 font-bold cursor-pointer hover:text-[#D51659] transition-colors underline underline-offset-4 decoration-slate-200 hover:decoration-[#D51659]">
-                    Forgot password?
-                  </span>
+                <div className="relative">
+                  <label className="text-[11px] font-black text-[#2D2D2D]/70 uppercase tracking-wider block mb-1.5 ml-1">
+                    Password
+                  </label>
+                  <input
+                    type={showPw ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className={`w-full ${isSignUp ? 'px-4 py-3 rounded-xl' : 'px-4 py-3 sm:py-4 rounded-xl sm:rounded-2xl'} bg-white border-2 border-slate-200 text-sm font-bold text-[#2D2D2D] placeholder-slate-400 focus:border-[#D51659] focus:bg-white focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all pr-12`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(!showPw)}
+                    className={`absolute right-4 ${isSignUp ? 'top-[34px]' : 'top-[34px] sm:top-[38px]'} text-slate-400 hover:text-[#2D2D2D] transition-colors cursor-pointer`}
+                  >
+                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
-              )}
 
-              <button
-                onClick={handleLogin}
-                className={`w-full ${isSignUp ? 'py-3.5 mt-1' : 'py-3.5 sm:py-4 mt-2'} rounded-xl sm:rounded-2xl text-base font-black text-white cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-[#D51659]/20 flex items-center justify-center gap-2`}
-                style={{ background: "linear-gradient(135deg, #D51659 0%, #b51350 100%)" }}
-              >
-                <Sparkles className="w-4 h-4" />
-                {isSignUp ? "Sign Up" : "Sign In"}
-              </button>
+                {isSignUp && (
+                  <div>
+                    <label className="text-[11px] font-black text-[#2D2D2D]/70 uppercase tracking-wider block mb-1.5 ml-1">
+                      Confirm Password
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="••••••••"
+                      value={formData.confirmPassword}
+                      onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl bg-white border-2 border-slate-200 text-sm font-bold text-[#2D2D2D] placeholder-slate-400 focus:border-[#D51659] focus:bg-white focus:ring-4 focus:ring-[#D51659]/10 outline-none transition-all"
+                    />
+                  </div>
+                )}
 
+                {!isSignUp && (
+                  <div className="text-right pb-2">
+                    <span className="text-xs text-slate-500 font-bold cursor-pointer hover:text-[#D51659] transition-colors underline underline-offset-4 decoration-slate-200 hover:decoration-[#D51659]">
+                      Forgot password?
+                    </span>
+                  </div>
+                )}
 
-            </div>
+                <button
+                  onClick={handleLogin}
+                  className={`w-full ${isSignUp ? 'py-3.5 mt-1' : 'py-3.5 sm:py-4 mt-2'} rounded-xl sm:rounded-2xl text-base font-black text-white cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-[#D51659]/20 flex items-center justify-center gap-2`}
+                  style={{ background: "linear-gradient(135deg, #D51659 0%, #b51350 100%)" }}
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {isSignUp ? "Sign Up" : "Sign In"}
+                </button>
+              </div>
+            )}
 
             <div className={`${isSignUp ? 'mt-4' : 'mt-5 sm:mt-6'} text-center border-t border-slate-200 ${isSignUp ? 'pt-4' : 'pt-4 sm:pt-5'}`}>
               <span className="text-[#2D2D2D]/75 text-xs font-bold">

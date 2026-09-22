@@ -27,6 +27,18 @@ export const loginUser = createAsyncThunk('auth/login', async (data, { rejectWit
   }
 });
 
+export const firebaseLoginUser = createAsyncThunk('auth/firebaseLogin', async (data, { rejectWithValue }) => {
+  try {
+    const res = await api.post('/auth/firebase-login', data);
+    const json = res.data;
+    if (json.token) localStorage.setItem('inakkam_token', json.token);
+    return json;
+  } catch (err) {
+    const message = typeof err === 'string' ? err : (err?.response?.data?.message || err?.message || 'Phone authentication failed. Please try again.');
+    return rejectWithValue(message);
+  }
+});
+
 export const fetchMe = createAsyncThunk('auth/fetchMe', async (_, { rejectWithValue }) => {
   try {
     const res = await api.get('/users/me');
@@ -143,6 +155,15 @@ const authSlice = createSlice({
         state.user = mapUser(action.payload.user);
       })
       .addCase(loginUser.rejected, handleRejected)
+
+      .addCase(firebaseLoginUser.pending, handlePending)
+      .addCase(firebaseLoginUser.fulfilled, (state, action) => {
+        state.loading = false;
+        state.isAuthenticated = true;
+        state.isGuest = false;
+        state.user = mapUser(action.payload.user);
+      })
+      .addCase(firebaseLoginUser.rejected, handleRejected)
 
       .addCase(fetchMe.pending, (state) => { state.loading = true; })
       .addCase(fetchMe.fulfilled, (state, action) => {
