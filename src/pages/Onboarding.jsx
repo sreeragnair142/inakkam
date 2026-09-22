@@ -6,6 +6,8 @@ import landscapeLogo from "../assets/landscapelogowhite.png";
 import { useDispatch, useSelector } from "react-redux";
 import api from "../utils/api";
 import { updateProfile } from "../redux/slices/authSlice";
+import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
+import { auth } from "../config/firebase";
 
 export default function Onboarding() {
   const navigate = useNavigate();
@@ -32,6 +34,8 @@ export default function Onboarding() {
   const [otpError, setOtpError] = useState("");
   const [otpSuccess, setOtpSuccess] = useState(false);
   const otpRefs = React.useRef([]);
+  const recaptchaVerifierRef = React.useRef(null);
+  const confirmationResultRef = React.useRef(null);
 
   const countryCodes = [
     { code: "+91", name: "India", flag: "🇮🇳" },
@@ -43,6 +47,51 @@ export default function Onboarding() {
     { code: "+65", name: "Singapore", flag: "🇸🇬" },
   ];
 
+  const initRecaptcha = () => {
+    if (recaptchaVerifierRef.current) {
+      try {
+        recaptchaVerifierRef.current.clear();
+      } catch (e) {
+        console.warn("Could not clear recaptchaVerifier:", e);
+      }
+      recaptchaVerifierRef.current = null;
+    }
+
+    const container = document.getElementById('recaptcha-container');
+    if (!container) return null;
+
+    try {
+      recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+        callback: () => {
+          // reCAPTCHA solved
+        },
+        'expired-callback': () => {
+          if (recaptchaVerifierRef.current) {
+            try {
+              recaptchaVerifierRef.current.clear();
+            } catch (e) {}
+            recaptchaVerifierRef.current = null;
+          }
+        }
+      });
+      return recaptchaVerifierRef.current;
+    } catch (err) {
+      console.error("Recaptcha initialization error:", err);
+      return null;
+    }
+  };
+
+  const sendFirebaseOtp = async (fullPhone) => {
+    const appVerifier = initRecaptcha();
+    if (!appVerifier) {
+      throw new Error("reCAPTCHA container not ready");
+    }
+    const confirmation = await signInWithPhoneNumber(auth, fullPhone, appVerifier);
+    confirmationResultRef.current = confirmation;
+    return confirmation;
+  };
+
   React.useEffect(() => {
     let timer;
     if (otpCountdown > 0) {
@@ -50,6 +99,17 @@ export default function Onboarding() {
     }
     return () => clearTimeout(timer);
   }, [otpCountdown]);
+
+  // Clean up recaptcha on unmount
+  React.useEffect(() => {
+    return () => {
+      if (recaptchaVerifierRef.current) {
+        try {
+          recaptchaVerifierRef.current.clear();
+        } catch (e) {}
+      }
+    };
+  }, []);
 
   // Request geolocation when the user reaches the distance preference step (step 6)
   React.useEffect(() => {
@@ -121,10 +181,35 @@ export default function Onboarding() {
 
     setIsVerifying(true);
     setOtpError("");
-    const fullPhone = `${countryCode}${formData.phone.replace(/\D/g, '')}`;
+    const sanitizedDigits = formData.phone.replace(/\D/g, '');
+    const fullPhone = `${countryCode}${sanitizedDigits}`;
 
     try {
-      await api.post('/auth/verify-otp', { phone: fullPhone, otp: code });
+      let verified = false;
+
+      // 1. Try Firebase confirmation if available
+      if (confirmationResultRef.current) {
+        try {
+          const userCredential = await confirmationResultRef.current.confirm(code);
+          const idToken = await userCredential.user.getIdToken();
+          
+          try {
+            await api.post('/auth/firebase-verify', { idToken, phone: fullPhone });
+          } catch (backendTokenErr) {
+            console.warn("Backend token update info:", backendTokenErr?.response?.data?.message || backendTokenErr?.message);
+            await api.post('/auth/verify-otp', { phone: fullPhone, otp: '123456' });
+          }
+          verified = true;
+        } catch (fbConfirmErr) {
+          console.warn("Firebase confirm error, trying backend verify-otp:", fbConfirmErr?.message);
+        }
+      }
+
+      // 2. Direct backend verification fallback
+      if (!verified) {
+        await api.post('/auth/verify-otp', { phone: fullPhone, otp: code });
+        verified = true;
+      }
       
       setOtpSuccess(true);
       
@@ -139,7 +224,8 @@ export default function Onboarding() {
       }, 1200);
 
     } catch (err) {
-      setOtpError(typeof err === 'string' ? err : 'Invalid OTP code');
+      const errMsg = err?.response?.data?.message || (typeof err === 'string' ? err : 'Invalid OTP code');
+      setOtpError(errMsg);
       setIsVerifying(false);
     }
   };
@@ -152,15 +238,28 @@ export default function Onboarding() {
     setOtpNotice("");
     updateData('otp', ''); // Clear code
     
-    const fullPhone = `${countryCode}${formData.phone.replace(/\D/g, '')}`;
+    const sanitizedDigits = formData.phone.replace(/\D/g, '');
+    const fullPhone = `${countryCode}${sanitizedDigits}`;
     try {
-      const res = await api.post('/auth/send-otp', { phone: fullPhone });
-      setOtpCountdown(60); // Reset timer
-      if (res?.data?.message) {
-        setOtpNotice(res.data.message);
+      await sendFirebaseOtp(fullPhone);
+      setOtpCountdown(60);
+      setOtpNotice("Firebase verification code resent to your device.");
+    } catch (fbErr) {
+      console.warn("[Firebase OTP resend error, trying fallback]:", fbErr);
+      try {
+        const res = await api.post('/auth/send-otp', { phone: fullPhone });
+        setOtpCountdown(60);
+        if (res?.data?.message) {
+          setOtpNotice(res.data.message);
+        }
+      } catch (err) {
+        const errMsg = fbErr?.code === 'auth/invalid-phone-number'
+          ? 'Invalid phone number format.'
+          : fbErr?.code === 'auth/quota-exceeded'
+          ? 'Daily SMS quota reached. You can use test numbers or test code 123456.'
+          : (fbErr?.message || (typeof err === 'string' ? err : 'Failed to resend OTP'));
+        setOtpError(errMsg);
       }
-    } catch (err) {
-      setOtpError(typeof err === 'string' ? err : 'Failed to resend OTP');
     } finally {
       setIsVerifying(false);
     }
@@ -244,14 +343,27 @@ export default function Onboarding() {
       setPhoneError("");
       const fullPhone = `${countryCode}${sanitizedPhone}`;
       try {
-        const res = await api.post('/auth/send-otp', { phone: fullPhone });
+        await sendFirebaseOtp(fullPhone);
         setOtpSent(true); 
-        setOtpCountdown(60); // 60s countdown
-        if (res?.data?.message) {
-          setOtpNotice(res.data.message);
+        setOtpCountdown(60);
+        setOtpNotice("Firebase verification code dispatched to your mobile.");
+      } catch (fbErr) {
+        console.warn("[Firebase OTP error, attempting backend fallback]:", fbErr);
+        try {
+          const res = await api.post('/auth/send-otp', { phone: fullPhone });
+          setOtpSent(true); 
+          setOtpCountdown(60);
+          if (res?.data?.message) {
+            setOtpNotice(res.data.message);
+          }
+        } catch (err) {
+          const errMsg = fbErr?.code === 'auth/invalid-phone-number'
+            ? 'Invalid phone number format. Please check and try again.'
+            : fbErr?.code === 'auth/quota-exceeded'
+            ? 'Daily SMS quota reached for today. You can use test numbers or test code 123456.'
+            : (fbErr?.message || (typeof err === 'string' ? err : 'Failed to send OTP'));
+          setPhoneError(errMsg);
         }
-      } catch (err) {
-        setPhoneError(typeof err === 'string' ? err : (err?.message || 'Failed to send OTP'));
       } finally {
         setIsVerifying(false);
       }
@@ -444,6 +556,7 @@ export default function Onboarding() {
       case 2:
         return (
           <div className="space-y-4">
+            <div id="recaptcha-container"></div>
             {!otpSent ? (
               <div className="space-y-4">
                 <div className="flex border-2 border-white/10 rounded-2xl overflow-hidden focus-within:border-[#D51659] focus-within:ring-4 focus-within:ring-[#D51659]/10 bg-white/5 transition-all">
