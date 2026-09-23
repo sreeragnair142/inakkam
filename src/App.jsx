@@ -3,7 +3,7 @@ import { Flame } from "lucide-react";
 import loaderLogo from "./assets/loaderinakkam.png";
 import { motion, AnimatePresence } from "framer-motion";
 import { Provider, useSelector, useDispatch } from "react-redux";
-import { BrowserRouter, useNavigate, useLocation } from "react-router-dom";
+import { BrowserRouter, useNavigate } from "react-router-dom";
 import { store } from "./redux/store";
 import { fetchMe } from "./redux/slices/authSlice";
 import { initiateSocketConnection, disconnectSocket } from "./utils/socket";
@@ -140,7 +140,6 @@ function AppContent() {
   }, [dispatch, token, isAuthenticated]);
 
   const navigate = useNavigate();
-  const location = useLocation();
 
   // ─── Socket Integration ──────────────────────────────
   const currentUserId = user?._id || user?.id;
@@ -274,10 +273,15 @@ function AppContent() {
         socket.off('new_message', handleNewMessage);
         socket.off('incoming_call', handleIncomingCall);
         socket.off('call_ended', handleCallEnded);
-        disconnectSocket();
+        socket.off('message_deleted');
+        socket.off('user_typing');
+        socket.off('user_stop_typing');
+        socket.off('new_notification');
       };
+    } else {
+      disconnectSocket();
     }
-  }, [isAuthenticated, currentUserId, token, isGuest, dispatch, navigate, location.pathname]);
+  }, [isAuthenticated, currentUserId, token, isGuest, dispatch, navigate]);
 
   return (
     <>

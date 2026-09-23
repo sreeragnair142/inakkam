@@ -47,49 +47,61 @@ export default function Onboarding() {
     { code: "+65", name: "Singapore", flag: "🇸🇬" },
   ];
 
-  const initRecaptcha = () => {
+  const resetRecaptcha = () => {
     if (recaptchaVerifierRef.current) {
       try {
         recaptchaVerifierRef.current.clear();
-      } catch (e) {
-        console.warn("Could not clear recaptchaVerifier:", e);
-      }
+      } catch (e) {}
       recaptchaVerifierRef.current = null;
+    }
+    const container = document.getElementById('recaptcha-container');
+    if (container) container.innerHTML = '';
+  };
+
+  const getRecaptchaVerifier = () => {
+    if (recaptchaVerifierRef.current) {
+      return recaptchaVerifierRef.current;
     }
 
     const container = document.getElementById('recaptcha-container');
     if (!container) return null;
+    container.innerHTML = '';
 
     try {
-      recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      recaptchaVerifierRef.current = new RecaptchaVerifier(auth, container, {
         size: 'invisible',
         callback: () => {
           // reCAPTCHA solved
         },
         'expired-callback': () => {
-          if (recaptchaVerifierRef.current) {
-            try {
-              recaptchaVerifierRef.current.clear();
-            } catch (e) {}
-            recaptchaVerifierRef.current = null;
-          }
+          resetRecaptcha();
         }
       });
       return recaptchaVerifierRef.current;
     } catch (err) {
       console.error("Recaptcha initialization error:", err);
+      resetRecaptcha();
       return null;
     }
   };
 
   const sendFirebaseOtp = async (fullPhone) => {
-    const appVerifier = initRecaptcha();
+    let appVerifier = getRecaptchaVerifier();
+    if (!appVerifier) {
+      resetRecaptcha();
+      appVerifier = getRecaptchaVerifier();
+    }
     if (!appVerifier) {
       throw new Error("reCAPTCHA container not ready");
     }
-    const confirmation = await signInWithPhoneNumber(auth, fullPhone, appVerifier);
-    confirmationResultRef.current = confirmation;
-    return confirmation;
+    try {
+      const confirmation = await signInWithPhoneNumber(auth, fullPhone, appVerifier);
+      confirmationResultRef.current = confirmation;
+      return confirmation;
+    } catch (err) {
+      resetRecaptcha();
+      throw err;
+    }
   };
 
   React.useEffect(() => {
@@ -103,11 +115,7 @@ export default function Onboarding() {
   // Clean up recaptcha on unmount
   React.useEffect(() => {
     return () => {
-      if (recaptchaVerifierRef.current) {
-        try {
-          recaptchaVerifierRef.current.clear();
-        } catch (e) {}
-      }
+      resetRecaptcha();
     };
   }, []);
 
@@ -242,7 +250,7 @@ export default function Onboarding() {
     } catch (err) {
       console.error('[handleResendOtp] Error:', err);
       let errMsg = typeof err === 'string' ? err : (err?.message || 'Failed to resend OTP');
-      if (errMsg.includes('reCAPTCHA') || errMsg.includes('app-not-authorized')) {
+      if (err?.code === 'auth/app-not-authorized' || errMsg.includes('app-not-authorized')) {
         errMsg = 'SMS service not authorized for this domain. Please check Firebase Authorized Domains.';
       } else if (err?.code === 'auth/too-many-requests') {
         errMsg = 'Too many requests. Please wait a while before trying again.';
@@ -347,8 +355,14 @@ export default function Onboarding() {
         } else if (err?.code === 'auth/quota-exceeded') {
           msg = 'SMS quota exceeded. Please try again later or contact support.';
         } else if (err?.code === 'auth/operation-not-allowed') {
-          msg = 'Phone authentication is not enabled in Firebase. Please enable it in Firebase Console > Authentication > Sign-in method.';
-        } else if (msg.includes('reCAPTCHA') || msg.includes('app-not-authorized') || err?.code === 'auth/app-not-authorized') {
+          if (msg.toLowerCase().includes('region')) {
+            msg = 'SMS to this region is blocked. Enable India (+91) in Firebase Console > Authentication > Settings > SMS region policy.';
+          } else {
+            msg = 'Phone authentication is not enabled in Firebase. Please enable it in Firebase Console > Authentication > Sign-in method.';
+          }
+        } else if (err?.code === 'auth/billing-not-enabled' || msg.includes('billing-not-enabled') || msg.includes('BILLING_NOT_ENABLED')) {
+          msg = 'Real SMS requires Firebase Blaze plan (billing enabled). Either upgrade project to Blaze in Firebase Console or add your number to "Phone numbers for testing".';
+        } else if (err?.code === 'auth/app-not-authorized' || msg.includes('app-not-authorized')) {
           msg = 'SMS service not authorized for this domain. Please ensure localhost/domain is in Firebase Authorized Domains.';
         }
         setPhoneError(msg);
@@ -588,9 +602,6 @@ export default function Onboarding() {
                     ⚠️ {phoneError}
                   </motion.p>
                 )}
-                
-                {/* Invisible Firebase reCAPTCHA Container */}
-                <div id="recaptcha-container"></div>
                 
                 <button
                   onClick={handleFormNext}
