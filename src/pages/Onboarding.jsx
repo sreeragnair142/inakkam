@@ -6,7 +6,8 @@ import landscapeLogo from "../assets/landscapelogowhite.png";
 import { useDispatch, useSelector } from "react-redux";
 import api from "../utils/api";
 import { updateProfile } from "../redux/slices/authSlice";
-import { sendFirebaseOtp, verifyFirebaseOtp } from "../utils/firebase";
+import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
+import { auth } from "../config/firebase";
 
 export default function Onboarding() {
   const navigate = useNavigate();
@@ -33,6 +34,8 @@ export default function Onboarding() {
   const [otpError, setOtpError] = useState("");
   const [otpSuccess, setOtpSuccess] = useState(false);
   const otpRefs = React.useRef([]);
+  const recaptchaVerifierRef = React.useRef(null);
+  const confirmationResultRef = React.useRef(null);
 
   const countryCodes = [
     { code: "+91", name: "India", flag: "🇮🇳" },
@@ -44,6 +47,51 @@ export default function Onboarding() {
     { code: "+65", name: "Singapore", flag: "🇸🇬" },
   ];
 
+  const initRecaptcha = () => {
+    if (recaptchaVerifierRef.current) {
+      try {
+        recaptchaVerifierRef.current.clear();
+      } catch (e) {
+        console.warn("Could not clear recaptchaVerifier:", e);
+      }
+      recaptchaVerifierRef.current = null;
+    }
+
+    const container = document.getElementById('recaptcha-container');
+    if (!container) return null;
+
+    try {
+      recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+        callback: () => {
+          // reCAPTCHA solved
+        },
+        'expired-callback': () => {
+          if (recaptchaVerifierRef.current) {
+            try {
+              recaptchaVerifierRef.current.clear();
+            } catch (e) {}
+            recaptchaVerifierRef.current = null;
+          }
+        }
+      });
+      return recaptchaVerifierRef.current;
+    } catch (err) {
+      console.error("Recaptcha initialization error:", err);
+      return null;
+    }
+  };
+
+  const sendFirebaseOtp = async (fullPhone) => {
+    const appVerifier = initRecaptcha();
+    if (!appVerifier) {
+      throw new Error("reCAPTCHA container not ready");
+    }
+    const confirmation = await signInWithPhoneNumber(auth, fullPhone, appVerifier);
+    confirmationResultRef.current = confirmation;
+    return confirmation;
+  };
+
   React.useEffect(() => {
     let timer;
     if (otpCountdown > 0) {
@@ -51,6 +99,17 @@ export default function Onboarding() {
     }
     return () => clearTimeout(timer);
   }, [otpCountdown]);
+
+  // Clean up recaptcha on unmount
+  React.useEffect(() => {
+    return () => {
+      if (recaptchaVerifierRef.current) {
+        try {
+          recaptchaVerifierRef.current.clear();
+        } catch (e) {}
+      }
+    };
+  }, []);
 
   // Request geolocation when the user reaches the distance preference step (step 6)
   React.useEffect(() => {
@@ -112,7 +171,6 @@ export default function Onboarding() {
   const [otpSent, setOtpSent] = useState(false);
   const [phoneError, setPhoneError] = useState("");
   const [otpNotice, setOtpNotice] = useState("");
-  const [confirmationResult, setConfirmationResult] = useState(null);
 
   const handleVerifyOtp = async (codeToVerify) => {
     const code = codeToVerify || formData.otp;
@@ -123,17 +181,19 @@ export default function Onboarding() {
 
     setIsVerifying(true);
     setOtpError("");
-    const fullPhone = `${countryCode}${formData.phone.replace(/\D/g, '')}`;
+    const sanitizedDigits = formData.phone.replace(/\D/g, '');
+    const fullPhone = `${countryCode}${sanitizedDigits}`;
 
     try {
-      if (!confirmationResult) {
+      if (!confirmationResultRef.current) {
         setOtpError("No active OTP session. Please request a new code.");
         setIsVerifying(false);
         return;
       }
-      // Verify with Firebase Phone Auth client
-      const { idToken } = await verifyFirebaseOtp(confirmationResult, code);
-      // Verify token with backend to record verified phone
+      // Verify with Firebase Phone Auth
+      const userCredential = await confirmationResultRef.current.confirm(code);
+      const idToken = await userCredential.user.getIdToken();
+      // Record verified phone in backend
       await api.post('/auth/firebase-verify', { idToken, phone: fullPhone });
       
       setOtpSuccess(true);
@@ -173,10 +233,10 @@ export default function Onboarding() {
     setOtpNotice("");
     updateData('otp', ''); // Clear code
     
-    const fullPhone = `${countryCode}${formData.phone.replace(/\D/g, '')}`;
+    const sanitizedDigits = formData.phone.replace(/\D/g, '');
+    const fullPhone = `${countryCode}${sanitizedDigits}`;
     try {
-      const conf = await sendFirebaseOtp(fullPhone, 'recaptcha-container');
-      setConfirmationResult(conf);
+      await sendFirebaseOtp(fullPhone);
       setOtpCountdown(60);
       setOtpNotice(`New SMS code sent to ${fullPhone}`);
     } catch (err) {
@@ -186,6 +246,8 @@ export default function Onboarding() {
         errMsg = 'SMS service not authorized for this domain. Please check Firebase Authorized Domains.';
       } else if (err?.code === 'auth/too-many-requests') {
         errMsg = 'Too many requests. Please wait a while before trying again.';
+      } else if (err?.code === 'auth/quota-exceeded') {
+        errMsg = 'SMS quota exceeded. Please try again later.';
       }
       setOtpError(errMsg);
     } finally {
@@ -271,10 +333,9 @@ export default function Onboarding() {
       setPhoneError("");
       const fullPhone = `${countryCode}${sanitizedPhone}`;
       try {
-        const conf = await sendFirebaseOtp(fullPhone, 'recaptcha-container');
-        setConfirmationResult(conf);
+        await sendFirebaseOtp(fullPhone);
         setOtpSent(true); 
-        setOtpCountdown(60); // 60s countdown
+        setOtpCountdown(60);
         setOtpNotice(`SMS verification code sent to ${fullPhone}`);
       } catch (err) {
         console.error('[handleFormNext] Firebase OTP Error:', err?.code, err?.message || err);
@@ -483,6 +544,7 @@ export default function Onboarding() {
       case 2:
         return (
           <div className="space-y-4">
+            <div id="recaptcha-container"></div>
             {!otpSent ? (
               <div className="space-y-4">
                 <div className="flex border-2 border-white/10 rounded-2xl overflow-hidden focus-within:border-[#D51659] focus-within:ring-4 focus-within:ring-[#D51659]/10 bg-white/5 transition-all">
